@@ -1,0 +1,33 @@
+# Unreal Engine folders to ignore
+Binaries/
+DerivedDataCache/
+Intermediate/
+Saved/
+Build/
+
+# Ignore plugin build artifacts
+Plugins/*/Binaries/
+Plugins/*/Intermediate/
+Plugins/*/Saved/
+
+# IDE/project files to ignore
+.vscode/
+.idea/
+*.sln
+*.VC.db
+*.opensdf
+*.sdf
+*.suo
+*.user
+*.userprefs
+
+# Logs and temp files
+*.log
+*.tmp
+
+# Ignore local Git and GitHub metadata
+.git/
+.github/
+
+# Exclude packaged builds
+NewPackage/
