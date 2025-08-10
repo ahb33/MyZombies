@@ -15,26 +15,29 @@ class MYZOMBIES_API ALobbyPlayerState : public APlayerState
 public:
     ALobbyPlayerState();
 
-    UFUNCTION(BlueprintCallable)
+    /** Flip ready flag (client or server) */
+    UFUNCTION(BlueprintCallable, Category = "Lobby")
     void SetReadyStatus(bool bIsReady);
 
-    UFUNCTION(BlueprintCallable)
+    /** Direct check of ready flag */
+    UFUNCTION(BlueprintPure, Category = "Lobby")
     bool IsReady() const { return bReady; }
 
-    UFUNCTION(BlueprintCallable)
-    void SetTeamID(int32 NewTeamID) { TeamID = NewTeamID; }
-
-    UFUNCTION(BlueprintCallable)
-    int32 GetTeamID() const { return TeamID; }
-
 protected:
-    UPROPERTY(ReplicatedUsing=OnRep_ReadyStatus, BlueprintReadOnly, Category = "Lobby")
+    /** Server RPC to set ready state */
+    UFUNCTION(Server, Reliable)
+    void ServerSetReadyStatus(bool bIsReady);
+
+    /** Replicated flag, notifies on change */
+    UPROPERTY(ReplicatedUsing = OnRep_Ready)
     bool bReady;
 
-    UPROPERTY(Replicated, BlueprintReadOnly, Category = "Lobby")
-    int32 TeamID;
-
+    /** Called on clients when bReady updates */
     UFUNCTION()
-    void OnRep_ReadyStatus();  // Called when bReady changes
-	
+    void OnRep_Ready();
+
+    /** Shared setter logic */
+    void UpdateReadyStatus(bool bIsReady);
+
+    virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
 };

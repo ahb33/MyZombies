@@ -2,38 +2,57 @@
 
 #include "LobbyPlayerState.h"
 #include "LobbyGameState.h"
+#include "LobbyGameMode.h"
 #include "Net/UnrealNetwork.h"
 
 ALobbyPlayerState::ALobbyPlayerState()
+    : bReady(false)
 {
-    bReady = false;
-    TeamID = 0;  // Default team ID
 }
-
 void ALobbyPlayerState::SetReadyStatus(bool bIsReady)
 {
-    if (!HasAuthority()) return;
+    if (HasAuthority())
+    {
+        UpdateReadyStatus(bIsReady);
+    }
+    else
+    {
+        ServerSetReadyStatus(bIsReady);
+    }
+}
+
+
+void ALobbyPlayerState::ServerSetReadyStatus_Implementation(bool bIsReady)
+{
+    UpdateReadyStatus(bIsReady);
+}
+
+
+void ALobbyPlayerState::UpdateReadyStatus(bool bIsReady)
+{
+    if (bReady == bIsReady) return; // No change
 
     bReady = bIsReady;
 
-    // Notify game state if available
-    if (ALobbyGameState* LobbyGameState = GetWorld()->GetGameState<ALobbyGameState>())
+    if (HasAuthority())
     {
-        UE_LOG(LogTemp, Warning, TEXT("LobbyGameState valid"));
-        LobbyGameState->AreAllPlayersReady();
+        if (auto* GM = GetWorld()->GetAuthGameMode<ALobbyGameMode>())
+        {
+            GM->CheckLobbyReady();
+        }
     }
-    else UE_LOG(LogTemp, Warning, TEXT("LobbyGameState not valid"));
-
 }
 
-void ALobbyPlayerState::OnRep_ReadyStatus()
+void ALobbyPlayerState::OnRep_Ready()
 {
-    UE_LOG(LogTemp, Warning, TEXT("%s is %s"), *GetPlayerName(), bReady ? TEXT("Ready") : TEXT("Not Ready"));
+    // e.g. update HUD, play sound, log
+    UE_LOG(LogTemp, Log, TEXT("%s is now %s"),
+        *GetPlayerName(),
+        bReady ? TEXT("Ready") : TEXT("Not Ready"));
 }
 
 void ALobbyPlayerState::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
 {
     Super::GetLifetimeReplicatedProps(OutLifetimeProps);
     DOREPLIFETIME(ALobbyPlayerState, bReady);
-    DOREPLIFETIME(ALobbyPlayerState, TeamID);
 }

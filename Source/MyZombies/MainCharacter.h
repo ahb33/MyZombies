@@ -1,10 +1,21 @@
 #pragma once
-
 #include "CoreMinimal.h"
 #include "GameFramework/Character.h"
-#include "TurnInPlace.h"
-#include "CombatState.h"
+#include "TurnInPlace.h"      
+#include "CombatState.h"      
 #include "MainCharacter.generated.h"
+
+// forward-declares:
+class USpringArmComponent;
+class UCameraComponent;
+class UCombatComponent;
+class AWeapon;
+class APickUp;
+class AHealthPickUp;
+class AMyPlayerController;
+class AMyHUD;
+class UAnimMontage;
+class UInputComponent;
 
 UCLASS()
 class MYZOMBIES_API AMainCharacter : public ACharacter
@@ -39,7 +50,7 @@ public:
     ECombatState GetCharacterCombatState() const;
     UFUNCTION(BlueprintPure, Category = "Stats")
     float GetPlayerHealth() const { return PlayerHealth; }
-    class AWeapon* GetEquippedWeapon();
+    class AWeapon* GetEquippedWeapon() const;
 
     // Input Actions
     void EquipButtonPressed();
@@ -55,7 +66,7 @@ public:
 
     // Replication Functions
     UFUNCTION(Server, Reliable)
-    void ServerEquipButtonPressed();
+    void Server_EquipButtonPressed();
 
     // Utility Functions
     void SetOverlappingWeapon(class AWeapon* Weapon);
@@ -83,48 +94,44 @@ protected:
 
 
 private:
-    // Components
-    UPROPERTY(VisibleAnywhere, Category = Camera)
-    class USpringArmComponent* CameraBoom;
 
-    UPROPERTY(VisibleAnywhere, Category = Camera)
-    class UCameraComponent* FollowCamera;
+    // -- UE-reflected components & assets --
+    UPROPERTY(VisibleAnywhere, Category="Camera")
+    USpringArmComponent* CameraBoom = nullptr;
 
-    UPROPERTY(VisibleAnywhere, BlueprintReadOnly, meta = (AllowPrivateAccess = "true"))
-    class UCombatComponent* combatComponent;
+    UPROPERTY(VisibleAnywhere, Category="Camera")
+    UCameraComponent* FollowCamera = nullptr;
 
-    // Replication Variables
-    UPROPERTY(ReplicatedUsing = OnRep_OverlappingWeapon)
-    class AWeapon* OverlappingWeapon;
+    UPROPERTY(VisibleAnywhere, BlueprintReadOnly, meta=(AllowPrivateAccess="true"))
+    UCombatComponent* combatComponent = nullptr;
 
-    UPROPERTY(ReplicatedUsing = OnRep_Health, VisibleAnywhere, Category = "Player Stats")
-    float PlayerHealth;
+    UPROPERTY(ReplicatedUsing=OnRep_OverlappingWeapon)
+    AWeapon* OverlappingWeapon = nullptr;
 
-    // Other Variables
-    UPROPERTY(EditAnywhere, Category = Combat)
-    class UAnimMontage* FireMontage;
+    UPROPERTY(ReplicatedUsing=OnRep_Health, VisibleAnywhere, Category="Stats")
+    float PlayerHealth = 100.f;
 
-    UPROPERTY(EditAnywhere, Category = Combat)
-    class UAnimMontage* ReloadMontage;
+    UPROPERTY(EditAnywhere, Category="Combat")
+    UAnimMontage* FireMontage = nullptr;
 
-    float MaxHealth;
+    UPROPERTY(EditAnywhere, Category="Combat")
+    UAnimMontage* ReloadMontage = nullptr;
+
+    // -- pure runtime refs (no UPROPERTY needed) --
+    APickUp* OverlappingItem = nullptr;
+    AHealthPickUp* pickUpHealth = nullptr;
+    AMyPlayerController* MyPlayerController = nullptr;
+    AMyHUD* MyGameHUD = nullptr;
+
+    // -- simple PODs with in-class defaults --
+    float MaxHealth = 100.f;
     FRotator StartingAimRotation;
-    float AO_Yaw;
-    float AO_Pitch;
-    float InterpAO_Yaw;
-    ETurningInPlace TurningInPlace;
+    float AO_Yaw = 0.f, AO_Pitch = 0.f, InterpAO_Yaw = 0.f;
+    ETurningInPlace TurningInPlace = ETurningInPlace::ETIP_NotTurning;
 
-    class APickUp* OverlappingItem;
-    class AHealthPickUp* pickUpHealth;
-
-    class AMyPlayerController* MyPlayerController;
-    class AMyHUD* MyGameHUD;
-
-    // Replication Functions
-    UFUNCTION()
-    void OnRep_OverlappingWeapon();
-    UFUNCTION()
-    void OnRep_Health();
+    // -- rep notifies --
+    UFUNCTION() void OnRep_OverlappingWeapon();
+    UFUNCTION() void OnRep_Health();
 
 
 };

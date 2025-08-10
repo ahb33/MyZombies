@@ -3,87 +3,25 @@
 
 #include "LobbyGameState.h"
 #include "LobbyPlayerState.h"
-#include "MyGameInstance.h"
-#include "MultiplayerSessions.h"
-#include "Engine/World.h"
-#include "GameFramework/PlayerState.h"
-#include "OnlineSessionSettings.h"
-#include "Kismet/GameplayStatics.h"
+#include <algorithm>
 
 
 
-bool ALobbyGameState::AreAllPlayersReady()
+// check if all players in lobby are ready ()
+// check if all # of players created in UCreateSessionMenuWidget ; already have NumPlayers variable in CreateSessionMenu 
+
+
+bool ALobbyGameState::AreAllPlayersReady() const
 {
-    int32 TotalPlayers = PlayerArray.Num();
-    int32 ReadyCount = 0;
+    if (DesiredPlayerCount <= 0) return false;                 
+    if (PlayerArray.Num() != DesiredPlayerCount) return false;  
 
-    UE_LOG(LogTemp, Warning, TEXT("Checking readiness: %d total players."), TotalPlayers);
-
-    for (APlayerState* PS : PlayerArray)
+    return std::all_of(PlayerArray.begin(), PlayerArray.end(),
+    [](const APlayerState* PS)
     {
-        if (ALobbyPlayerState* LobbyPS = Cast<ALobbyPlayerState>(PS))
-        {
-            if (LobbyPS->IsReady())
-            {
-                ReadyCount++;
-                UE_LOG(LogTemp, Warning, TEXT("%s is READY"), *LobbyPS->GetPlayerName());
-            }
-            else
-            {
-                UE_LOG(LogTemp, Warning, TEXT("%s is NOT ready"), *LobbyPS->GetPlayerName());
-            }
-        }
-    }
+        const auto* LPS = Cast<ALobbyPlayerState>(PS);
+        return LPS && LPS->IsReady();
 
-    UE_LOG(LogTemp, Warning, TEXT("Ready players: %d / %d"), ReadyCount, TotalPlayers);
-
-    if (ReadyCount == TotalPlayers && TotalPlayers > 0)
-    {
-        UE_LOG(LogTemp, Warning, TEXT("All players are ready! Starting game..."));
-        StartGameMatch();
-        return true;
-    }
-
-    return false;
+    });
 }
 
-void ALobbyGameState::StartGameMatch()
-{
-
-    UWorld* World = GetWorld();
-
-    UMyGameInstance* GI = World ? World->GetGameInstance<UMyGameInstance>() : nullptr;
-    if (!GI)
-    {
-        UE_LOG(LogTemp, Error, TEXT("StartGameMatch: GameInstance not found!"));
-        return;
-    }
-
-    const FName SelectedMode = GI->GetSelectedGameMode();
-    const FString ModeString = SelectedMode.ToString();
-    UE_LOG(LogTemp, Warning, TEXT("StartGameMatch: SelectedMode = %s"), *ModeString);
-
-    FString MapPath;
-    if (ModeString.Contains("Zombies"))
-    {
-        MapPath = "/Game/GameAssets/Levels/Zombies_Level?listen";
-        UE_LOG(LogTemp, Warning, TEXT("StartGameMatch: Launching Zombies Level"));
-    }
-    else if (ModeString.Contains("Solo"))
-    {
-        MapPath = "/Game/GameAssets/Levels/SoloLevel?listen";
-        UE_LOG(LogTemp, Warning, TEXT("StartGameMatch: Launching Solo Level"));
-    }
-    else
-    {
-        UE_LOG(LogTemp, Error, TEXT("StartGameMatch: Unknown mode selected: %s"), *ModeString);
-        return;
-    }
-
-    if (AGameModeBase* GameMode = World->GetAuthGameMode())
-    {
-        GameMode->bUseSeamlessTravel = true;
-    }
-
-    World->ServerTravel(MapPath);
-}

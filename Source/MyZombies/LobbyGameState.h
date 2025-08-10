@@ -16,11 +16,14 @@ class MYZOMBIES_API ALobbyGameState : public AGameStateBase
 
 public:
 	UFUNCTION(BlueprintCallable)
-	bool AreAllPlayersReady();
+	bool AreAllPlayersReady() const;
 
 	void StartGameMatch();
 
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="Lobby")
+    int32 DesiredPlayerCount = 0;
+
 protected:
 
-	
+
 };

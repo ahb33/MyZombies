@@ -26,12 +26,12 @@ public:
 
     virtual void SetupInputComponent() override;
 
-    void HandleReadyInput();
-
+    
     void SetHUDHealth(float CurrentHealth, float MaxHealth);
     void SetHUDAmmo(int32 Ammo);
     void SetHUDMagAmmo(int32 AmmoInMag);
-
+    
+    void HandleReadyInput();
     UFUNCTION(Server, Reliable, BlueprintCallable)
     void TravelToLobby();
 

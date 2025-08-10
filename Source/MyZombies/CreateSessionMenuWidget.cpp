@@ -35,7 +35,7 @@ void UCreateSessionMenuWidget::OnCreateSessionClicked()
         UE_LOG(LogTemp, Warning, TEXT("Invalid player count selected."));
         return;
     }
-
+    
     FString GameType = GetSelectedGameType();
     MultiplayerSubsystem->CreateSession(NumPlayers, GameType);
 }
@@ -45,7 +45,9 @@ void UCreateSessionMenuWidget::OnCreateSessionComplete(bool bWasSuccessful)
     UE_LOG(LogTemp, Log, TEXT("CreateSession finished. Success: %d"), bWasSuccessful);
     if (bWasSuccessful)
     {
-        UGameplayStatics::OpenLevel(this, TEXT("/Game/GameAssets/Levels/LobbyLevel"), true, TEXT("listen"));
+        const int32 Desired = GetSelectedPlayerCount();
+        const FString Options = FString::Printf(TEXT("listen?desired=%d"), Desired);
+        UGameplayStatics::OpenLevel(this, TEXT("/Game/GameAssets/Levels/LobbyLevel"), true, Options);
     }
 }
 

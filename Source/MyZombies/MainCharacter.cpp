@@ -4,38 +4,23 @@
 #include "MainCharacter.h"
 #include "GameFramework/SpringArmComponent.h"
 #include "Camera/CameraComponent.h"
-#include "GameFramework/CharacterMovementComponent.h" 
-#include "Components/WidgetComponent.h"
+#include "GameFramework/CharacterMovementComponent.h"
 #include "Net/UnrealNetwork.h"
-#include "EngineUtils.h"
+#include "CombatComponent.h"
 #include "Weapon.h"
+#include "PickUp.h"           // or HealthPickUp.h if only health
+#include "MyPlayerController.h"
 #include "MyHUD.h"
 #include "HealthPickUp.h"
-#include "combatComponent.h"
-#include "AmmoPickUp.h"
-#include "MyPlayerController.h"
-#include "Animation/AnimInstance.h" 
-#include "WeaponTypes.h"
+#include "Animation/AnimInstance.h"
 #include "Kismet/KismetMathLibrary.h"
-#include "Weapon.h"
+#include "WeaponTypes.h"
 
 // redo initializer list
 AMainCharacter::AMainCharacter()
     : CameraBoom(CreateDefaultSubobject<USpringArmComponent>(TEXT("CameraBoom"))),
-      FollowCamera(CreateDefaultSubobject<UCameraComponent>(TEXT("FollowCamera"))),
-      OverlappingWeapon(nullptr),
-      PlayerHealth(100.f),
-      FireMontage(nullptr),
-      ReloadMontage(nullptr),
-      MaxHealth(100.f),
-      AO_Yaw(0.f),
-      AO_Pitch(0.f),
-      InterpAO_Yaw(0.f),
-      TurningInPlace(ETurningInPlace::ETIP_NotTurning),
-      OverlappingItem(nullptr),
-      pickUpHealth(nullptr),
-      MyPlayerController(nullptr),
-      MyGameHUD(nullptr)
+    FollowCamera(CreateDefaultSubobject<UCameraComponent>(TEXT("FollowCamera"))),
+    combatComponent(CreateDefaultSubobject<UCombatComponent>(TEXT("ComponentComponent")))
 {
     PrimaryActorTick.bCanEverTick = true;
 
@@ -52,8 +37,6 @@ AMainCharacter::AMainCharacter()
     bUseControllerRotationYaw = false; // Let the character movement handle rotation
     GetCharacterMovement()->bOrientRotationToMovement = true; // Character moves in the direction of input
     GetCharacterMovement()->NavAgentProps.bCanCrouch = true; // Enable crouching
-
-    combatComponent = CreateDefaultSubobject<UCombatComponent>(TEXT("ComponentComponent"));
 
 }
 
@@ -77,10 +60,7 @@ void AMainCharacter::BeginPlay()
     {
         UE_LOG(LogTemp, Warning, TEXT("Failed to initialize MyPlayerController"));
     }
-
 }
-
-
 
 // Called to bind functionality to input
 void AMainCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent)
@@ -109,17 +89,13 @@ void AMainCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputCompo
     PlayerInputComponent->BindAction("Zoom", IE_Pressed, this, &AMainCharacter::ZoomButtonPressed);
     PlayerInputComponent->BindAction("Zoom", IE_Released, this, &AMainCharacter::ZoomButtonReleased);
 
-
-
 }
 
 void AMainCharacter::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
 {
 	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
 
-
     DOREPLIFETIME_CONDITION(AMainCharacter, OverlappingWeapon, COND_OwnerOnly);
-
 
     DOREPLIFETIME(AMainCharacter, PlayerHealth);
 }
@@ -195,41 +171,40 @@ void AMainCharacter::LookUp(float value)
 
 void AMainCharacter::EquipButtonPressed()
 {
-    if(combatComponent)
+    if (!combatComponent)
     {
-        if(OverlappingWeapon)
-        {
-            if(HasAuthority())
-            {
-                ServerEquipButtonPressed();
-            }
-        }
-        else if(!OverlappingWeapon && combatComponent->ShouldSwapWeapons())// else if no overlapping weapon is valid but equipp
-        {
-            // check where combat component is even being set
-            combatComponent->SwapWeapons();
-        }
+        return; // nothing to do without our combat bit
+    }
+
+    // If I’m a client, just ask the server to handle equip/swap
+    if (!HasAuthority())
+    {
+        Server_EquipButtonPressed();
+        return;
+    }
+
+    // On the server: either pick up the nearby weapon or swap out your current one
+    if (OverlappingWeapon)
+    {
+        combatComponent->EquipWeapon(OverlappingWeapon);
+    }
+    else if (combatComponent->ShouldSwapWeapons())
+    {
+        combatComponent->SwapWeapons();
     }
 }
 
-void AMainCharacter::ServerEquipButtonPressed_Implementation()
+void AMainCharacter::Server_EquipButtonPressed_Implementation()
 {
-    // Directly call the equip logic for the server
-    if (combatComponent)
+    // Server-side copy of the same logic—
+    // this is where the real equip/swap actually happens
+    if (OverlappingWeapon)
     {
-        if(OverlappingWeapon)
-        {
-            UE_LOG(LogTemp, Warning, TEXT("Overlapping weapon is valid"));
-            combatComponent->EquipWeapon(OverlappingWeapon);
-
-        }
-
-        else if(combatComponent->ShouldSwapWeapons())
-        {
-            combatComponent->SwapWeapons();
-        }
-
-        UE_LOG(LogTemp, Warning, TEXT("ServerEquip function called"));
+        combatComponent->EquipWeapon(OverlappingWeapon);
+    }
+    else if (combatComponent->ShouldSwapWeapons())
+    {
+        combatComponent->SwapWeapons();
     }
 }
 
@@ -255,10 +230,6 @@ void AMainCharacter::OnRep_OverlappingWeapon()
     {
         OverlappingWeapon->ShowPickUpWidget(true);
     }
-	else
-	{
-		OverlappingWeapon->ShowPickUpWidget(false);
-	}
 }
 
 bool AMainCharacter::IsWeaponEquipped() const
@@ -266,7 +237,7 @@ bool AMainCharacter::IsWeaponEquipped() const
     return combatComponent && combatComponent->GetEquippedWeapon() != nullptr;
 }
 
-AWeapon* AMainCharacter::GetEquippedWeapon()
+AWeapon* AMainCharacter::GetEquippedWeapon() const
 {
     return combatComponent ? combatComponent->GetEquippedWeapon() : nullptr;
 }
@@ -296,7 +267,7 @@ void AMainCharacter::SetOverlappingItem(APickUp* PickUp)
 
 void AMainCharacter::PickUpButtonPressed()
 {
-	if (pickUpHealth && IsValid(pickUpHealth))
+	if (pickUpHealth)
 	{
 		UE_LOG(LogTemp, Warning, TEXT("Calling AddHealth on pickUpHealth"));
 		pickUpHealth->AddHealth(PlayerHealth, MaxHealth);

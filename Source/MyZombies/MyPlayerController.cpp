@@ -37,7 +37,7 @@ void AMyPlayerController::SetupInputComponent()
 {
     Super::SetupInputComponent();
 
-    InputComponent->BindAction("ReadyUp", IE_Pressed, this, &AMyPlayerController::HandleReadyInput);
+    InputComponent->BindAction("StartGame", IE_Pressed, this, &AMyPlayerController::HandleReadyInput);
 }
 
 void AMyPlayerController::HandleReadyInput()
