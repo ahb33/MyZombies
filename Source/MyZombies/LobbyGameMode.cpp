@@ -9,15 +9,6 @@
 #include "Engine/World.h"
 
 
-void ALobbyGameMode::InitGame(const FString& MapName, const FString& Options, FString& ErrorMessage)
-{
-    Super::InitGame(MapName, Options, ErrorMessage);
-    if (ALobbyGameState* LGS = GetGameState<ALobbyGameState>())
-    {
-        LGS->DesiredPlayerCount = UGameplayStatics::GetIntOption(Options, TEXT("desired"), 0);
-        UE_LOG(LogTemp, Log, TEXT("Lobby desired players = %d"), LGS->DesiredPlayerCount);
-    }
-}
 
 //  runs once when the lobby map loads (server)
 void ALobbyGameMode::PostLogin(APlayerController* NewPlayer)
@@ -28,6 +19,7 @@ void ALobbyGameMode::PostLogin(APlayerController* NewPlayer)
 }
 
 
+// runs once per player leaving (server)
 void ALobbyGameMode::Logout(AController* Exiting)
 {
     Super::Logout(Exiting);
@@ -44,11 +36,14 @@ void ALobbyGameMode::StartLobby()
 
 void ALobbyGameMode::CheckLobbyReady()
 {
+    UE_LOG(LogTemp, Warning, TEXT("Checking lobby ready"));
+
     if (const auto* LGS = GetGameState<ALobbyGameState>())
     {
+        UE_LOG(LogTemp, Warning, TEXT("LobbyGameState is valid"));
         if (LGS->AreAllPlayersReady())
         {
-            UE_LOG(LogTemp, Log, TEXT("Everyone ready – starting via GameState"));
+            UE_LOG(LogTemp, Log, TEXT("Everyone ready - starting via GameState"));
             StartGameMatch();
         }
     }

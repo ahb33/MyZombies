@@ -2,8 +2,12 @@
 
 #include "CoreMinimal.h"
 #include "Blueprint/UserWidget.h"
-#include "MultiplayerSessions.h"
 #include "CreateSessionMenuWidget.generated.h"
+
+
+class UButton;                 // bound widget
+class UComboBoxString;         // bound widget
+class UMultiplayerSessions;    // subsystem (defined elsewhere)
 
 /**
  change name to CreateSessionMenu
@@ -26,13 +30,15 @@ protected:
     FString GetSelectedGameType() const;
 
 protected:
+    // Bound UMG widgets (forward-declared types are fine for UPROPERTY pointers)
     UPROPERTY(meta = (BindWidget), BlueprintReadOnly)
-    class UButton* CreateSessionButton;
+    UButton* CreateSessionButton = nullptr;
 
     UPROPERTY(meta = (BindWidget), BlueprintReadOnly)
-    class UComboBoxString* NumOfPlayersBox;
+    UComboBoxString* NumOfPlayersBox = nullptr;
 
 private:
-    class UMultiplayerSessions* MultiplayerSubsystem;
-	
+    // Subsystem pointer; forward-declared + UPROPERTY is fine
+    UPROPERTY()
+    UMultiplayerSessions* MultiplayerSubsystem = nullptr;
 };

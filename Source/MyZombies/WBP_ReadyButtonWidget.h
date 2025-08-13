@@ -20,7 +20,7 @@ class MYZOMBIES_API UWBP_ReadyButtonWidget : public UUserWidget
 protected:
     virtual void NativeConstruct() override;
 
-    UPROPERTY(meta = (BindWidget))
+    UPROPERTY(meta = (BindWidget),  BlueprintReadOnly)
     UButton* ReadyButton;
 
     UFUNCTION()

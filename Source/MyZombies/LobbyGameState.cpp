@@ -3,6 +3,8 @@
 
 #include "LobbyGameState.h"
 #include "LobbyPlayerState.h"
+#include "MyGameInstance.h"
+#include "MultiplayerSessions.h"
 #include <algorithm>
 
 
@@ -10,6 +12,20 @@
 // check if all players in lobby are ready ()
 // check if all # of players created in UCreateSessionMenuWidget ; already have NumPlayers variable in CreateSessionMenu 
 
+void ALobbyGameState::BeginPlay()
+{
+    Super::BeginPlay();
+
+    if (const UMyGameInstance* GI = GetWorld()->GetGameInstance<UMyGameInstance>())
+    {
+        MultiplayerSubsystem = GI->GetMultiplayerSessions();
+        if (MultiplayerSubsystem)
+        {
+            DesiredPlayerCount = MultiplayerSubsystem->GetNumPublicConnections(); 
+            UE_LOG(LogTemp, Warning, TEXT("DesiredPlayerCount is %d"), DesiredPlayerCount)
+        }
+    }
+}
 
 bool ALobbyGameState::AreAllPlayersReady() const
 {

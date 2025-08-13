@@ -42,4 +42,17 @@ void UJoinSessionMenuWidget::OnJoinSessionClicked()
             Sessions->JoinSessionByIndex(SessionIndex);
         }
     }
+
+    DisableJoinSessionButton();
+
+}
+
+void UJoinSessionMenuWidget::DisableJoinSessionButton()
+{
+    if (JoinSessionLabel)
+    {
+        JoinSessionLabel->SetText(FText::FromString(TEXT("Joining Session")));
+    }
+    JoinButton->SetIsEnabled(false);
+
 }

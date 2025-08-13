@@ -102,14 +102,15 @@ void UMultiplayerSessions::CreateSession(int32 NumPublicConnections, const FStri
 
     sessionSettings->bIsLANMatch = bIsLAN;
     sessionSettings->NumPublicConnections = NumPublicConnections;
+    CachedPublicConnections = NumPublicConnections;
     sessionSettings->bShouldAdvertise = true;
     sessionSettings->bAllowJoinInProgress = true;
     sessionSettings->bAllowJoinViaPresence = false;
     sessionSettings->bAllowJoinViaPresenceFriendsOnly = false;
     sessionSettings->bUsesPresence = false; // ❌ OFF if LAN
     sessionSettings->bUseLobbiesIfAvailable = false; // ❌ NO LOBBIES IN LAN
-
-sessionSettings->Set(FName("MatchType"), MatchType, EOnlineDataAdvertisementType::ViaOnlineService);
+    sessionSettings->Set(FName("MatchType"), MatchType, EOnlineDataAdvertisementType::ViaOnlineService);
+    
     if (bIsLAN)
     {
         FString LocalIP;

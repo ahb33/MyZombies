@@ -9,12 +9,17 @@
 /**
  * 
  */
+
+class UMultiplayerSessions;
+
 UCLASS()
 class MYZOMBIES_API ALobbyGameState : public AGameStateBase
 {
 	GENERATED_BODY()
 
 public:
+    virtual void BeginPlay() override;
+
 	UFUNCTION(BlueprintCallable)
 	bool AreAllPlayersReady() const;
 
@@ -25,5 +30,8 @@ public:
 
 protected:
 
+    UPROPERTY()
+    UMultiplayerSessions* MultiplayerSubsystem = nullptr;
 
+    int32 GetDesiredPlayerCountSafe() const; 
 };

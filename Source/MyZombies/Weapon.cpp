@@ -3,20 +3,12 @@
 
 #include "Weapon.h"
 #include "Components/SphereComponent.h"
-#include "Engine/SkeletalMeshSocket.h"
-#include "EngineUtils.h"
-#include "Engine/World.h"
-#include "Math/UnrealMathUtility.h" 
-#include "WeaponTypes.h"
-#include "MyHUD.h"
-#include "MyPlayerController.h"
-#include "MainCharacter.h"
-#include "DrawDebugHelpers.h"
-#include "Net/UnrealNetwork.h"
-#include "GameFramework/CharacterMovementComponent.h" 
 #include "Components/WidgetComponent.h"
-
-
+#include "Components/SkeletalMeshComponent.h"  
+#include "MainCharacter.h"                     
+#include "MyPlayerController.h" 
+#include "Kismet/GameplayStatics.h"            
+#include "Net/UnrealNetwork.h"                
 
 // Sets default values
 AWeapon::AWeapon()

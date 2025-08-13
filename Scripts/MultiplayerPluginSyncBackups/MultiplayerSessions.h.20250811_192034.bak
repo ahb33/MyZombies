@@ -1,0 +1,205 @@
+// Fill out your copyright notice in the Description page of Project Settings.
+
+#pragma once
+
+#include "CoreMinimal.h"
+#include "Subsystems/GameInstanceSubsystem.h"
+#include "Templates/SharedPointer.h"
+#include "Interfaces/OnlineSessionInterface.h"
+#include "OnlineSessionSettings.h"
+#include "FindSessionsCallbackProxy.h"  
+#include "MultiplayerSessions.generated.h"
+
+/**
+ * Handles online session creation, search, join, start, and destroy.
+*/
+
+class APlayerController;
+class FOnlineSessionSearchResult;
+class FOnlineSessionSearch;
+class FOnlineSessionSettings;
+class IOnlineSession;
+class IOnlineSubsystem;
+
+USTRUCT(BlueprintType)
+struct FMySessionResult
+{
+    GENERATED_BODY()
+
+    // The server’s display name
+    UPROPERTY(BlueprintReadOnly, Category = "Session")
+    FString OwningUserName;
+
+    // Current ping
+    UPROPERTY(BlueprintReadOnly, Category = "Session")
+    int32 PingInMs;
+
+    // Current number of players
+    UPROPERTY(BlueprintReadOnly, Category = "Session")
+    int32 CurrentPlayers;
+
+    // Maximum number of players
+    UPROPERTY(BlueprintReadOnly, Category = "Session")
+    int32 MaxPlayers;
+
+    FOnlineSessionSearchResult RawResult;
+
+    FMySessionResult()
+        : PingInMs(0)
+        , CurrentPlayers(0)
+        , MaxPlayers(0)
+    {}
+};
+
+// Menus will bind to these; only Blueprint-exposed ones are dynamic
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FMultiplayerOnCreateSessionComplete, bool, bWasSuccessful);
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FMultiplayerOnFindSessionCompleteBP,const TArray<FMySessionResult>&, SessionResults, bool, bWasSuccessful);
+
+// These are only used in C++, so static delegates are fine
+DECLARE_MULTICAST_DELEGATE_OneParam(FMultiplayerOnJoinSessionComplete,EOnJoinSessionCompleteResult::Type);
+DECLARE_MULTICAST_DELEGATE_OneParam(FMultiplayerOnStartSessionComplete, bool);
+DECLARE_MULTICAST_DELEGATE_OneParam(FMultiplayerOnDestroySessionComplete, bool);
+
+
+
+
+
+UCLASS(BlueprintType)
+class MULTIPLAYERPLUGIN_API UMultiplayerSessions : public UGameInstanceSubsystem
+{
+	GENERATED_BODY()
+
+public:
+	// constructor
+	UMultiplayerSessions();
+
+	/*
+	
+		There are 4 main operations we can use to handle a session
+
+		Create Session : This is the starting point of the session process; 
+		once session is created it becomes discoverable by other instances of the game
+
+		Find Session : In this function you'll retreive a list of currently created and accessible
+		game sessions
+
+		Join Session : After finding a session the last step is to join the game-
+		this function can be used to transition to the server's map
+
+		Destroy Session : If you are hosting a session this function will 
+		close it so thats its no longer available for dicovery and joining. It will
+		disconnect any both client and host from the game
+		
+	*/
+
+	// menu class in other games will call these- you can create pointer to MultiplayerSessions
+	/**
+    * Create a new online session. Broadcasts MultiplayerOnCreateSessionComplete.
+    */
+    UFUNCTION(BlueprintCallable, Category="Multiplayer")
+    void CreateSession(int32 NumOfConnections, const FString& GameType);
+
+    /**
+     * Find available sessions. Broadcasts MultiplayerOnFindSessionComplete.
+     */
+    UFUNCTION(BlueprintCallable, Category="Multiplayer")
+    void FindSessions(APlayerController* PlayerController, int32 MaxSearchResults, const FString& MatchType);
+
+    /**
+     * Internal: join a session using a raw search result.
+     */
+	void JoinSession(const FOnlineSessionSearchResult& SessionResult);
+
+    /**
+     * Join a session by index from the last search results. Blueprint-friendly wrapper
+     */
+    UFUNCTION(BlueprintCallable, Category="Multiplayer")
+    void JoinSessionByIndex(int32 SessionIndex);
+
+    /**
+     * Start the current session. Broadcasts MultiplayerOnStartSessionComplete.
+     */
+    UFUNCTION(BlueprintCallable, Category="Multiplayer")
+    void StartSession();
+
+    /**
+     * Destroy the current session. Broadcasts MultiplayerOnDestroySessionComplete.
+     */
+    UFUNCTION(BlueprintCallable, Category="Multiplayer")
+    void DestroySession();
+
+	/**
+    * Initialize subsystem internals.
+    */
+    virtual void Initialize(FSubsystemCollectionBase& Collection) override;
+
+	/**
+	 * Unbind all delegates on shutdown
+	 */
+	virtual void Deinitialize() override;
+
+    /** Blueprint-assignable: bind in UMG to know when CreateSession finishes. */
+    UPROPERTY(BlueprintAssignable, Category="Multiplayer")
+    FMultiplayerOnCreateSessionComplete MultiplayerOnCreateSessionComplete;
+
+	UPROPERTY(BlueprintAssignable, Category="Multiplayer")
+	FMultiplayerOnFindSessionCompleteBP MultiplayerOnFindSessionCompleteBP;
+	
+    /** C++ only: bind in code to get find/join/start/destroy events. */
+    FMultiplayerOnJoinSessionComplete   MultiplayerOnJoinSessionComplete;
+    FMultiplayerOnStartSessionComplete  MultiplayerOnStartSessionComplete;
+    FMultiplayerOnDestroySessionComplete MultiplayerOnDestroySessionComplete;
+
+	IOnlineSessionPtr GetSessionInterface() const { return sessionInterface; }
+
+    TArray<FMySessionResult> GetBlueprintSearchResults() const;
+
+    int32 GetNumPublicConnections() const { return CachedPublicConnections; }
+
+
+protected: 
+
+    // Internal callbacks
+    void OnCreateSessionComplete(FName SessionName, bool bWasSuccessful);
+    void OnFindSessionComplete(bool bWasSuccessful);
+    void OnJoinSessionComplete(FName SessionName, EOnJoinSessionCompleteResult::Type Result);
+    void OnStartSessionComplete(FName SessionName, bool bWasSuccessful);
+    void OnDestroySessionComplete(FName SessionName, bool bWasSuccessful);
+
+private:
+
+    // References to the online session interface and settings
+    IOnlineSessionPtr sessionInterface;
+    TSharedPtr<FOnlineSessionSettings> sessionSettings;
+    TSharedPtr<FOnlineSessionSearch> searchSettings;
+	IOnlineSubsystem* Subsystem = nullptr;
+
+    int32 CachedPublicConnections = 0; // set when creating the session
+
+    // Deferred Join state
+    FOnlineSessionSearchResult PendingJoinSession;
+    bool bHasPendingJoin = false;
+
+	inline static const FName NullSubsystemName  = TEXT("NULL");
+	inline static const FName GameSessionName    = NAME_GameSession;
+
+	// Storage for last search results
+	TArray<FOnlineSessionSearchResult> LastSearchResults;
+
+	// Delegates for session management
+	FOnCreateSessionCompleteDelegate CreateSessionCompleteDelegate;
+	FDelegateHandle CreateSessionCompleteDelegateHandle;
+
+	FOnFindSessionsCompleteDelegate FindSessionsCompleteDelegate;
+	FDelegateHandle FindSessionsCompleteDelegateHandle;
+
+	FOnJoinSessionCompleteDelegate JoinSessionCompleteDelegate;
+	FDelegateHandle JoinSessionCompleteDelegateHandle;
+
+	FOnDestroySessionCompleteDelegate DestroySessionCompleteDelegate;
+	FDelegateHandle DestroySessionCompleteDelegateHandle;
+
+	FOnStartSessionCompleteDelegate StartSessionCompleteDelegate;
+	FDelegateHandle StartSessionCompleteDelegateHandle;
+	
+};

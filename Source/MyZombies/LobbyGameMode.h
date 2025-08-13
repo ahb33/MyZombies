@@ -13,11 +13,13 @@ class MYZOMBIES_API ALobbyGameMode : public ABaseGameMode
 {
     GENERATED_BODY()
 public:
-    virtual void InitGame(const FString& MapName, const FString& Options, FString& ErrorMessage) override;
     virtual void PostLogin(APlayerController* NewPlayer) override;
     virtual void Logout(AController* Exiting) override;
     
     void StartLobby();
     void CheckLobbyReady();
     void StartGameMatch();
+
+private: 
+
 };

@@ -154,6 +154,9 @@ public:
 
     TArray<FMySessionResult> GetBlueprintSearchResults() const;
 
+    FORCEINLINE int32 GetNumPublicConnections() const { return CachedPublicConnections; }
+
+
 protected: 
 
     // Internal callbacks
@@ -170,6 +173,8 @@ private:
     TSharedPtr<FOnlineSessionSettings> sessionSettings;
     TSharedPtr<FOnlineSessionSearch> searchSettings;
 	IOnlineSubsystem* Subsystem = nullptr;
+
+    int32 CachedPublicConnections = 0; // set when creating the session
 
     // Deferred Join state
     FOnlineSessionSearchResult PendingJoinSession;

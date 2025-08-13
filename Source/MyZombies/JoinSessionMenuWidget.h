@@ -20,6 +20,8 @@ public:
 	UFUNCTION(BlueprintCallable)
     void Setup(int32 InIndex, const FMySessionResult& InSession);
 
+    void DisableJoinSessionButton();
+
 protected:
     virtual void NativeConstruct() override;
 
@@ -34,6 +36,9 @@ protected:
 
     UPROPERTY(meta = (BindWidget), BlueprintReadOnly)
     class UTextBlock* NumOfPlayersLabel;
+
+    UPROPERTY(meta = (BindWidget), BlueprintReadOnly)
+    class UTextBlock* JoinSessionLabel;
 
 private:
     int32 SessionIndex;
