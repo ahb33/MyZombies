@@ -4,47 +4,42 @@
 
 #include "CoreMinimal.h"
 #include "Components/ActorComponent.h"
-#include "MyHUD.h"
-#include "CombatState.h"       
+#include "CombatState.h"          // UENUM used in UPROPERTY
+#include "MyHUD.h"                // needed because FHUDPackage is a by-value member
 #include "CombatComponent.generated.h"
 
+// Forward decls
+class AMainCharacter;
+class AMyPlayerController;
+class AWeapon;
+class UTexture2D;
 
-
-
-UCLASS( ClassGroup=(Custom), meta=(BlueprintSpawnableComponent) )
+UCLASS(ClassGroup=(Custom), meta=(BlueprintSpawnableComponent))
 class MYZOMBIES_API UCombatComponent : public UActorComponent
 {
-	GENERATED_BODY()
+    GENERATED_BODY()
+public:
+    UCombatComponent();
+    friend class AMainCharacter;
 
-public:	
-	// Sets default values for this component's properties
-	UCombatComponent();
-	friend class AMainCharacter;
+    virtual void TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction) override;
+    virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
 
-	// Called every frame
-	virtual void TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction) override;
-	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
+    void FireButtonPressed(bool bPressed);
+    void Fire();
 
-	/* Firing Weapon   */
-	void FireButtonPressed(bool bPressed);
-	void Fire();
+    void EquipWeapon(AWeapon*);
+    void EquipSecondaryWeapon(AWeapon*);
+    void SwapWeapons();
 
-	/** Weapon Equipping */
-	void EquipWeapon(class AWeapon*);
-	void EquipSecondaryWeapon(class AWeapon*);
-	void SwapWeapons();
-
-    
-    /** Weapon Reloading */
     void Reload();
     void FinishReloading();
     int32 AmmoToReload();
-	virtual void ReloadAmmo(int32 Ammo) {};
+    virtual void ReloadAmmo(int32 Ammo) {}
 
-	/** Utilities */
     void AttachActorToRightHand(AActor* ActorToAttach);
     void AttachWeaponToWeaponSocket(AActor* WeaponToAttach);
-	class AWeapon* GetEquippedWeapon() const { return EquippedWeapon; }
+    AWeapon* GetEquippedWeapon() const { return EquippedWeapon; }
     void SetAiming(bool bIsAiming);
     bool ShouldSwapWeapons() const;
     void SetCombatState(ECombatState State);
@@ -53,97 +48,60 @@ public:
     void TraceFromCamera(FHitResult& HitResult);
     void TraceFromMuzzle(FHitResult& HitResult);
     bool IsCameraObstructed() const;
-    void HandleZoom(float DeltaTime); // will be called in tick
-
+    void HandleZoom(float DeltaTime);
     void SetZooming(bool bIsZooming);
     bool IsZooming() const { return bZooming; }
 
-    UFUNCTION()
-    void OnRep_CombatState();
+    UFUNCTION() void OnRep_CombatState();
     void SetHUDCrosshairs(float DeltaTime);
 
-    /** Server Functions */
-    UFUNCTION(Server, Reliable)
-    void ServerReload();
-
-
+    UFUNCTION(Server, Reliable) void ServerReload();
+    UFUNCTION(Server, Reliable) void ServerSetAiming(bool bIsAiming);
+    UFUNCTION()               void OnRep_Aiming();
 
 protected:
     virtual void BeginPlay() override;
 
-    UFUNCTION(Server, Reliable)
-    void ServerSetAiming(bool bIsAiming);
+private:
+    // Replicated refs
+    UPROPERTY(Replicated) AWeapon* EquippedWeapon = nullptr;
+    UPROPERTY(Replicated) AWeapon* SecondaryWeapon = nullptr;
 
-    // Replication
-    UFUNCTION()
-    void OnRep_Aiming();
+    // Local refs
+    AMainCharacter*      MainCharacter = nullptr;
+    AMyPlayerController* Controller     = nullptr;
 
-private:	
+    UPROPERTY() AMyHUD* HUD = nullptr;
 
-    // Weapon References
-    UPROPERTY(Replicated)
-    class AWeapon* EquippedWeapon;
+    // HUD data (requires MyHUD.h here because it's by value)
+    FHUDPackage HUDPackage{};
+    FVector     HitTarget = FVector::ZeroVector;
+    float       CrosshairVelocityFactor = 0.f;
 
-    UPROPERTY(Replicated)
-    class AWeapon* SecondaryWeapon;
+    // Crosshairs
+    UPROPERTY(EditAnywhere, Category=Crosshairs) UTexture2D* CrosshairsCenter = nullptr;
+    UPROPERTY(EditAnywhere, Category=Crosshairs) UTexture2D* CrosshairsLeft   = nullptr;
+    UPROPERTY(EditAnywhere, Category=Crosshairs) UTexture2D* CrosshairsRight  = nullptr;
+    UPROPERTY(EditAnywhere, Category=Crosshairs) UTexture2D* CrosshairsTop    = nullptr;
+    UPROPERTY(EditAnywhere, Category=Crosshairs) UTexture2D* CrosshairsBottom = nullptr;
 
-    // Character and Controller References
-    class AMainCharacter* MainCharacter;
-    class AMyPlayerController* Controller;
+    // Aiming/zoom
+    UPROPERTY(ReplicatedUsing=OnRep_Aiming) bool bAiming = false;
+    UPROPERTY() bool  bZooming = false;
+    UPROPERTY(EditAnywhere, Category="Combat") float ZoomedFOV     = 65.f;
+    UPROPERTY(EditAnywhere, Category="Combat") float ZoomInterpSpeed= 20.f;
+    UPROPERTY(EditAnywhere, Category="Combat") float DefaultFOV    = 90.f;
+    float CurrentFOV = 90.f;
 
-    UPROPERTY()
-    AMyHUD* HUD;
+    // State
+    UPROPERTY(ReplicatedUsing=OnRep_CombatState) ECombatState CombatState = ECombatState::ECS_Unoccupied;
+    bool bCanFire = true;
+    bool bFireButtonPressed = false;
+    bool bIsReloading = false;
 
-    // Combat HUD
-    FHUDPackage HUDPackage;
-    FVector HitTarget;
-    float CrosshairVelocityFactor;
+    FVector LocalHitTarget = FVector::ZeroVector;
 
-    // Crosshair Details
-    UPROPERTY(EditAnywhere, Category = Crosshairs)
-    UTexture2D* CrosshairsCenter;
-
-    UPROPERTY(EditAnywhere, Category = Crosshairs)
-    UTexture2D* CrosshairsLeft;
-
-    UPROPERTY(EditAnywhere, Category = Crosshairs)
-    UTexture2D* CrosshairsRight;
-
-    UPROPERTY(EditAnywhere, Category = Crosshairs)
-    UTexture2D* CrosshairsTop;
-
-    UPROPERTY(EditAnywhere, Category = Crosshairs)
-    UTexture2D* CrosshairsBottom;
-
-    UPROPERTY(ReplicatedUsing = OnRep_Aiming)
-    bool bAiming;
-
-    UPROPERTY()
-    bool bZooming;
-
-    UPROPERTY(EditAnywhere, Category = "Combat")
-    float ZoomedFOV = 65.0f; // will change based on weapon
-
-    UPROPERTY(EditAnywhere, Category = "Combat")
-    float ZoomInterpSpeed = 20.0f; // Speed for FOV interpolation
-
-    UPROPERTY(EditAnywhere, Category = "Combat")
-    float DefaultFOV = 90.0f; // FOV when not aiming; set in BeginPlay
-
-    float CurrentFOV;
-
-    UPROPERTY(ReplicatedUsing = OnRep_CombatState)
-    ECombatState CombatState;
-
-    /** Other Utility Variables */
-    bool bCanFire; // Indicates if the weapon is reloading.
-    bool bFireButtonPressed;
-    bool bIsReloading;
-
-    FVector LocalHitTarget;
-
-    /** Timer Handles */
+    // Timers
     FTimerHandle ReloadTimerHandle;
-
-
 };
+

@@ -2,18 +2,15 @@
 
 
 #include "CombatComponent.h"
+#include "Net/UnrealNetwork.h"
+#include "Weapon.h"
 #include "MainCharacter.h"
 #include "MyPlayerController.h"
-#include "Net/UnrealNetwork.h"
-#include "Kismet/GameplayStatics.h"   
-#include "DrawDebugHelpers.h"           
-#include "Engine/World.h"      
-#include "Weapon.h"
-#include "Camera/CameraComponent.h"
-#include "Engine/SkeletalMeshSocket.h"
-#include "Engine/EngineTypes.h"         
-#include "Math/UnrealMathUtility.h"
-#include "GameFramework/CharacterMovementComponent.h" 
+#include "Camera/CameraComponent.h"          
+#include "Engine/SkeletalMeshSocket.h"   
+#include "Kismet/GameplayStatics.h"      
+#include "Engine/EngineTypes.h"
+#include "GameFramework/CharacterMovementComponent.h"
 
 // Sets default values for this component's properties
 UCombatComponent::UCombatComponent()
