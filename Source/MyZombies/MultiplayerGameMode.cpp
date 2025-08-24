@@ -3,8 +3,8 @@
 
 #include "MultiplayerGameMode.h"
 #include "MultiplayerGameMode.h"
-#include "MultiplayerGameState.h" 
 #include "Kismet/GameplayStatics.h"
+
 
 
 AMultiplayerGameMode::AMultiplayerGameMode() {}
@@ -13,7 +13,7 @@ void AMultiplayerGameMode::BeginPlay()
 {
     Super::BeginPlay();
 
-    GameStateClass = AMultiplayerGameState::StaticClass();
+    // GameStateClass = AMultiplayerGameState::StaticClass();
 
     UE_LOG(LogTemp, Warning, TEXT("MultiplayerGameMode started"));
 }

@@ -13,6 +13,7 @@ class UMultiplayerSessions;
 class UMyGameInstance;
 class AMyPlayerController;
 
+// name
 UCLASS()
 class MYZOMBIES_API UFindSessionMenuWidget : public UUserWidget
 {

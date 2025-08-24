@@ -12,6 +12,8 @@
 
 
 
+// I NEED TO RENAME THIS CLASS ! ITS TOO BROADLY NAMED ! 
+
 UCLASS()
 class MYZOMBIES_API AMultiplayerGameMode : public ABaseGameMode
 {

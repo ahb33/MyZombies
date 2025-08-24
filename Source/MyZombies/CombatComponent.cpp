@@ -10,6 +10,7 @@
 #include "Engine/SkeletalMeshSocket.h"   
 #include "Kismet/GameplayStatics.h"      
 #include "Engine/EngineTypes.h"
+#include "Templates/UnrealTemplate.h"
 #include "GameFramework/CharacterMovementComponent.h"
 
 // Sets default values for this component's properties
@@ -156,24 +157,26 @@ void UCombatComponent::SwapWeapons()
     if (!EquippedWeapon || !SecondaryWeapon) return;
 
     // Swap primary and secondary
-    AWeapon* Temp = EquippedWeapon;
-    EquippedWeapon = SecondaryWeapon;
-    SecondaryWeapon = Temp;
+    Swap(EquippedWeapon, SecondaryWeapon);
 
     // Attach primary weapon to the right hand
     AttachActorToRightHand(EquippedWeapon);
+    EquippedWeapon->SetOwner(MainCharacter);
+    EquippedWeapon->SetWeaponState(EWeaponState::EWS_Equipped);
+
+    AttachWeaponToWeaponSocket(SecondaryWeapon);
+    SecondaryWeapon->SetOwner(MainCharacter);
+    SecondaryWeapon->SetWeaponState(EWeaponState::EWS_EquippedSecondary);
+
 
     // Attach secondary weapon to the weapon socket
     AttachWeaponToWeaponSocket(SecondaryWeapon);
-    EquippedWeapon->SetOwner(MainCharacter);
 
 }
 
 bool UCombatComponent::ShouldSwapWeapons() const
 {
-    if(EquippedWeapon && SecondaryWeapon) return true;
-
-    return false;
+    return EquippedWeapon && SecondaryWeapon;
 }
 
 

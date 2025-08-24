@@ -3,14 +3,14 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "GameFramework/GameState.h"
-#include "MultiplayerGameState.generated.h"
+#include "BasePlayerState.h"
+#include "DeathMatchPlayerState.generated.h"
 
 /**
  * 
  */
 UCLASS()
-class MYZOMBIES_API AMultiplayerGameState : public AGameState
+class MYZOMBIES_API ADeathMatchPlayerState : public ABasePlayerState
 {
 	GENERATED_BODY()
 	
