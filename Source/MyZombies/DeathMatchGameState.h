@@ -27,7 +27,6 @@ public:
     UPROPERTY(ReplicatedUsing=OnRep_MatchPhase, BlueprintReadOnly, Category="Match")
     EMatchPhase MatchPhase = EMatchPhase::Waiting;
 
-
     UFUNCTION()
     void OnRep_MatchPhase();
 

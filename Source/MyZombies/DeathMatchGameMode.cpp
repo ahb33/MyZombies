@@ -4,6 +4,7 @@
 #include "DeathMatchGameMode.h"
 #include "DeathMatchPlayerState.h"
 #include "DeathMatchGameState.h"
+#include "MyPlayerController.h"
 
 ADeathMatchGameMode::ADeathMatchGameMode()
 {
@@ -30,7 +31,34 @@ void ADeathMatchGameMode::OnMatchEnd()
 
 void ADeathMatchGameMode::OnPlayerKilled(AController *Attacker, AController *Victim)
 {
-    UE_LOG(LogTemp, Warning, TEXT("Player Killed !"));
+    if (Attacker && Attacker->PlayerState)
+    {
+        if (ADeathMatchPlayerState* AttackerPS = Cast<ADeathMatchPlayerState>(Attacker->PlayerState))
+        {
+            AttackerPS->AddKill();
+
+            /*
+                •	If AttackerPS->GetKills() >= ScoreToWin:
+                o	Set GameState->MatchPhase = EMatchPhase::EMP_PostMatch;
+                o	Call OnMatchEnd().
+
+            */
+            if(AttackerPS->GetPlayerKills() >= ScoreToWin)
+            {
+                if(ADeathMatchGameState* DMGameState = GetGameState<ADeathMatchGameState>())
+                DMGameState->MatchPhase = EMatchPhase::PostMatch;
+                OnMatchEnd();
+            }
+        }
+    }
+    
+    if (Victim && Victim->PlayerState)
+    {
+        if (ADeathMatchPlayerState* VictimPS = Cast<ADeathMatchPlayerState>(Victim->PlayerState))
+        {
+            VictimPS->AddDeath();
+        }
+    }
 }
 
 void ADeathMatchGameMode::RequestSpawn(AController *Victim)

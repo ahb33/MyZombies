@@ -3,6 +3,7 @@
 
 #include "BasePlayerState.h"
 #include "Net/UnrealNetwork.h"
+#include "DeathMatchPlayerState.h"
 
 
 
@@ -18,7 +19,7 @@ void ABasePlayerState::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& Out
 
 }
 
-void ABasePlayerState::OnRep_PlayerStats()
+void ABasePlayerState::OnRep_PlayerStats() 
 {
     HandlePlayerStatsChanged();
 }

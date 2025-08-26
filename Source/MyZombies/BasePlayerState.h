@@ -23,12 +23,19 @@ public:
 	UFUNCTION()
 	void OnRep_PlayerStats(); // sigle notify that updates HUD once 
 
+	// Accessors
 	virtual int32 GetPlayerKills() const { return Kills; }
 	virtual int32 GetPlayerDeaths() const { return Deaths; }
 	virtual int32 GetPlayerScores() const { return Scores; }
 
+	// Mutators (server-side only)
+	virtual void AddKill()    { ++Kills; OnRep_PlayerStats(); }
+	virtual void AddDeath()   { ++Deaths; OnRep_PlayerStats(); }
+	virtual void AddScore(int32 Delta) { Scores += Delta; OnRep_PlayerStats(); }
+
 private: 
 
+protected:
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, ReplicatedUsing = OnRep_PlayerStats, Category="Stats", meta=(AllowPrivateAccess="true"))
 	int32 Kills = 0;
@@ -38,8 +45,6 @@ private:
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, ReplicatedUsing = OnRep_PlayerStats, Category="Stats", meta=(AllowPrivateAccess="true"))
 	int32 Scores = 0;
-
-protected:
 
     virtual void HandlePlayerStatsChanged() {} // virtual hook that runs whenever K/D/Score change
 };

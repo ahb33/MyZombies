@@ -12,6 +12,8 @@
 
 class USoundBase;
 class AController;
+class ADeathMatchGameState;
+
 UCLASS()
 class MYZOMBIES_API ADeathMatchGameMode : public ABaseGameMode
 {
@@ -27,13 +29,19 @@ public:
 	void OnMatchEnd();
 	void OnPlayerKilled(AController* Attacker, AController* Victim);
 	void RequestSpawn(AController* Victim);
+	
 
 private: 
 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Game Start Cue ", meta=(AllowPrivateAccess="true")) 
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Game Start Cue ", meta=(AllowPrivateAccess="true")) 
 	USoundBase* MatchStartCue = nullptr;
 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Game Start Cue ", meta=(AllowPrivateAccess="true")) 
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Game Start Cue ", meta=(AllowPrivateAccess="true")) 
 	USoundBase* MatchOverCue = nullptr;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Game Score Target ", meta=(AllowPrivateAccess="true"))
+	int32 ScoreToWin; 
+
+
 
 };

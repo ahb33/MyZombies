@@ -14,4 +14,13 @@ class MYZOMBIES_API ADeathMatchPlayerState : public ABasePlayerState
 {
 	GENERATED_BODY()
 	
+public:
+
+	virtual void HandlePlayerStatsChanged() override;
+	
+	virtual void AddKill() { ++Kills; OnRep_PlayerStats(); }
+	virtual void AddDeath() { ++Deaths; OnRep_PlayerStats(); }
+
+private:
+
 };

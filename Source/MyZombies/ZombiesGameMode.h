@@ -25,8 +25,6 @@ public:
     void PossessCharacterIfNone(class APlayerController* PC);
     void SetupInputForGameplay(class APlayerController* PC);
 
-
-
 protected:
 	virtual void BeginPlay() override;
 

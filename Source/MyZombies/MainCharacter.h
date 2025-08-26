@@ -16,6 +16,10 @@ class AMyPlayerController;
 class AMyHUD;
 class UAnimMontage;
 class UInputComponent;
+class UMyGameInstance;
+
+
+DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnMainCharacterDeath);
 
 UCLASS()
 class MYZOMBIES_API AMainCharacter : public ACharacter
@@ -29,6 +33,9 @@ public:
     virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
     virtual void SetupPlayerInputComponent(class UInputComponent* PlayerInputComponent) override;
     virtual void Tick(float DeltaTime) override;
+    virtual float TakeDamage(float DamageAmount, struct FDamageEvent const& DamageEvent,
+    class AController* EventInstigator, AActor* DamageCauser) override; //abstr to base?
+    void Die(); // abstr to base?
 
     // Initialization
     void InitValues();
@@ -67,6 +74,7 @@ public:
     // Replication Functions
     UFUNCTION(Server, Reliable)
     void Server_EquipButtonPressed();
+    // von onRepHealth
 
     // Utility Functions
     void SetOverlappingWeapon(class AWeapon* Weapon);
@@ -76,7 +84,7 @@ public:
     void PlayFireMontage(bool bAiming);
     void PlayReloadMontage();
 
-
+    FOnMainCharacterDeath OnMainCharacterDeath;
 
 protected:
     virtual void BeginPlay() override;
@@ -122,12 +130,15 @@ private:
     AHealthPickUp* pickUpHealth = nullptr;
     AMyPlayerController* MyPlayerController = nullptr;
     AMyHUD* MyGameHUD = nullptr;
+    UMyGameInstance* MyGameInstanceRef = nullptr;
 
     // -- simple PODs with in-class defaults --
     float MaxHealth = 100.f;
     FRotator StartingAimRotation;
     float AO_Yaw = 0.f, AO_Pitch = 0.f, InterpAO_Yaw = 0.f;
     ETurningInPlace TurningInPlace = ETurningInPlace::ETIP_NotTurning;
+    FTimerHandle DestructionTimer; // Timer handle for delayed destruction
+
 
     // -- rep notifies --
     UFUNCTION() void OnRep_OverlappingWeapon();

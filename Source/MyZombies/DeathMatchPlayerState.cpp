@@ -6,3 +6,7 @@
 
 
 
+void ADeathMatchPlayerState::HandlePlayerStatsChanged()
+{
+    // add HUD variables for playerstate
+}

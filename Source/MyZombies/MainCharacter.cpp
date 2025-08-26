@@ -14,6 +14,7 @@
 #include "HealthPickUp.h"
 #include "Animation/AnimInstance.h"
 #include "Kismet/KismetMathLibrary.h"
+#include "MyGameInstance.h"
 #include "WeaponTypes.h"
 
 // redo initializer list
@@ -51,6 +52,7 @@ void AMainCharacter::BeginPlay()
         MyPlayerController->SetHUDHealth(PlayerHealth, MaxHealth);
 
         MyGameHUD = Cast<AMyHUD>(MyPlayerController->GetHUD());
+        MyGameInstanceRef = GetWorld()->GetGameInstance<UMyGameInstance>();
         if (MyGameHUD)
         {
             MyGameHUD->AddCharacterStats();
@@ -472,7 +474,10 @@ void AMainCharacter::TurnInPlace(float DeltaTime)
 
 void AMainCharacter::OnRep_Health()
 {
-
+    if (MyPlayerController)
+    {
+        MyPlayerController->SetHUDHealth(PlayerHealth, MaxHealth);
+    }
 }
 
 ECombatState AMainCharacter::GetCharacterCombatState() const
@@ -487,5 +492,58 @@ FVector AMainCharacter::GetHitTarget() const
 	// if(combatComponent == nullptr)
      return FVector();
 	// return combatComponent->GetLocalHitTarget();
+}
+
+float AMainCharacter::TakeDamage(float DamageAmount, FDamageEvent const& DamageEvent,
+AController* EventInstigator, AActor* DamageCauser)
+{
+    float AppliedDamage = 0.f;
+
+    if (HasAuthority()) // Ensure damage is processed only on the server
+    {
+        if (MyGameInstanceRef && MyGameInstanceRef->GetSelectedGameMode() == "Zombies")
+        {
+            if (EventInstigator)
+            {
+                APawn* InstigatorPawn = EventInstigator->GetPawn();
+
+                if (Cast<AMainCharacter>(InstigatorPawn))
+                {
+                    // Another player caused this in Zombies → ignore
+                    return 0.f;
+                }
+            }
+        }
+
+        // Actually apply the damage
+        UE_LOG(LogTemp, Warning, TEXT("MainCharacter %s took damage: %f"), *GetName(), DamageAmount);
+        PlayerHealth -= DamageAmount;
+        AppliedDamage = DamageAmount;
+
+        UE_LOG(LogTemp, Warning, TEXT("Main Character Health is now: %f"), PlayerHealth);
+
+        if (PlayerHealth <= 0.0f)
+        {
+            GetWorld()->GetTimerManager().SetTimer(DestructionTimer, this, &AMainCharacter::Die, 1.0f, false);
+        }
+    }
+
+    return AppliedDamage; 
+}
+
+void AMainCharacter::Die()
+{
+    if(HasAuthority())
+    {
+        Destroy();
+        if (OnMainCharacterDeath.IsBound())
+        {
+            OnMainCharacterDeath.Broadcast();
+        }
+        else
+        {
+            UE_LOG(LogTemp, Warning, TEXT("OnMainCharacterDeath not bound for %s"), *GetName());
+        }
+    }
 }
 
