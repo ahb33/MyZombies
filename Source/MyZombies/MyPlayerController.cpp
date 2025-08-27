@@ -6,7 +6,10 @@
 #include "LobbyPlayerState.h"
 #include "LobbyMenuWidget.h"
 #include "Net/UnrealNetwork.h"
+#include "Blueprint/UserWidget.h"
 #include "WBP_ReadyButtonWidget.h"
+#include "CharacterStats.h"
+#include "KillDeathStats.h"
 #include "Blueprint/UserWidget.h"
 
 AMyPlayerController::AMyPlayerController() {}
@@ -75,28 +78,43 @@ void AMyPlayerController::SetHUDHealth(float CurrentHealth, float MaxHealth)
 
 void AMyPlayerController::SetHUDAmmo(int32 Ammo)
 {
-    if (!MyPlayerHUD)
+    if (AMyHUD* HUD = GetMyHUD())
     {
-        MyPlayerHUD = Cast<AMyHUD>(GetHUD());
-        if (!MyPlayerHUD) return;
-    }
-
-    if (MyPlayerHUD->CharacterStats && MyPlayerHUD->CharacterStats->AmmoOnDisplay)
-    {
-        MyPlayerHUD->CharacterStats->AmmoOnDisplay->SetText(FText::AsNumber(Ammo));
+        if (HUD->CharacterStats && HUD->CharacterStats->AmmoOnDisplay)
+        {
+            HUD->CharacterStats->AmmoOnDisplay->SetText(FText::AsNumber(Ammo));
+        }
     }
 }
 
 void AMyPlayerController::SetHUDMagAmmo(int32 AmmoInMag)
 {
+    if (AMyHUD* HUD = GetMyHUD())
+    {
+        if (HUD->CharacterStats && HUD->CharacterStats->AmmoInMag)
+        {
+            HUD->CharacterStats->AmmoInMag->SetText(FText::AsNumber(AmmoInMag));
+        }
+    }
+}
+
+void AMyPlayerController::UpdateHUDKillDeath(int32 Kills, int32 Deaths)
+{
+    if (AMyHUD* HUD = GetMyHUD())
+    {
+        if (HUD->KillDeathStats && HUD->KillDeathStats->PlayerKills && HUD->KillDeathStats->PlayerDeaths)
+        {
+            HUD->KillDeathStats->PlayerKills->SetText(FText::AsNumber(Kills));
+            HUD->KillDeathStats->PlayerDeaths->SetText(FText::AsNumber(Deaths));
+        }
+    }
+}
+
+AMyHUD* AMyPlayerController::GetMyHUD()
+{
     if (!MyPlayerHUD)
     {
         MyPlayerHUD = Cast<AMyHUD>(GetHUD());
-        if (!MyPlayerHUD) return;
     }
-
-    if (MyPlayerHUD->CharacterStats && MyPlayerHUD->CharacterStats->AmmoInMag)
-    {
-        MyPlayerHUD->CharacterStats->AmmoInMag->SetText(FText::AsNumber(AmmoInMag));
-    }
+    return MyPlayerHUD;
 }

@@ -4,9 +4,14 @@
 #include "DeathMatchPlayerState.h"
 #include "Net/UnrealNetwork.h"
 
+#include "MyPlayerController.h"
+
 
 
 void ADeathMatchPlayerState::HandlePlayerStatsChanged()
 {
-    // add HUD variables for playerstate
+    // auto* PC = cast<AMyPlayerController>(GetOwner());
+
+    // retrieve PC
+    // PC->UpdateHUDKillDeath(GetKills(), GetDeaths())
 }

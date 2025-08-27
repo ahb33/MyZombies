@@ -4,6 +4,8 @@
 #include "MyHUD.h"
 #include "Engine/World.h"
 #include "GameFramework/PlayerController.h"
+#include "CharacterStats.h"
+#include "KillDeathStats.h"
 #include "Kismet/GameplayStatics.h"
 
 
@@ -14,30 +16,6 @@ void AMyHUD::BeginPlay()
 
 }
 
-void AMyHUD::AddCharacterStats()
-{
-	/*Get Player Controller
-	Check if player controller is valid and if CharacterStats Class is set
-	Create widget and store in Character Stats*/
-
-	APlayerController* PlayerController = GetOwningPlayerController();
-
-
-	if (PlayerController && CharacterStatsClass)
-	{
-		UE_LOG(LogTemp, Warning, TEXT("Player Controller and CharacterStats are valid"));
-		CharacterStats = CreateWidget<UCharacterStats>(PlayerController, CharacterStatsClass);
-		// CharacterStats->SetHealthBar(HealthBar);
-		CharacterStats->AddToViewport();
-
-
-	}
-	else
-	{
-		UE_LOG(LogTemp, Warning, TEXT("Player Controller XX and CharacterStats are not valid"));
-
-	}
-}
 // Need to get viewport size in order to draw crosshairs on screen
 void AMyHUD::DrawHUD()
 {
@@ -104,4 +82,38 @@ void AMyHUD::DrawCrosshair(UTexture2D* Texture, FVector2D ViewportCenter, FVecto
 	);
 }
 
+
+void AMyHUD::AddCharacterStats()
+{
+    APlayerController* PC = GetOwningPlayerController();
+    if (!PC || !CharacterStatsClass)
+    {
+        UE_LOG(LogTemp, Warning, TEXT("AddCharacterStats: Missing PlayerController or CharacterStatsClass"));
+        return;
+    }
+
+    CharacterStats = CreateWidget<UCharacterStats>(PC, CharacterStatsClass);
+    if (CharacterStats)
+    {
+        CharacterStats->AddToViewport();
+        UE_LOG(LogTemp, Log, TEXT("CharacterStats widget created and added to viewport"));
+    }
+}
+
+void AMyHUD::AddKillDeathWidget()
+{
+    APlayerController* PC = GetOwningPlayerController();
+    if (!PC || !KillDeathStatsClass)
+    {
+        UE_LOG(LogTemp, Warning, TEXT("AddKillDeathWidget: Missing PlayerController or KillDeathStatsClass"));
+        return;
+    }
+
+    KillDeathStats = CreateWidget<UKillDeathStats>(PC, KillDeathStatsClass);
+    if (KillDeathStats)
+    {
+        KillDeathStats->AddToViewport();
+        UE_LOG(LogTemp, Log, TEXT("KillDeathStats widget created and added to viewport"));
+    }
+}
 

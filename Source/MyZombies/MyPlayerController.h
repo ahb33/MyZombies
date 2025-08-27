@@ -5,14 +5,18 @@
 #include "CoreMinimal.h"
 #include "GameFramework/PlayerController.h"
 #include "MyPlayerController.generated.h"
-/**
- * 
- */
 
+
+/**
+ * Custom PlayerController:
+ * - Handles HUD updates
+ * - Manages input (ready state, lobby travel)
+ * - Server RPCs for multiplayer flow
+ */
 class AMyHUD;
 class ULobbyMenuWidget;
 class UUserWidget;
-
+class UWBP_ReadyButtonWidget;
 
 UCLASS()
 class MYZOMBIES_API AMyPlayerController : public APlayerController
@@ -20,32 +24,40 @@ class MYZOMBIES_API AMyPlayerController : public APlayerController
 	GENERATED_BODY()
 
 public:
-    AMyPlayerController();
+	AMyPlayerController();
 
-    virtual void BeginPlay() override;
+	// --- Core overrides ---
+	virtual void BeginPlay() override;
+	virtual void SetupInputComponent() override;
 
-    virtual void SetupInputComponent() override;
+	// --- HUD Update Functions ---
+	void SetHUDHealth(float CurrentHealth, float MaxHealth);
+	void SetHUDAmmo(int32 Ammo);
+	void SetHUDMagAmmo(int32 AmmoInMag);
+	void UpdateHUDKillDeath(int32 Kills, int32 Deaths);
 
-    
-    void SetHUDHealth(float CurrentHealth, float MaxHealth);
-    void SetHUDAmmo(int32 Ammo);
-    void SetHUDMagAmmo(int32 AmmoInMag);
-    
-    void HandleReadyInput();
-    UFUNCTION(Server, Reliable, BlueprintCallable)
-    void TravelToLobby();
+	// Helper to cache HUD
+	AMyHUD* GetMyHUD();
 
-    UFUNCTION(Server, Reliable, BlueprintCallable)
-    void Server_SetPlayerReady();
+	// --- Input / Lobby ---
+	void HandleReadyInput();
 
+	// --- Server RPCs ---
+	UFUNCTION(Server, Reliable, BlueprintCallable)
+	void TravelToLobby();
+
+	UFUNCTION(Server, Reliable, BlueprintCallable)
+	void Server_SetPlayerReady();
 
 protected:
-    UPROPERTY(EditAnywhere, Category = "HUD")
-    AMyHUD* MyPlayerHUD;
+	// --- HUD Reference (runtime only, not editable in editor) ---
+	UPROPERTY()
+	AMyHUD* MyPlayerHUD = nullptr;
 
-    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "UI")
-    TSubclassOf<UUserWidget> ReadyButtonWidgetClass;
+	// --- Lobby UI ---
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "UI")
+	TSubclassOf<UUserWidget> ReadyButtonWidgetClass;
 
-    UPROPERTY()
-    class UWBP_ReadyButtonWidget* ReadyButtonWidgetInstance;
+	UPROPERTY()
+	UWBP_ReadyButtonWidget* ReadyButtonWidgetInstance = nullptr;
 };
