@@ -1,18 +1,21 @@
 // Fill out your copyright notice in the Description page of Project Settings.
 
-
 #include "Projectile.h"
 #include "Kismet/GameplayStatics.h" 
 #include "Net/UnrealNetwork.h"
 #include "Weapon.h"
 #include "Components/SphereComponent.h"
 
-// move tracer, impact particles, and impact sound to weapon.cpp and access them in this class. 
-// each weapon should set its own 
+
 
 // Sets default values
 AProjectile::AProjectile()
 {
+    bReplicates = true;
+    SetReplicateMovement(true);
+
+    
+
     // Disable Tick as it's not needed
     PrimaryActorTick.bCanEverTick = false;
 
@@ -33,12 +36,13 @@ AProjectile::AProjectile()
     ProjectileMovementComponent->bShouldBounce = false;
     ProjectileMovementComponent->ProjectileGravityScale = 0.0f; // No gravity effect
 
+
     // Set default values
     ProjectileSpeed = 3000.0f;
     ProjectileMovementComponent->InitialSpeed = ProjectileSpeed;
     ProjectileMovementComponent->MaxSpeed = ProjectileSpeed;
 
-    DamageAmount = 10.0f; // Example default damage
+    DamageAmount = 40.0f; // Example default damage
 }
 
 // Called when the game starts or when spawned
@@ -59,55 +63,47 @@ void AProjectile::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifet
 void AProjectile::OnHit(UPrimitiveComponent* HitComponent, AActor* OtherActor, 
 UPrimitiveComponent* OtherComponent, FVector NormalImpulse, const FHitResult& Hit)
 {
+    if (!OtherActor || OtherActor == this || OtherActor == GetOwner())
+    {
+        return; // ignore self and owner
+    }
+
     UE_LOG(LogTemp, Warning, TEXT("Projectile hit %s with damage: %f"), *OtherActor->GetName(), DamageAmount);
 
-    // Ensure the projectile doesn't hit itself or its owner
-    if (OtherActor && OtherActor != GetOwner())
+    // --- Server: apply damage + authoritative destroy ---
+    if (HasAuthority())
     {
-        if (HasAuthority()) // Only the server applies damage
-        {
-            UGameplayStatics::ApplyDamage(
-                OtherActor,
-                DamageAmount,
-                GetInstigatorController(),
-                this,
-                UDamageType::StaticClass()
-            );
-        }
+        UGameplayStatics::ApplyDamage(
+            OtherActor,
+            DamageAmount,
+            GetInstigatorController(),
+            this,
+            UDamageType::StaticClass()
+        );
 
-        // Disable collision before destroying
+        // Turn off collision so we don't hit again before destroy
         CollisionSphere->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+    }
 
-        // Spawn impact particles
-        if (currentWeapon && currentWeapon->GetImpactParticles())
+    // --- All machines: spawn cosmetics (FX/sound) ---
+    if (currentWeapon)
+    {
+        if (UParticleSystem* ImpactParticles = currentWeapon->GetImpactParticles())
         {
             UGameplayStatics::SpawnEmitterAtLocation(
                 GetWorld(),
-                currentWeapon->GetImpactParticles(),
+                ImpactParticles,
                 Hit.ImpactPoint,
                 Hit.ImpactNormal.Rotation()
             );
         }
+    }
 
-        // Play impact sound
-        if (currentWeapon && currentWeapon->GetImpactSound())
-        {
-            UGameplayStatics::PlaySoundAtLocation(
-                this,
-                currentWeapon->GetImpactSound(),
-                Hit.ImpactPoint
-            );
-        }
-
-        // Destroy the projectile after impact
+    // --- Destroy only if server ---
+    if (HasAuthority())
+    {
         Destroy();
     }
 }
-void AProjectile::InitializeTracer()
-{
-    if (currentWeapon && currentWeapon->GetTracer())
-    {
-        TracerSystem = UGameplayStatics::SpawnEmitterAttached(currentWeapon->GetTracer(), CollisionSphere);
-    }
-}
+
 

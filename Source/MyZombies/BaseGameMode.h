@@ -6,6 +6,8 @@
 #include "GameFramework/GameModeBase.h"
 #include "BaseGameMode.generated.h"
 
+
+class AMyPlayerController;
 UCLASS(minimalapi)
 class ABaseGameMode : public AGameModeBase
 {
@@ -14,21 +16,36 @@ class ABaseGameMode : public AGameModeBase
 public:
 	ABaseGameMode();
 
+    virtual void PostLogin(APlayerController* NewPlayer) override;
+
+	AActor* ChoosePlayerStart(AController* Player);
+
 	virtual void EndGame(bool bPlayerWon);
 
 	// Function to be overridden in child classes for custom logic
 	virtual void CheckEnemiesAlive();
+
+	virtual void RequestSpawn(AController* Controller);
 
 	bool bUseSeamlessTravel;
 
 protected:
 	virtual void BeginPlay() override;
 
-	// Base function for initializing gameplay (can be overridden)
-	virtual void InitializeGameplay();
+	UPROPERTY()
+    TArray<AActor*> AvailableSpawnPoints;
+
+    UPROPERTY()
+    TArray<AActor*> UsedSpawnPoints;
 
 	UPROPERTY(EditAnywhere, Category = "EndGameWidgets")
 	TSubclassOf<class UUserWidget> YouWonWidgetClass;
+
+	UPROPERTY(EditAnywhere, Category = "EndGameWidgets")
+	TSubclassOf<class UUserWidget> YouDiedWidgetClass;
+
+	float RespawnDelay = 4.0f;
+	
 	
 };
 

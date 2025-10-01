@@ -5,8 +5,10 @@
 #include "Components/SphereComponent.h"
 #include "Components/WidgetComponent.h"
 #include "Components/SkeletalMeshComponent.h"  
-#include "MainCharacter.h"                     
+#include "MainCharacter.h"        
+#include "GameFramework/Actor.h"             
 #include "MyPlayerController.h" 
+#include "Sound/SoundCue.h"
 #include "Kismet/GameplayStatics.h"            
 #include "Net/UnrealNetwork.h"                
 
@@ -14,10 +16,9 @@
 AWeapon::AWeapon()
     : Damage(0.f),        
       AmmoOnHand(0),
-      MaxAmmoOnHand(0),
-      ReloadAmount(0),
       AmmoInMag(0),
-      MagCapacity(0)
+      MagCapacity(0),
+      MaxAmmoOnHand(0)
 {
     // Enable replication and ticking
     bReplicates = true;
@@ -52,11 +53,7 @@ void AWeapon::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeP
 	  then you want the ammo count on that weapon to remain unchanged
 	  */
 	DOREPLIFETIME_CONDITION(AWeapon, AmmoOnHand, COND_OwnerOnly);  // Ammo will only replicate to owning client
-
 	DOREPLIFETIME_CONDITION(AWeapon, AmmoInMag, COND_OwnerOnly);
-
-    DOREPLIFETIME(AWeapon, MaxAmmoOnHand);
-    DOREPLIFETIME(AWeapon, ReloadAmount);
     DOREPLIFETIME(AWeapon, WeaponState);
     DOREPLIFETIME(AWeapon, WeaponType);
     
@@ -130,6 +127,7 @@ void AWeapon::DropWeapon()
 
 void AWeapon::Fire(const FVector& HitTargetParam)
 {
+    UE_LOG(LogTemp, Warning, TEXT("Fire function called"));
     if (!GetOwner() || !GetWeaponMesh())
     {
         UE_LOG(LogTemp, Warning, TEXT("Cannot fire: Weapon is empty or invalid owner/mesh."));
@@ -143,6 +141,8 @@ void AWeapon::DealDamage(const FHitResult &HitResult)
 {
     if (AActor* HitActor = HitResult.GetActor())
     {
+        UE_LOG(LogTemp, Warning, TEXT("Deal Damage called"));
+        
         UGameplayStatics::ApplyDamage(
             HitActor,
             GetDamage(),
@@ -155,24 +155,18 @@ void AWeapon::DealDamage(const FHitResult &HitResult)
 
 bool AWeapon::WeaponIsEmpty() const
 {
-    return GetCurrentAmmoOnHand() == 0;
+    return GetCurrentAmmoInMag() == 0;
 }
 
 void AWeapon::RoundFired()
 {
-	int32 CurrentAmmoOnHand = GetCurrentAmmoOnHand();
+    if(!HasAuthority()) return;
 
-    if (CurrentAmmoOnHand > 0) 
+    const int32 Mag = GetCurrentAmmoInMag();
+    if (Mag > 0)
     {
-        // Reduce the ammo count in the specific weapon instance
-        SetAmmo(CurrentAmmoOnHand - 1, GetCurrentAmmoInMag());
-
-        // Now, update the HUD with the new ammo count
+        SetAmmo(GetCurrentAmmoOnHand(), Mag - 1);
         RefreshHUD();
-    } 
-    else
-    {
-        UE_LOG(LogTemp, Warning, TEXT("Weapon is out of ammo"));
     }
 }
 
@@ -192,11 +186,29 @@ void AWeapon::RefreshHUD()
         AMyPlayerController* PlayerController = Cast<AMyPlayerController>(MainCharacter->GetController());
         if (PlayerController)
         {
+            UE_LOG(LogTemp, Warning, TEXT("RefreshHUD called"));
             PlayerController->SetHUDAmmo(GetCurrentAmmoOnHand());
             PlayerController->SetHUDMagAmmo(GetCurrentAmmoInMag());
         }
     }
 }
+
+
+void AWeapon::ReloadAmmo(int32 Requested)
+{
+    if (!HasAuthority()) return; // server-only mutation
+
+    const int32 Mag      = GetCurrentAmmoInMag();                 // in-mag rounds
+    const int32 Reserve  = GetCurrentAmmoOnHand();                // backpack/extra
+    const int32 Capacity = GetMagCapacity();
+    const int32 Space    = FMath::Max(0, Capacity - Mag);
+    const int32 ToLoad   = FMath::Clamp(Requested, 0, FMath::Min(Space, Reserve));
+
+    // Correct order: SetAmmo(OnHand, InMag)
+    SetAmmo(Reserve - ToLoad, Mag + ToLoad);
+    RefreshHUD();
+}
+
 void AWeapon::SetHUDAmmo(int32 Ammo)
 {
     if (MainCharacter)
@@ -315,3 +327,21 @@ void AWeapon::OnRep_WeaponState()
 	}
 }
 
+void AWeapon::PlayFireEffects()
+{
+    static const FName MuzzleName("Muzzle");
+    if (UParticleSystem* MF = GetMuzzleFlash())
+    {
+        UGameplayStatics::SpawnEmitterAttached(MF, GetWeaponMesh(), MuzzleName);
+    }
+    if (USoundCue* S = GetImpactSound())
+    {
+        UGameplayStatics::PlaySoundAtLocation(this, S, GetActorLocation());
+    }
+    if (UParticleSystem* T = GetTracer())
+    {
+        const FVector Loc = GetWeaponMesh()->GetSocketLocation(MuzzleName);
+        UGameplayStatics::SpawnEmitterAtLocation(GetWorld(), T, Loc);
+    }
+
+}

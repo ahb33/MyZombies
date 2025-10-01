@@ -3,11 +3,10 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "Weapon.h"
+#include "HitScanWeapon.h"
 #include "Perception/AIPerceptionStimuliSourceComponent.h"
 #include "Perception/AIPerceptionComponent.h"
 #include "Perception/AISense_Hearing.h" 
-#include "Sound/SoundCue.h"
 #include "Projectile.h"
 #include "Shotgun.generated.h"
 
@@ -15,55 +14,27 @@
  * 
  */
 UCLASS()
-class MYZOMBIES_API AShotgun : public AWeapon
+class MYZOMBIES_API AShotgun : public AHitScanWeapon
 {
 	GENERATED_BODY()
 	
 public:
 
 
-    virtual void Fire(const FVector& Hit); // Virtual for child class overrides.
+    virtual void Fire(const FVector& Hit) override;
 
 	// modify WaponTrace function from Assault Weapon to include scatter 
-	void WeaponTraceWithScatter(const FVector& TraceStart, const FVector& HitTarget, FHitResult& FireHit);
-
-	virtual void SetAmmo(int32 NewAmmoOnHand, int32 NewAmmoInMag) override;
-
-    virtual int32 GetCurrentAmmoOnHand() const override;
-
-    virtual int32 GetCurrentAmmoInMag() const override;
-
-	virtual int32 GetMaxAmmoOnHand() const override;
-
-	virtual int32 GetMagCapacity() const override;
-
-	virtual void ReloadAmmo(int32 Ammo) override;
+	void WeaponTraceWithScatter(const FVector& HitTarget, TArray<FVector_NetQuantize>& HitTargets);
+    int32 GetNumPellets() const { return NumPellets; }
 
 	virtual float GetDamage() const override;
 
-	FVector CalculateScatterEndPoint(const FVector& MuzzleLocation, const FVector& HitTarget);
-
-    virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
-
-	UFUNCTION()
-    void OnRep_ShotgunAmmoOnHand();
-
-    UFUNCTION()
-    void OnRep_ShotgunAmmoInMag();
-
-
 private:
 
-    UPROPERTY(EditAnywhere, ReplicatedUsing = OnRep_ShotgunAmmoOnHand)
-    int32 ShotgunAmmoOnHand;
+    UPROPERTY(EditAnywhere, Category="Shotgun")
+    int32 NumPellets = 10;
 
-    UPROPERTY(EditAnywhere, ReplicatedUsing = OnRep_ShotgunAmmoInMag)
-    int32 ShotgunAmmoInMag;
-
-    UPROPERTY(EditAnywhere, Replicated)
-    int32 ShotgunMaxAmmoOnHand;
-
-    UPROPERTY(EditAnywhere, Replicated)
-    int32 ShotgunMagCapacity;
+    UPROPERTY(EditAnywhere, Category="Shotgun")
+    float ScatterAngle = 10.f; // degrees
 
 };

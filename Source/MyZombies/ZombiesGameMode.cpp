@@ -16,28 +16,22 @@ AZombiesGameMode::AZombiesGameMode()
 void AZombiesGameMode::BeginPlay()
 {
     Super::BeginPlay();
-
-    if (AMyPlayerController* PC = Cast<AMyPlayerController>(UGameplayStatics::GetPlayerController(this, 0)))
-    {
-        PossessCharacterIfNone(PC);
-        SetupInputForGameplay(PC);
-    }
-
     ApplyLevelModifiers();
     StartNextWave();
 }
 
-void AZombiesGameMode::PossessCharacterIfNone(APlayerController* PC)
+void AZombiesGameMode::PostLogin(APlayerController* NewPlayer)
 {
-    if (!PC->GetPawn() && DefaultPawnClass)
+    Super::PostLogin(NewPlayer);
+
+    if (AMyPlayerController* PC = Cast<AMyPlayerController>(NewPlayer))
     {
-        APawn* Pawn = GetWorld()->SpawnActor<APawn>(DefaultPawnClass, FVector::ZeroVector, FRotator::ZeroRotator);
-        if (Pawn) PC->Possess(Pawn);
+        SetupInputForGameplay(PC);
     }
 }
-
 void AZombiesGameMode::SetupInputForGameplay(APlayerController* PC)
 {
+    if (!PC) return;
     PC->SetInputMode(FInputModeGameOnly());
     PC->bShowMouseCursor = false;
 }

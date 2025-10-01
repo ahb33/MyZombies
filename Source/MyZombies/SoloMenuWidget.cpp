@@ -51,7 +51,7 @@ void USoloMenuWidget::OnEasyButtonClicked()
 {
     // Open the solo map
     UE_LOG(LogTemp, Warning, TEXT("Opening SpaceShipLevel..."));
-    UGameplayStatics::OpenLevel(this, FName("SpaceShipLevel_Solo"));
+    UGameplayStatics::OpenLevel(this, FName("Zombies_Level"));
 }
 
 void USoloMenuWidget::OnMediumButtonClicked()

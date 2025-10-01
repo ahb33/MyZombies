@@ -10,8 +10,8 @@
 
 void ADeathMatchPlayerState::HandlePlayerStatsChanged()
 {
-    // auto* PC = cast<AMyPlayerController>(GetOwner());
-
-    // retrieve PC
-    // PC->UpdateHUDKillDeath(GetKills(), GetDeaths())
+    if (AMyPlayerController* PC = Cast<AMyPlayerController>(GetOwner()))
+    {
+        PC->UpdateHUDKillDeath(GetPlayerKills(), GetPlayerDeaths());
+    }
 }

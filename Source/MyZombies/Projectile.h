@@ -29,13 +29,16 @@ public:
 	we'd like to have function called in response to a hit event*/
     UFUNCTION()
     virtual void OnHit(UPrimitiveComponent* HitComp, AActor* OtherActor, UPrimitiveComponent* OtherComp,
-        FVector NormalImpulse, const FHitResult& Hit);
+    FVector NormalImpulse, const FHitResult& Hit);
 
 	FORCEINLINE class UProjectileMovementComponent* GetProjectileMovementComponent() const { return ProjectileMovementComponent; }
+    FORCEINLINE USphereComponent* GetCollisionSphere() const { return CollisionSphere; }
 
     void SetProjectileDamage(float Damage) { DamageAmount = Damage; }
     void SetCurrentWeapon(class AWeapon* Weapon) { currentWeapon = Weapon; }
-    void InitializeTracer();
+    bool bUseServerSideRewind = false;
+    FVector_NetQuantize TraceStart;
+	FVector_NetQuantize100 InitialVelocity;
     
 protected:
 	// Called when the game starts or when spawned
@@ -46,8 +49,6 @@ private:
 
     class AWeapon* currentWeapon;
 
-    UPROPERTY(EditAnywhere, Category = Projectile)
-    UParticleSystemComponent* TracerSystem;
 
 	UPROPERTY(EditAnywhere)
 	class UProjectileMovementComponent* ProjectileMovementComponent;

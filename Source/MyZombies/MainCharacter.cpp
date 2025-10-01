@@ -347,13 +347,6 @@ bool AMainCharacter::IsAiming() const
     return (combatComponent && combatComponent->bAiming);
 }
 
-bool AMainCharacter::IsReloading() const
-{
-
-    return false;
-
-}
-
 
 void AMainCharacter::PlayFireMontage(bool bAiming)
 {
@@ -379,11 +372,11 @@ void AMainCharacter::PlayReloadMontage()
         EWeaponType WeaponType = GetEquippedWeapon()->GetWeaponType();
         switch (WeaponType)
         {
-            case EWeaponType::EWT_AssaultRifle:
+            case EWeaponType::AssaultRifle:
                 UE_LOG(LogTemp, Warning, TEXT("Assault Rifle enum called"));
                 SectionName = FName("Rifle");
                 break;
-            case EWeaponType::EWT_Shotgun:
+            case EWeaponType::Shotgun:
                 SectionName = FName("Shotgun");
                 break;
             // Add cases for other weapon types

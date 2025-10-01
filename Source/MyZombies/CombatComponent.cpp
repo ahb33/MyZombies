@@ -8,7 +8,11 @@
 #include "MyPlayerController.h"
 #include "Camera/CameraComponent.h"          
 #include "Engine/SkeletalMeshSocket.h"   
-#include "Kismet/GameplayStatics.h"      
+#include "Kismet/GameplayStatics.h"
+#include "Shotgun.h"      
+#include "ProjectileWeapon.h"
+#include "WeaponTypes.h"
+#include "HitScanWeapon.h"
 #include "Engine/EngineTypes.h"
 #include "Templates/UnrealTemplate.h"
 #include "GameFramework/CharacterMovementComponent.h"
@@ -55,19 +59,6 @@ void UCombatComponent::TickComponent(float DeltaTime, ELevelTick TickType, FActo
         SetHUDCrosshairs(DeltaTime);
 
         FHitResult HitResult;
-
-        // If the camera is obstructed, trace from the weapon muzzle instead
-        if (IsCameraObstructed())
-        {
-            TraceFromMuzzle(HitResult);
-        }
-        else
-        {
-            TraceFromCamera(HitResult);
-        }
-
-        // Update target to hit location or default to max range
-        LocalHitTarget = HitResult.bBlockingHit ? HitResult.ImpactPoint : HitResult.TraceEnd;
     }
 	// ...
 }
@@ -94,62 +85,204 @@ void UCombatComponent::FireButtonPressed(bool bPressed)
 	}
 }
 
+
+
 void UCombatComponent::Fire()
 {
-    if (EquippedWeapon && !EquippedWeapon->WeaponIsEmpty())
+    if (!GetEquippedWeapon() || GetEquippedWeapon()->WeaponIsEmpty()) return;
     {
-        bCanFire = false;
-        EquippedWeapon->Fire(LocalHitTarget);
+        // bCanFire = false;
+        // add bool function CanFire()
+        switch(GetEquippedWeapon()->GetWeaponType())
+        {
+            case EWeaponType::AssaultRifle:
+            FireHitScanWeapon();
+            break;
+
+            case EWeaponType::Shotgun:
+            FireShotgun();
+            break;
+
+            case EWeaponType::None:
+            default:
+            break;
+        }
+        // start fire cooldown per-weapon
+        if (UWorld* World = GetWorld())
+        {
+            World->GetTimerManager().SetTimer(
+                FireTimerHandle, this, &UCombatComponent::OnFireCooldownFinished,
+                GetEquippedWeapon()->GetFireDelay(), false);
+        }
     }
 }
+
+void UCombatComponent::FireHitScanWeapon()
+{
+    if(!GetMainCharacter()) return;
+    if(AHitScanWeapon* HitScanWeapon = Cast<AHitScanWeapon>(GetEquippedWeapon()))
+    {
+        const FVector_NetQuantize Target = GetHitTarget();
+    
+        if (!MainCharacter->HasAuthority())        // client cosmetic
+        {
+            HitScanLocalFire(Target);
+        }   
+        ServerHitScanFire(Target);                 // authoritative
+    }
+}
+
+void UCombatComponent::FireShotgun()
+{
+    if(!GetMainCharacter()) return;
+    if (AShotgun* Shotgun = Cast<AShotgun>(GetEquippedWeapon()))
+    {
+        const FVector_NetQuantize Target = GetHitTarget();
+
+        if (!MainCharacter->HasAuthority())
+        {
+            ShotgunLocalFire(Target);
+        }
+        ServerShotgunFire(Target); 
+    }
+}
+
+
+void UCombatComponent::HitScanLocalFire(const FVector_NetQuantize& TraceHitTarget)
+{
+    if (GetMainCharacter() && CombatState == ECombatState::ECS_Unoccupied)
+    {
+        UE_LOG(LogTemp, Warning, TEXT("Calling LocalFire"));
+
+        if(AWeapon* W = GetEquippedWeapon())
+        {
+            W->Fire(TraceHitTarget);
+            W->PlayFireEffects();
+        }
+    }
+}
+
+void UCombatComponent::ShotgunLocalFire(const FVector_NetQuantize& TraceHitTarget)
+{
+    if (AShotgun* Shotgun = Cast<AShotgun>(GetEquippedWeapon()))
+    {
+        bIsReloading = false;
+        MainCharacter->PlayFireMontage(bAiming);
+        Shotgun->Fire(TraceHitTarget);         // scatter happens inside shotgun
+        CombatState = ECombatState::ECS_Unoccupied;
+    }
+}
+
+void UCombatComponent::ServerHitScanFire_Implementation(const FVector_NetQuantize& TraceHitTarget)
+{
+    UE_LOG(LogTemp, Warning, TEXT("ServerHitScanFire called: spawning authoritative HitScan"));
+    MulticastFireHitScan_Implementation(TraceHitTarget);
+}
+
+void UCombatComponent::ServerShotgunFire_Implementation(const FVector_NetQuantize& TraceHitTarget)
+{   
+    MulticastFireShotgun_Implementation(TraceHitTarget);
+}
+
+void UCombatComponent::MulticastFireHitScan_Implementation(const FVector_NetQuantize& TraceHitTarget)
+{
+    UE_LOG(LogTemp, Warning, TEXT("MulticastFireHitScan called on %s | LocallyControlled=%d | Authority=%d"), *GetName(),
+    GetMainCharacter()->IsLocallyControlled(),
+    GetMainCharacter()->HasAuthority());
+    
+    if (GetMainCharacter() && GetMainCharacter()->IsLocallyControlled() && !GetMainCharacter()->HasAuthority()) return;
+    HitScanLocalFire(TraceHitTarget);
+}
+
+void UCombatComponent::MulticastFireShotgun_Implementation(const FVector_NetQuantize& TraceHitTarget)
+{
+    if (GetMainCharacter() && GetMainCharacter()->IsLocallyControlled() && !GetMainCharacter()->HasAuthority()) return;
+    ShotgunLocalFire(TraceHitTarget);
+}
+
+
+
+
 void UCombatComponent::EquipWeapon(AWeapon* WeaponToEquip)
 {
-    if (!MainCharacter || !WeaponToEquip)
+    if (!MainCharacter || !WeaponToEquip) return;
+
+    if (!GetOwner() || !GetOwner()->HasAuthority())
     {
-        UE_LOG(LogTemp, Warning, TEXT("EquipWeapon failed: Invalid MainCharacter or WeaponToEquip."));
+        // Client → ask server
+        ServerEquipWeapon(WeaponToEquip);
         return;
     }
 
-    if (CombatState != ECombatState::ECS_Unoccupied) return;
-
-    // if no weapon is currently equipped set WeaponToEquip to value of EquippedWeapon
-    // #1 address the nulling of overlappingWeapon and #2 refactor checking for equippedweapon and so on
-
-    // if EquippedWeapon is valid but SecondaryWeapon is not equip Secondary weapon
-    if (EquippedWeapon != nullptr && SecondaryWeapon == nullptr)
+    // Server logic
+    if (EquippedWeapon && !SecondaryWeapon)
     {
-
-        SecondaryWeapon = WeaponToEquip;
-        AttachWeaponToWeaponSocket(SecondaryWeapon);
-        SecondaryWeapon->SetOwner(MainCharacter);
-        SecondaryWeapon->SetWeaponState(EWeaponState::EWS_EquippedSecondary);
-
+        EquipSecondaryWeapon(WeaponToEquip);
     }
     else
-    {        
-        EquippedWeapon = WeaponToEquip;
-        AttachActorToRightHand(EquippedWeapon);
-        EquippedWeapon->SetOwner(MainCharacter);
-        EquippedWeapon->SetWeaponState(EWeaponState::EWS_Equipped);
+    {
+        EquipPrimaryWeapon(WeaponToEquip);
     }
 }
 
+void UCombatComponent::EquipPrimaryWeapon(AWeapon* WeaponToEquip)
+{
+    if (!WeaponToEquip || !MainCharacter) return;
 
+    EquippedWeapon = WeaponToEquip;
+    EquippedWeapon->SetWeaponState(EWeaponState::EWS_Equipped);
+    EquippedWeapon->SetOwner(MainCharacter);
+
+    AttachActorToRightHand(EquippedWeapon);
+    EquippedWeapon->ShowPickUpWidget(false);
+
+    // Server host updates HUD instantly
+    if (MainCharacter->IsLocallyControlled())
+    {
+        GetEquippedWeapon()->RefreshHUD();
+    }
+
+    // Adjust character rotation settings for aiming
+    MainCharacter->GetCharacterMovement()->bOrientRotationToMovement = false;
+    MainCharacter->bUseControllerRotationYaw = true;
+}
 
 void UCombatComponent::EquipSecondaryWeapon(AWeapon* WeaponToEquip)
 {
     if (!WeaponToEquip || !MainCharacter) return;
 
     SecondaryWeapon = WeaponToEquip;
+    SecondaryWeapon->SetWeaponState(EWeaponState::EWS_EquippedSecondary);
+    SecondaryWeapon->SetOwner(MainCharacter);
 
-    AttachWeaponToWeaponSocket(WeaponToEquip);
+    AttachWeaponToBackSocket(SecondaryWeapon);
+    SecondaryWeapon->ShowPickUpWidget(false);
+}
+void UCombatComponent::OnRep_EquippedWeapon()
+{
+    if (GetEquippedWeapon() && GetMainCharacter())
+    {
+        UE_LOG(LogTemp, Warning, TEXT("OnRep equipped weapon called"));
+        AttachActorToRightHand(GetEquippedWeapon());
+        GetEquippedWeapon()->ShowPickUpWidget(false);
+        GetEquippedWeapon()->RefreshHUD();
+    }
+}
 
-    // Hide the weapon's pickup widget
-    WeaponToEquip->ShowPickUpWidget(false);
-    WeaponToEquip->SetOwner(MainCharacter);
+void UCombatComponent::OnRep_SecondaryWeapon()
+{
+    if (GetSecondaryWeapon() && GetMainCharacter())
+    {
+        AttachWeaponToBackSocket(SecondaryWeapon);
+        SecondaryWeapon->ShowPickUpWidget(false);
+    }
+}
 
-    UE_LOG(LogTemp, Log, TEXT("Secondary weapon equipped: %s"), *WeaponToEquip->GetName())
+void UCombatComponent::ServerEquipWeapon_Implementation(AWeapon* WeaponToEquip)
+{
+    if (!WeaponToEquip || !MainCharacter) return;
 
+   EquipWeapon(WeaponToEquip);
 }
 
 void UCombatComponent::SwapWeapons()
@@ -164,13 +297,12 @@ void UCombatComponent::SwapWeapons()
     EquippedWeapon->SetOwner(MainCharacter);
     EquippedWeapon->SetWeaponState(EWeaponState::EWS_Equipped);
 
-    AttachWeaponToWeaponSocket(SecondaryWeapon);
+    AttachWeaponToBackSocket(SecondaryWeapon);
     SecondaryWeapon->SetOwner(MainCharacter);
     SecondaryWeapon->SetWeaponState(EWeaponState::EWS_EquippedSecondary);
 
 
-    // Attach secondary weapon to the weapon socket
-    AttachWeaponToWeaponSocket(SecondaryWeapon);
+    GetEquippedWeapon()->RefreshHUD();
 
 }
 
@@ -192,7 +324,7 @@ void UCombatComponent::AttachActorToRightHand(AActor* ActorToAttach)
     }
 }
 
-void UCombatComponent::AttachWeaponToWeaponSocket(AActor* WeaponToAttach)
+void UCombatComponent::AttachWeaponToBackSocket(AActor* WeaponToAttach)
 {
 	// check if character or weapon to attach are nullptr
 	// create and define const ref to USkeletalMeshSocket 
@@ -209,17 +341,15 @@ void UCombatComponent::AttachWeaponToWeaponSocket(AActor* WeaponToAttach)
 void UCombatComponent::Reload()
 {
 
-    if (GetEquippedWeapon())
+    if (GetEquippedWeapon() && !bIsReloading && GetCombatState() == ECombatState::ECS_Unoccupied)
     {
         UE_LOG(LogTemp, Warning, TEXT("UCombatComponent::Reload() called"));
 
         // Initiate reload on server
         ServerReload();
-
-        // Play reload montage locally
-        if (MainCharacter->IsLocallyControlled())
+        if (GetMainCharacter()->IsLocallyControlled())
         {
-            MainCharacter->PlayReloadMontage();
+            GetMainCharacter()->PlayReloadMontage();
         }
         bIsReloading = true;
     }
@@ -227,11 +357,11 @@ void UCombatComponent::Reload()
     {
         UE_LOG(LogTemp, Warning, TEXT("Equipped Weapon is not valid"));
     }
-}
 
+}
 void UCombatComponent::ServerReload_Implementation()
 {
-    if (!MainCharacter || !GetEquippedWeapon()) 
+    if (!GetMainCharacter() || !GetEquippedWeapon()) 
     {
         UE_LOG(LogTemp, Error, TEXT("ServerReload: Null MainCharacter or Weapon!"));
         return;
@@ -241,8 +371,6 @@ void UCombatComponent::ServerReload_Implementation()
 
     // // Transition to reloading state
     SetCombatState(ECombatState::ECS_Reloading);
-
-    // Handle ammo reloading
     int32 AmmoReload = AmmoToReload();
     GetEquippedWeapon()->ReloadAmmo(AmmoReload);
     GetEquippedWeapon()->RefreshHUD();
@@ -250,88 +378,96 @@ void UCombatComponent::ServerReload_Implementation()
 
 
     float ReloadDuration = MainCharacter->GetReloadDuration();
-    GetWorld()->GetTimerManager().SetTimer(ReloadTimerHandle, this, &UCombatComponent::FinishReloading, ReloadDuration, false);
+    if (UWorld* World = GetWorld())
+    {
+        World->GetTimerManager().SetTimer(
+            ReloadTimerHandle, this, &UCombatComponent::FinishReloading, ReloadDuration, false);
+    }
+
+}
+
+
+void UCombatComponent::OnFireCooldownFinished()
+{
+    bCanFire = true;
+    if (bFireButtonPressed && CombatState == ECombatState::ECS_Unoccupied)
+    {
+        Fire(); // simple auto/semi handling
+    }
 }
 
 void UCombatComponent::FinishReloading()
 {
     if (!GetEquippedWeapon()) return;
+    bIsReloading = false;
 
     UE_LOG(LogTemp, Warning, TEXT("UCombatComponent::FinishReloading() called"));
-
-    // Reset combat state
-    SetCombatState(ECombatState::ECS_Unoccupied);
+    // Reset combat state if player has authority
+    if(GetMainCharacter()->HasAuthority()) SetCombatState(ECombatState::ECS_Unoccupied);
 
 }
 
-int32 UCombatComponent::AmmoToReload()
+int32 UCombatComponent::AmmoToReload() const
 {
-
     UE_LOG(LogTemp, Warning, TEXT("UCombatComponent::AmmoToReload() called"));
 
-    int32 CurrentAmmoOnHand = GetEquippedWeapon()->GetCurrentAmmoOnHand();
-    int32 CurrentAmmoInMag = GetEquippedWeapon()->GetCurrentAmmoInMag();
-    int32 MaxAmmoOnHand = GetEquippedWeapon()->GetMaxAmmoOnHand();
-    int32 MaxReloadAmount = MaxAmmoOnHand - CurrentAmmoOnHand;
-    int32 AmmoToReload = FMath::Min(MaxReloadAmount, CurrentAmmoInMag);
+    const AWeapon* W = GetEquippedWeapon();
+    if (!W) return 0;
 
-    return AmmoToReload;
+    const int32 CurrentAmmoOnHand = W->GetCurrentAmmoOnHand();
+    const int32 CurrentAmmoInMag  = W->GetCurrentAmmoInMag();
+    const int32 MagCapacity       = W->GetMagCapacity();
+
+    const int32 Need   = FMath::Max(0, MagCapacity - CurrentAmmoInMag);
+    const int32 ToLoad = FMath::Min(Need, CurrentAmmoOnHand);
+    return ToLoad;
 }
 
-void UCombatComponent::SetAiming(bool bIsAiming)
+void UCombatComponent::SetAiming(bool bIsAimingIn)
 {
-    if(MainCharacter == nullptr || EquippedWeapon == nullptr) return;
-
-    // The server will set the value here or in ServerSetAiming_Implementation
-    bAiming = bIsAiming;
-    ServerSetAiming(bAiming);
+    if (!MainCharacter || !EquippedWeapon) return;
+    if (GetOwnerRole() < ROLE_Authority)
+    {
+        ServerSetAiming(bIsAimingIn);
+    }
+    bAiming = bIsAimingIn;   // local responsiveness
 }
 
-void UCombatComponent::ServerSetAiming_Implementation(bool bIsAiming)
+void UCombatComponent::ServerSetAiming_Implementation(bool bIsAimingIn)
 {
-	bAiming = bIsAiming;
+    bAiming = bIsAimingIn;
 }
 
 void UCombatComponent::OnRep_Aiming()
 {
-	if (MainCharacter && MainCharacter->IsLocallyControlled())
-	{
-		bAiming = true;
-	}
+
 }
+
+
 
 void UCombatComponent::SetCombatState(ECombatState State)
 {
     CombatState = State;
     UE_LOG(LogTemp, Warning, TEXT("Combat State being called. Current state is %d"), static_cast<int32>(CombatState));    OnRep_CombatState();
-    OnRep_CombatState();
 }
 
 void UCombatComponent::OnRep_CombatState()
 {
-    if (!MainCharacter) return;
+    if (!GetMainCharacter()) return;
 
     switch (CombatState)
     {
-        case ECombatState::ECS_Unoccupied:
-            if (bFireButtonPressed)
-            {
-                Fire();
-            }
-            break;
-
         case ECombatState::ECS_Reloading:
-            if (MainCharacter && !MainCharacter->IsLocallyControlled()) MainCharacter->PlayReloadMontage();
-            break;
+        if (!GetMainCharacter()->IsLocallyControlled())
+        GetMainCharacter()->PlayReloadMontage();
+        break;
 
-        case ECombatState::ECS_Equipping:
-            break;
+        case ECombatState::ECS_Unoccupied:
+		if (bFireButtonPressed) Fire();
 
-        default:
-            break;
+        default: break;
     }
 }
-
 void UCombatComponent::SetZooming(bool bIsZooming)
 {
     bZooming = bIsZooming;
@@ -385,7 +521,31 @@ void UCombatComponent::SetHUDCrosshairs(float DeltaTime)
     
 }
 
-void UCombatComponent::TraceFromCamera(FHitResult& HitResult)
+FVector_NetQuantize UCombatComponent::GetHitTarget() const
+{
+    if (!MainCharacter) return FVector::ZeroVector;
+
+    // get the camera aim point
+    FHitResult CamHit;
+    TraceFromCamera(CamHit);
+    const FVector AimPoint = CamHit.bBlockingHit ? CamHit.ImpactPoint : CamHit.TraceEnd;
+
+    // ensure the muzzle can see that point; if not, use the obstruction
+    if (!EquippedWeapon) return AimPoint;
+
+    const FVector Muzzle = EquippedWeapon->GetWeaponMesh()->GetSocketLocation(FName("Muzzle"));
+
+    FHitResult MuzzleHit;
+    FCollisionQueryParams Params(SCENE_QUERY_STAT(MuzzleToAim), false);
+    Params.AddIgnoredActor(MainCharacter);
+    Params.AddIgnoredActor(EquippedWeapon);
+
+    GetWorld()->LineTraceSingleByChannel(MuzzleHit, Muzzle, AimPoint, ECC_Visibility, Params);
+
+    return MuzzleHit.bBlockingHit ? MuzzleHit.ImpactPoint : AimPoint;
+}
+
+void UCombatComponent::TraceFromCamera(FHitResult& HitResult) const
 {
     FVector CameraLocation;
     FRotator CameraRotation;
@@ -407,7 +567,7 @@ void UCombatComponent::TraceFromCamera(FHitResult& HitResult)
 
 
 
-void UCombatComponent::TraceUnderCrosshairs(FHitResult& HitResult)
+void UCombatComponent::TraceUnderCrosshairs(FHitResult& HitResult) const
 {
     if (!MainCharacter) return;
 
@@ -441,7 +601,7 @@ void UCombatComponent::TraceUnderCrosshairs(FHitResult& HitResult)
 // #endif
 }
 
-void UCombatComponent::TraceFromMuzzle(FHitResult& HitResult)
+void UCombatComponent::TraceFromMuzzle(FHitResult& HitResult) const
 {
     if (!EquippedWeapon || !MainCharacter) return;
 

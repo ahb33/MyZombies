@@ -6,6 +6,7 @@
 #include "Components/ActorComponent.h"
 #include "CombatState.h"          // UENUM used in UPROPERTY
 #include "MyHUD.h"                // needed because FHUDPackage is a by-value member
+#include "Weapon.h"
 #include "CombatComponent.generated.h"
 
 // Forward decls
@@ -27,45 +28,71 @@ public:
 
     void FireButtonPressed(bool bPressed);
     void Fire();
+    void FireHitScanWeapon();
+    void FireShotgun(); 
+    void HitScanLocalFire(const FVector_NetQuantize& TraceHitTarget); // FVector_NetQuantize inherits from FVector
+    void ShotgunLocalFire(const FVector_NetQuantize& TraceHitTarget); // FVector_NetQuantize inherits from FVector
 
-    void EquipWeapon(AWeapon*);
-    void EquipSecondaryWeapon(AWeapon*);
+    UFUNCTION(NetMulticast, Reliable) 
+    void MulticastFireHitScan(const FVector_NetQuantize& TraceHitTarget);
+
+    UFUNCTION(NetMulticast, Reliable) 
+    void MulticastFireShotgun(const FVector_NetQuantize& TraceHitTarget);
+
+    void EquipWeapon(AWeapon* WeaponToEquip);
+
+    UFUNCTION(Server, Reliable)
+    void ServerEquipWeapon(AWeapon* WeaponToEquip);
+    void EquipPrimaryWeapon(AWeapon* WeaponToEquip);
+    void EquipSecondaryWeapon(AWeapon* WeaponToEquip);
+    
     void SwapWeapons();
 
     void Reload();
     void FinishReloading();
-    int32 AmmoToReload();
+    int32 AmmoToReload() const;
     virtual void ReloadAmmo(int32 Ammo) {}
+    void OnFireCooldownFinished();
 
     void AttachActorToRightHand(AActor* ActorToAttach);
-    void AttachWeaponToWeaponSocket(AActor* WeaponToAttach);
+    void AttachWeaponToBackSocket(AActor* WeaponToAttach);
     AWeapon* GetEquippedWeapon() const { return EquippedWeapon; }
+    AWeapon* GetSecondaryWeapon() const {return SecondaryWeapon;}
+    AMainCharacter* GetMainCharacter() const {return MainCharacter;}
     void SetAiming(bool bIsAiming);
     bool ShouldSwapWeapons() const;
     void SetCombatState(ECombatState State);
     ECombatState GetCombatState() const { return CombatState; }
-    void TraceUnderCrosshairs(FHitResult& HitResult);
-    void TraceFromCamera(FHitResult& HitResult);
-    void TraceFromMuzzle(FHitResult& HitResult);
+    void TraceUnderCrosshairs(FHitResult& HitResult) const;
+    void TraceFromCamera(FHitResult& HitResult) const;
+    void TraceFromMuzzle(FHitResult& HitResult) const;
     bool IsCameraObstructed() const;
     void HandleZoom(float DeltaTime);
     void SetZooming(bool bIsZooming);
     bool IsZooming() const { return bZooming; }
+    FVector_NetQuantize GetHitTarget() const;
 
     UFUNCTION() void OnRep_CombatState();
     void SetHUDCrosshairs(float DeltaTime);
 
     UFUNCTION(Server, Reliable) void ServerReload();
     UFUNCTION(Server, Reliable) void ServerSetAiming(bool bIsAiming);
-    UFUNCTION()               void OnRep_Aiming();
+    UFUNCTION(Server, Reliable) void ServerHitScanFire(const FVector_NetQuantize& TraceHitTarget);
+    UFUNCTION(Server, Reliable) void ServerShotgunFire(const FVector_NetQuantize& TraceHitTarget);
+    UFUNCTION() void OnRep_Aiming();
+    UFUNCTION() void OnRep_EquippedWeapon();
+    UFUNCTION() void OnRep_SecondaryWeapon();     
+
 
 protected:
     virtual void BeginPlay() override;
 
 private:
-    // Replicated refs
-    UPROPERTY(Replicated) AWeapon* EquippedWeapon = nullptr;
-    UPROPERTY(Replicated) AWeapon* SecondaryWeapon = nullptr;
+    UPROPERTY(ReplicatedUsing=OnRep_EquippedWeapon)
+    AWeapon* EquippedWeapon = nullptr;
+
+    UPROPERTY(ReplicatedUsing=OnRep_SecondaryWeapon)
+    AWeapon* SecondaryWeapon = nullptr;
 
     // Local refs
     AMainCharacter*      MainCharacter = nullptr;
@@ -75,8 +102,7 @@ private:
 
     // HUD data (requires MyHUD.h here because it's by value)
     FHUDPackage HUDPackage{};
-    FVector     HitTarget = FVector::ZeroVector;
-    float       CrosshairVelocityFactor = 0.f;
+    float CrosshairVelocityFactor = 0.f;
 
     // Crosshairs
     UPROPERTY(EditAnywhere, Category=Crosshairs) UTexture2D* CrosshairsCenter = nullptr;
@@ -99,9 +125,8 @@ private:
     bool bFireButtonPressed = false;
     bool bIsReloading = false;
 
-    FVector LocalHitTarget = FVector::ZeroVector;
-
     // Timers
     FTimerHandle ReloadTimerHandle;
+    FTimerHandle FireTimerHandle;
 };
 

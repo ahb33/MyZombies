@@ -37,9 +37,9 @@ int32 AAmmoPickUp::GetAmmoAmountForWeaponType( )
 {
 	switch (WeaponType)
 	{
-	case EWeaponType::EWT_AssaultRifle:
+	case EWeaponType::AssaultRifle:
 		return 50; // example amount for Assault Rifle
-	case EWeaponType::EWT_Shotgun:
+	case EWeaponType::Shotgun:
 		return 8;  // example amount for Shotgun
 	default:
 		return 0;

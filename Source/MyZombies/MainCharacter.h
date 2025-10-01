@@ -43,8 +43,6 @@ public:
     // Private Input Handlers
     bool IsWeaponEquipped() const;
     bool IsAiming() const;
-    bool IsReloading() const;
-
 
     // Getters
     FORCEINLINE float GetCharacterYaw() const { return AO_Yaw; }

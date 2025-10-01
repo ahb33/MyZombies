@@ -21,9 +21,9 @@ public:
 
 	UFUNCTION()
 	void OnZombieKilled();
-
-    void PossessCharacterIfNone(class APlayerController* PC);
     void SetupInputForGameplay(class APlayerController* PC);
+	virtual void PostLogin(APlayerController* NewPlayer) override;
+ 
 
 protected:
 	virtual void BeginPlay() override;
