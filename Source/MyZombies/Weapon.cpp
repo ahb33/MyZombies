@@ -8,6 +8,8 @@
 #include "MainCharacter.h"        
 #include "GameFramework/Actor.h"             
 #include "MyPlayerController.h" 
+#include "Particles/ParticleSystemComponent.h"
+
 #include "Sound/SoundCue.h"
 #include "Kismet/GameplayStatics.h"            
 #include "Net/UnrealNetwork.h"                
@@ -42,6 +44,8 @@ AWeapon::AWeapon()
     PickupWidget = CreateDefaultSubobject<UWidgetComponent>(TEXT("PickupWidget"));
     PickupWidget->SetupAttachment(RootComponent);
     PickupWidget->SetVisibility(false);
+
+    MaxTraceDistance = 80000.f;
 }
 
 void AWeapon::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
@@ -327,21 +331,33 @@ void AWeapon::OnRep_WeaponState()
 	}
 }
 
-void AWeapon::PlayFireEffects()
+void AWeapon::PlayFireEffects(const FHitResult& Hit)
 {
-    static const FName MuzzleName("Muzzle");
+    UE_LOG(LogTemp, Warning, TEXT("Playing Fire Effects"));
+    static const FName MuzzleName("MuzzleFlash");
+    const FVector MuzzleLoc = GetWeaponMesh()->GetSocketLocation(MuzzleName);
+
     if (UParticleSystem* MF = GetMuzzleFlash())
     {
+        // Prefer attached so it follows weapon recoil/animations
         UGameplayStatics::SpawnEmitterAttached(MF, GetWeaponMesh(), MuzzleName);
     }
-    if (USoundCue* S = GetImpactSound())
-    {
-        UGameplayStatics::PlaySoundAtLocation(this, S, GetActorLocation());
-    }
-    if (UParticleSystem* T = GetTracer())
-    {
-        const FVector Loc = GetWeaponMesh()->GetSocketLocation(MuzzleName);
-        UGameplayStatics::SpawnEmitterAtLocation(GetWorld(), T, Loc);
-    }
 
+    // Impact FX only when we actually hit something
+    if (Hit.bBlockingHit)
+    {
+        if (USoundCue* IS = GetImpactSound())
+        {
+            UGameplayStatics::PlaySoundAtLocation(this, IS, Hit.ImpactPoint);
+        }
+        if (UParticleSystem* IP = GetImpactParticles())
+        {
+            UGameplayStatics::SpawnEmitterAtLocation(GetWorld(), IP, Hit.ImpactPoint, Hit.ImpactNormal.Rotation());
+        }
+    }
+    // add tracer beam
+}
+
+void AWeapon::Multicast_PlayFireFX_Implementation(const FVector& TraceStart, const FVector& TraceEnd)
+{
 }

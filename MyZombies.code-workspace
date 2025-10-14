@@ -92,7 +92,9 @@
 			"unordered_set": "cpp",
 			"variant": "cpp",
 			"vector": "cpp",
-			"xlocale": "cpp"
+			"xlocale": "cpp",
+			"hash_map": "cpp",
+			"xstring": "cpp"
 		}
 	},
 	"extensions": {

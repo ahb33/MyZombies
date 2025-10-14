@@ -43,6 +43,9 @@ public:
 	UFUNCTION()
 	void OnRep_Health();
 
+	UFUNCTION()
+	void OnRep_IsDead();
+
     // Functions to set multipliers or adjust properties based on stats
     void ApplyCharacterStats();
 
@@ -67,6 +70,9 @@ private:
 	
     UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = Health, meta = (AllowPrivateAccess = "true"), ReplicatedUsing = OnRep_Health)
     float BaseDamage;
+
+	UPROPERTY(ReplicatedUsing = OnRep_IsDead)
+	bool bIsDead = false;
 	
 	UAI_AnimInstance* AnimInstanceRef;
 

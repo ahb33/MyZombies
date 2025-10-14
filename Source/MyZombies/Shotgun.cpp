@@ -9,56 +9,69 @@
 #include "EnemyCharacter.h"
 #include "Engine/World.h" 
 #include "Net/UnrealNetwork.h"
-
 #include "Engine/SkeletalMeshSocket.h" 
 
-void AShotgun::Fire(const FVector& Hit)
+void AShotgun::Fire(const FVector& HitTarget)
 {
-    Super::Fire(Hit);       
-    if (!GetOwner() || !GetWeaponMesh() ) return;
+    Super::Fire(HitTarget);
+    if (!GetWorld() || !GetWeaponMesh()) return;
 
-    const FVector M = GetWeaponMesh()->GetSocketLocation("Muzzle");
-    const FVector Aim = (Hit - M).GetSafeNormal();
-    const float Cone = FMath::DegreesToRadians(ScatterAngle);
+    const USkeletalMeshSocket* MuzzleSock =
+        GetWeaponMesh()->GetSocketByName(AWeapon::GetMuzzleSocketName());
+    if (!MuzzleSock) return;
+
+    const FVector Start = MuzzleSock->GetSocketLocation(GetWeaponMesh());
+
+    FVector AimDir = (HitTarget - Start).GetSafeNormal();
+    if (AimDir.IsNearlyZero()) AimDir = GetActorForwardVector();
+
+    const float Range   = GetMaxTraceDistance();
+    const float ConeRad = FMath::DegreesToRadians(FMath::Max(ScatterAngle, 0.1f));
+    FRandomStream Stream(FMath::Rand());
 
     for (int32 i = 0; i < NumPellets; ++i)
     {
-        const FVector Dir = FMath::VRandCone(Aim, Cone);
+        const FVector Dir = Stream.VRandCone(AimDir, ConeRad);
+        const FVector End = Start + Dir * Range;
+
         FHitResult HR;
-        if (HitScanTrace(M, M + Dir * TRACE_LENGTH, HR)) { DealDamage(HR); }
+        const bool bHit = HitScanTrace(Start, End, HR);
+        if (HasAuthority() && bHit) DealDamage(HR);
     }
-    PlayFireEffects();
+
+    AWeapon::PlayFireEffects(FHitResult{});
 }
 
 void AShotgun::WeaponTraceWithScatter(const FVector& HitTarget, TArray<FVector_NetQuantize>& OutTargets)
 {
     if (!GetWeaponMesh()) return;
 
-    const FName Muzzle("Muzzle");
-    const FVector M = GetWeaponMesh()->GetSocketLocation(Muzzle);
-    const FVector Aim = (HitTarget - M).GetSafeNormal();
-    const float Cone = FMath::DegreesToRadians(ScatterAngle);
+    const USkeletalMeshSocket* MuzzleSock =
+        GetWeaponMesh()->GetSocketByName(FName("MuzzleFlash"));
+    if (!MuzzleSock) return;
+
+    const FVector M = MuzzleSock->GetSocketLocation(GetWeaponMesh());
+
+    FVector Aim = (HitTarget - M).GetSafeNormal();
+    if (Aim.IsNearlyZero()) {
+        const FTransform Sx = MuzzleSock->GetSocketTransform(GetWeaponMesh());
+        Aim = Sx.GetRotation().GetForwardVector();
+        if (Aim.IsNearlyZero()) Aim = GetActorForwardVector();
+    }
+
+    const float ConeRad = FMath::DegreesToRadians(FMath::Max(ScatterAngle, 0.1f));
+    const float Range   = GetMaxTraceDistance();
 
     OutTargets.Reset(NumPellets);
     for (int32 i = 0; i < NumPellets; ++i)
     {
-        const FVector Dir = FMath::VRandCone(Aim, Cone);
-        const FVector End = M + Dir * TRACE_LENGTH;
+        const FVector Dir = FMath::VRandCone(Aim, ConeRad);
+        const FVector End = M + Dir * Range;
 
-        // reuse same filtering as hitscan helper (no owner/self hits)
         FHitResult HR;
         if (HitScanTrace(M, End, HR))
             OutTargets.Add(HR.ImpactPoint);
         else
             OutTargets.Add(End);
-
-        // optional debug:
-        // DrawDebugLine(GetWorld(), M, HR.bBlockingHit ? HR.ImpactPoint : End, FColor::Green, false, 0.5f, 0, 0.5f);
     }
 }
-
-float AShotgun::GetDamage() const
-{
-    return 45.f;
-}
-

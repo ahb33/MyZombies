@@ -19,10 +19,9 @@ public:
     // Firing
     virtual void Fire(const FVector& Hit);
 
-	virtual float GetDamage() const override {return Damage;}
-
-
 protected:
 	bool HitScanTrace(const FVector& Start, const FVector& End, FHitResult& OutHit) const;
+
+	FVector LastTraceEnd = FVector::ZeroVector;
 
 };

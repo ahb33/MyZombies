@@ -39,6 +39,7 @@ void AEnemyCharacter::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutL
     Super::GetLifetimeReplicatedProps(OutLifetimeProps);
 
     DOREPLIFETIME(AEnemyCharacter, BaseHealth);
+    DOREPLIFETIME(AEnemyCharacter, bIsDead);
 }
 
 void AEnemyCharacter::OnBeginOverlap(AActor *OverlappedActor, AActor *OtherActor)
@@ -71,12 +72,10 @@ AController* EventInstigator, AActor* DamageCauser)
         BaseHealth -= DamageAmount;
         UE_LOG(LogTemp, Warning, TEXT("Enemy BaseHealth is now: %f"), BaseHealth);
 
-        if (BaseHealth <= 0.0f)
+        if (BaseHealth <= 0.f && !bIsDead)
         {
-            if (AnimInstanceRef)
-            {
-                AnimInstanceRef->SetIsDead(true);
-            }
+            bIsDead = true; // replicated flag
+            OnRep_IsDead(); // play immediately on server, clients get OnRep callback
             GetWorld()->GetTimerManager().SetTimer(DestructionTimer, this, &AEnemyCharacter::Die, 1.0f, false);
         }
     }
@@ -104,6 +103,14 @@ void AEnemyCharacter::Die()
 void AEnemyCharacter::OnRep_Health()
 {
 
+}
+
+void AEnemyCharacter::OnRep_IsDead()
+{
+    if (UAI_AnimInstance* AI = Cast<UAI_AnimInstance>(GetMesh()->GetAnimInstance()))
+    {
+        AI->SetIsDead(true); // ensures death anim plays on all clients
+    }
 }
 
 void AEnemyCharacter::ApplyCharacterStats()

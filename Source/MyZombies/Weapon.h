@@ -19,7 +19,12 @@ class AMainCharacter;
 class AProjectile;
 class ACasing;
 
-constexpr float TRACE_LENGTH = 10000.f;
+#ifndef TRACE_LENGTH
+#define TRACE_LENGTH 80000.f
+#endif
+
+
+static const FName MUZZLE_NAME(TEXT("MuzzleFlash"));
 
 UCLASS()
 class MYZOMBIES_API AWeapon : public AActor
@@ -46,7 +51,11 @@ public:
     void RoundFired();
     float GetFireDelay() const { return FireDelay; }
     UFUNCTION()
-    virtual void PlayFireEffects();
+    virtual void PlayFireEffects(const FHitResult& Hit);
+
+
+    UFUNCTION(NetMulticast, Unreliable)
+    void Multicast_PlayFireFX(const FVector& TraceStart, const FVector& TraceEnd);
 
     // Ammo / Damage
     void SetAmmoInMag();
@@ -78,6 +87,11 @@ public:
     USoundCue*       GetImpactSound()    const { return ImpactSound; }
     FORCEINLINE float GetZoomedFOV()     const { return ZoomedFOV; }
     FORCEINLINE float GetZoomInterpSpeed() const { return ZoomInterpSpeed; }
+    static FORCEINLINE const FName& GetMuzzleSocketName()
+    {
+        static const FName Name(TEXT("MuzzleFlash"));
+        return Name;
+    }
 
     // Replication
     virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
@@ -85,6 +99,10 @@ public:
     UFUNCTION() void OnRep_AmmoOnHand();
     UFUNCTION() void OnRep_AmmoInMag();
     UFUNCTION() void OnRep_WeaponState();
+
+
+    /** Accessor for consistent usage. */
+    FORCEINLINE float GetMaxTraceDistance() const { return MaxTraceDistance; }
 
 protected:
     virtual void BeginPlay() override;
@@ -95,10 +113,9 @@ protected:
     UFUNCTION()
     virtual void OnSphereEndOverlap(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex);
 
-    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category=Weapon, meta=(AllowPrivateAccess="true"))
-    TSubclassOf<AProjectile> Projectile;
+    // UPROPERTY(EditAnywhere, BlueprintReadWrite, Category=Weapon, meta=(AllowPrivateAccess="true"))
+    // TSubclassOf<AProjectile> Projectile;
 
-    UPROPERTY(EditAnywhere) UParticleSystem* MuzzleFlash = nullptr;
     UPROPERTY(EditAnywhere) float Damage = 0.f;
     
     bool bUseServerSideRewind = false;
@@ -110,9 +127,10 @@ protected:
     UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Ammo) int32 MaxAmmoOnHand = 0;
 
     UPROPERTY(EditAnywhere, Category="Weapon") float FireDelay = 0.1f;
-
-
-
+     
+    /** In cm. Default = 800m. Exposed so designers can tune per-weapon. */
+    UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="Weapon|Range", meta=(ClampMin="1.0"))
+    float MaxTraceDistance;
 
 private:
     // Components
@@ -126,10 +144,11 @@ private:
     USkeletalMeshComponent* WeaponMesh = nullptr;
 
     // FX
-    UPROPERTY(EditAnywhere, Category=Projectile) UParticleSystem* Tracer = nullptr;
-    UPROPERTY(EditAnywhere, Category=Projectile) UParticleSystem* ImpactParticles = nullptr;
-    UPROPERTY(EditAnywhere) USoundCue* ImpactSound = nullptr;
-    UPROPERTY(EditAnywhere, Category = Projectile)
+    UPROPERTY(EditAnywhere, Category = Weapon) UParticleSystem* MuzzleFlash = nullptr;
+    UPROPERTY(EditAnywhere, Category = Weapon) UParticleSystem* Tracer = nullptr;
+    UPROPERTY(EditAnywhere, Category = Weapon) UParticleSystem* ImpactParticles = nullptr;
+    UPROPERTY(EditAnywhere, Category = Weapon) USoundCue* ImpactSound = nullptr;
+    UPROPERTY(EditAnywhere, Category = Weapon)
     UParticleSystemComponent* TracerSystem;
 
     // Animation
@@ -149,5 +168,6 @@ private:
     UPROPERTY(EditAnywhere, Category=Casing) TSubclassOf<ACasing> Casing;
     UPROPERTY(EditAnywhere, Category="Combat") float ZoomedFOV = 35.f;
     UPROPERTY(EditAnywhere, Category="Combat") float ZoomInterpSpeed = 15.f;
+
 
 };

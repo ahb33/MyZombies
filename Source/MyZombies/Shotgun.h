@@ -27,7 +27,7 @@ public:
 	void WeaponTraceWithScatter(const FVector& HitTarget, TArray<FVector_NetQuantize>& HitTargets);
     int32 GetNumPellets() const { return NumPellets; }
 
-	virtual float GetDamage() const override;
+
 
 private:
 
