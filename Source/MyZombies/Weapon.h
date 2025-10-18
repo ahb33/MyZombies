@@ -51,7 +51,8 @@ public:
     void RoundFired();
     float GetFireDelay() const { return FireDelay; }
     UFUNCTION()
-    virtual void PlayFireEffects(const FHitResult& Hit);
+    virtual void PlayFireEffects(const FHitResult& Hit, const FVector& Start, const FVector& End);
+    void UpdateTracer(const FVector& SourceWS, const FVector& TargetWS);
 
 
     UFUNCTION(NetMulticast, Unreliable)
@@ -87,6 +88,7 @@ public:
     USoundCue*       GetImpactSound()    const { return ImpactSound; }
     FORCEINLINE float GetZoomedFOV()     const { return ZoomedFOV; }
     FORCEINLINE float GetZoomInterpSpeed() const { return ZoomInterpSpeed; }
+
     static FORCEINLINE const FName& GetMuzzleSocketName()
     {
         static const FName Name(TEXT("MuzzleFlash"));
@@ -145,11 +147,12 @@ private:
 
     // FX
     UPROPERTY(EditAnywhere, Category = Weapon) UParticleSystem* MuzzleFlash = nullptr;
-    UPROPERTY(EditAnywhere, Category = Weapon) UParticleSystem* Tracer = nullptr;
     UPROPERTY(EditAnywhere, Category = Weapon) UParticleSystem* ImpactParticles = nullptr;
     UPROPERTY(EditAnywhere, Category = Weapon) USoundCue* ImpactSound = nullptr;
-    UPROPERTY(EditAnywhere, Category = Weapon)
-    UParticleSystemComponent* TracerSystem;
+    UPROPERTY(EditAnywhere, Category = Weapon) UParticleSystem* Tracer = nullptr;
+    UPROPERTY(EditAnywhere, Category = Weapon) UParticleSystemComponent* TracerSystem = nullptr;
+    UPROPERTY(EditAnywhere, Category = Weapon) int32 TracerEmitterIndex = 0;
+
 
     // Animation
     UPROPERTY(EditAnywhere, Category=WeaponAnimation)

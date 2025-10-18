@@ -9,7 +9,6 @@
 #include "GameFramework/Actor.h"             
 #include "MyPlayerController.h" 
 #include "Particles/ParticleSystemComponent.h"
-
 #include "Sound/SoundCue.h"
 #include "Kismet/GameplayStatics.h"            
 #include "Net/UnrealNetwork.h"                
@@ -44,6 +43,12 @@ AWeapon::AWeapon()
     PickupWidget = CreateDefaultSubobject<UWidgetComponent>(TEXT("PickupWidget"));
     PickupWidget->SetupAttachment(RootComponent);
     PickupWidget->SetVisibility(false);
+
+    // Persistent PSC; template set in BeginPlay to allow BP overrides of Tracer.
+    TracerSystem = CreateDefaultSubobject<UParticleSystemComponent>(TEXT("TracerPSC"));
+    TracerSystem->SetupAttachment(WeaponMesh, GetMuzzleSocketName());
+    TracerSystem->bAutoActivate = false;         // manual fire control
+    TracerSystem->bAutoDestroy  = false;         // keep it alive
 
     MaxTraceDistance = 80000.f;
 }
@@ -331,7 +336,15 @@ void AWeapon::OnRep_WeaponState()
 	}
 }
 
-void AWeapon::PlayFireEffects(const FHitResult& Hit)
+void AWeapon::UpdateTracer(const FVector& SourceWS, const FVector& TargetWS)
+{
+    if (!TracerSystem) return;
+    TracerSystem->SetBeamSourcePoint(TracerEmitterIndex, SourceWS, /*PointIndex=*/0);
+    TracerSystem->SetBeamTargetPoint(TracerEmitterIndex, TargetWS, /*PointIndex=*/0);
+    TracerSystem->ActivateSystem(true);          // restart for per-shot burst
+}
+
+void AWeapon::PlayFireEffects(const FHitResult& Hit, const FVector& Start, const FVector& End)
 {
     UE_LOG(LogTemp, Warning, TEXT("Playing Fire Effects"));
     static const FName MuzzleName("MuzzleFlash");
@@ -341,6 +354,21 @@ void AWeapon::PlayFireEffects(const FHitResult& Hit)
     {
         // Prefer attached so it follows weapon recoil/animations
         UGameplayStatics::SpawnEmitterAttached(MF, GetWeaponMesh(), MuzzleName);
+    }
+    
+    // Compute the visual end we want for the tracer.
+    const FVector VisualEnd = Hit.bBlockingHit ? Hit.ImpactPoint : End;
+
+    if (TracerSystem)
+    {
+        UpdateTracer(MuzzleLoc, VisualEnd);
+    }
+
+    else if (UParticleSystem* TracerFX = GetTracer())
+    {
+        // Fallback: one-shot spawned tracer aligned along path (no live beam control).
+        const FRotator DirRot = (VisualEnd - MuzzleLoc).Rotation();
+        UGameplayStatics::SpawnEmitterAtLocation(GetWorld(), TracerFX, Start, (VisualEnd - Start).Rotation());
     }
 
     // Impact FX only when we actually hit something
@@ -360,4 +388,5 @@ void AWeapon::PlayFireEffects(const FHitResult& Hit)
 
 void AWeapon::Multicast_PlayFireFX_Implementation(const FVector& TraceStart, const FVector& TraceEnd)
 {
+    
 }

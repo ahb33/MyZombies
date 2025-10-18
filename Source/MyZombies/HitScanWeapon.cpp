@@ -46,7 +46,7 @@ void AHitScanWeapon::Fire(const FVector& HitTarget)
 #endif
 
     if (HasAuthority() && bHit) DealDamage(HR);
-    AWeapon::PlayFireEffects(HR);
+    AWeapon::PlayFireEffects(HR, Start, bHit ? HR.ImpactPoint : End);
 }
 
 

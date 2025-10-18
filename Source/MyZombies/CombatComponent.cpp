@@ -47,7 +47,6 @@ void UCombatComponent::BeginPlay()
     }
     
 	// ...
-	
 }
 
 
@@ -523,44 +522,38 @@ static void GetStableCameraView(const AMainCharacter* MC, FVector& OutLoc, FRota
 
 static FCollisionQueryParams MakeTraceParams(const AMainCharacter* MC, const AWeapon* W, FName StatName)
 {
-    // declare FCollisionQueryParams variable and
-    FCollisionQueryParams Params(StatName, /*bTraceComplex*/ true);
-    Params.bTraceComplex = true; // Whether we should trace against complex collision
+    FCollisionQueryParams Params(StatName, true);
+    Params.bReturnPhysicalMaterial = true; // why: surface-based FX/damage
 
-    Params.bReturnPhysicalMaterial = true; // Lets you read surface types for impact FX/decals/damage multipliers; zero gameplay cost if you don’t use it.
+    // why: centralize to avoid missing either actor or mesh in future
+    auto IgnoreWeapon = [&Params](const AActor* WeaponActor)
+    {
+        if (!WeaponActor) return;
+        Params.AddIgnoredActor(WeaponActor);
+
+        // Prefer const-safe lookup over non-const getters
+        if (const USkeletalMeshComponent* Mesh = WeaponActor->FindComponentByClass<USkeletalMeshComponent>())
+        {
+            Params.AddIgnoredComponent(Mesh);
+        }
+    };
 
     if (MC)
     {
-        Params.AddIgnoredActor(const_cast<AMainCharacter*>(MC));
+        Params.AddIgnoredActor(MC); // why: avoid self-hits near geometry
 
-        // Ignore ALL weapons attached to this character (primary, secondary, holstered).
         TArray<AActor*> Attached;
-        const_cast<AMainCharacter*>(MC)->GetAttachedActors(Attached);
-        for (AActor* A : Attached)
+        MC->GetAttachedActors(Attached);
+        for (const AActor* A : Attached)
         {
-            if (A && A->IsA(AWeapon::StaticClass()))
+            if (Cast<AWeapon>(A)) // only ignore weapons among attachments
             {
-                Params.AddIgnoredActor(A);
-                if (const AWeapon* AW = Cast<AWeapon>(A))
-                {
-                    if (USkeletalMeshComponent* WM = AW->GetWeaponMesh())
-                    {
-                        Params.AddIgnoredComponent(WM);
-                    }
-                }
+                IgnoreWeapon(A);
             }
         }
     }
 
-    // Also ignore the currently equipped weapon explicitly.
-    if (W)
-    {
-        Params.AddIgnoredActor(const_cast<AWeapon*>(W));
-        if (USkeletalMeshComponent* WM = W->GetWeaponMesh())
-        {
-            Params.AddIgnoredComponent(WM);
-        }
-    }
+    IgnoreWeapon(W);
 
     return Params;
 }
@@ -569,9 +562,7 @@ FVector_NetQuantize UCombatComponent::BuildNetHitTargetFromController() const
 {
     if (!GetMainCharacter() || !GetEquippedWeapon()) return FVector::ZeroVector;
 
-    const float Range = GetEquippedWeapon()->GetMaxTraceDistance() > 0.f
-        ? GetEquippedWeapon()->GetMaxTraceDistance()
-        : TRACE_LENGTH;
+    const float Range = GetEquippedWeapon()->GetMaxTraceDistance() > 0.f ? GetEquippedWeapon()->GetMaxTraceDistance(): TRACE_LENGTH;
 
     // Crosshair world ray
     FHitResult XR;

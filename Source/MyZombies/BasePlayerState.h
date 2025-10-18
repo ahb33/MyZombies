@@ -23,6 +23,9 @@ public:
 	UFUNCTION()
 	void OnRep_PlayerStats(); // sigle notify that updates HUD once 
 
+
+
+	
 	// Accessors
 	virtual int32 GetPlayerKills() const { return Kills; }
 	virtual int32 GetPlayerDeaths() const { return Deaths; }

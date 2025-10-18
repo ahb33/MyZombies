@@ -37,7 +37,6 @@ public:
 	FORCEINLINE void SetRandomDyingAnimation(bool bShouldRandomize) { bRandomDyingAnimation = bShouldRandomize; }
 	
 
-
 	// Setter function to set the random dying animation variable
 	UFUNCTION(BlueprintCallable, Category = "Animation")
 	FORCEINLINE void SetPlayerVisibility(bool bVisible) { bPlayerVisible = bVisible; }

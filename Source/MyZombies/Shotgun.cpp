@@ -39,7 +39,7 @@ void AShotgun::Fire(const FVector& HitTarget)
         if (HasAuthority() && bHit) DealDamage(HR);
     }
 
-    AWeapon::PlayFireEffects(FHitResult{});
+    // AWeapon::PlayFireEffects(FHitResult{});
 }
 
 void AShotgun::WeaponTraceWithScatter(const FVector& HitTarget, TArray<FVector_NetQuantize>& OutTargets)
