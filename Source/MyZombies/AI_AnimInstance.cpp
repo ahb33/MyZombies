@@ -43,31 +43,26 @@ void UAI_AnimInstance::NativeUpdateAnimation(float DeltaTime)
     // Once Pawn is valid, we proceed to update the animation properties.
     if (PawnInstance)
     {
-        // Update MovementSpeed using only the lateral components of the velocity.
-        FVector LateralSpeed = FVector(PawnInstance->GetVelocity().X, PawnInstance->GetVelocity().Y, 0.f);
-        float TargetSpeed = LateralSpeed.Size();
+        const FVector Vel = PawnInstance->GetVelocity();
+        const float TargetSpeed = FVector(Vel.X, Vel.Y, 0.f).Size();
 
-        // Directly set bIsAccelerating based on whether the current acceleration is greater than zero.
-        // This assumes that EnemyCharacter and its Movement Component are valid.
-        bIsAccelerating = EnemyCharacterInstance && EnemyCharacterInstance->GetCharacterMovement()->GetCurrentAcceleration().Size() > 0;
+        const UCharacterMovementComponent* Move = EnemyCharacterInstance ? EnemyCharacterInstance->GetCharacterMovement() : nullptr;
+        bIsAccelerating = Move && Move->GetCurrentAcceleration().Size() > 0.f;
 
-        // Interpolate the MovementSpeed towards the TargetSpeed
-        MovementSpeed = FMath::Lerp(MovementSpeed, TargetSpeed, FMath::Clamp(DeltaTime * 0.1f, 0.0f, 1.0f));
+        MovementSpeed = FMath::FInterpTo(MovementSpeed, TargetSpeed, DeltaTime, SpeedInterpRate);
 
-        // UE_LOG(LogTemp, Warning, TEXT("Movement Speed: %f"), MovementSpeed);
+        // Clamp to CURRENT MaxWalkSpeed (dynamic), not a fixed 360
+        const float CurrentMax = Move ? Move->MaxWalkSpeed : 360.f;
+        MovementSpeed = FMath::Clamp(MovementSpeed, 0.f, CurrentMax);
 
-        // Access the AI controller and its blackboard component
-        AAIController* AIController = Cast<AAIController>(PawnInstance->GetController());
-        if (AIController)
+        UE_LOG(LogTemp, VeryVerbose, TEXT("[Anim] TargetSpeed=%.1f MovementSpeed=%.1f MaxWalkSpeed=%.1f"),
+            TargetSpeed, MovementSpeed, CurrentMax);
+
+        if (AAIController* AIC = Cast<AAIController>(PawnInstance->GetController()))
+        if (UBlackboardComponent* BB = AIC->GetBlackboardComponent())
         {
-            UBlackboardComponent* BlackboardComp = AIController->GetBlackboardComponent();
-            if (BlackboardComp)
-            {
-                // Check player visibility status from the blackboard
-                bool bCanSeePlayer = BlackboardComp->GetValueAsBool("CanSeePlayer");  // Ensure the key name matches what is used in the Behavior Tree
-                SetPlayerVisibility(bCanSeePlayer);
-            }
+            SetPlayerVisibility(BB->GetValueAsBool(TEXT("CanSeePlayer")));
+            SetPlayerAttackRange(BB->GetValueAsBool(TEXT("PlayerWithinAttackRange")));
         }
-
     }
 }

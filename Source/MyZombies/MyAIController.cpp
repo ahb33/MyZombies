@@ -2,47 +2,58 @@
 
 
 #include "MyAIController.h"
-#include "BTService_ChasingBehavior.h"
-#include "BehaviorTree/BlackboardComponent.h"
 #include "EnemyCharacter.h"
+#include "MainCharacter.h"
+#include "BehaviorTree/BehaviorTree.h"
+#include "BehaviorTree/BlackboardComponent.h"
+#include "Perception/AIPerceptionComponent.h"
+#include "Perception/AISenseConfig_Sight.h"
+#include "Perception/AISenseConfig_Hearing.h"
+#include "Perception/AISense_Sight.h"
+#include "Perception/AISense_Hearing.h"
+#include "Kismet/GameplayStatics.h"
+#include "GameFramework/CharacterMovementComponent.h"
 
-
-
-
+const FName AMyAIController::KEY_CanSeePlayer(TEXT("CanSeePlayer"));
+const FName AMyAIController::KEY_CanHearPlayer(TEXT("CanHearPlayer"));
+const FName AMyAIController::KEY_Player(TEXT("Player"));
+const FName AMyAIController::KEY_LastKnownPosition(TEXT("LastKnownPosition"));
+const FName AMyAIController::KEY_PlayerWithinAttackRange(TEXT("PlayerWithinAttackRange"));
 
 AMyAIController::AMyAIController()
 {
     // Create AI Perception component as well as Sight configuration
     MyPerceptionComponent = CreateDefaultSubobject<UAIPerceptionComponent>(TEXT("MyPerceptionComponent"));
-
     SightConfig = CreateDefaultSubobject<UAISenseConfig_Sight>(TEXT("SightConfig"));
     HearingConfig = CreateDefaultSubobject<UAISenseConfig_Hearing>(TEXT("HearingConfig"));
 
-    // Configuring the Sight Sense 
-    SightConfig->SightRadius = 600.0f;
-    SightConfig->LoseSightRadius = 700.0f;
-    HearingConfig->HearingRange = 1500.0f;
+	// Sight config (tune in editor/INI as needed)
+	SightConfig->SightRadius = 600.f;
+	SightConfig->LoseSightRadius = 700.f;
+	SightConfig->PeripheralVisionAngleDegrees = 90.f; // keep default unless you know better
 
-    // Check all the flags for DetectionByAffiliation so that we detect our Player
-    SightConfig->DetectionByAffiliation.bDetectEnemies = true;
-    SightConfig->DetectionByAffiliation.bDetectNeutrals = true;
-    SightConfig->DetectionByAffiliation.bDetectFriendlies = true;
+	// Hearing config
+	HearingConfig->HearingRange = 1500.f;
 
-    HearingConfig->DetectionByAffiliation.bDetectEnemies = true;
-    HearingConfig->DetectionByAffiliation.bDetectNeutrals = true;
-    HearingConfig->DetectionByAffiliation.bDetectFriendlies = true;
+	// Detect all affiliations (works without teams setup)
+	SightConfig->DetectionByAffiliation.bDetectEnemies    = true;
+	SightConfig->DetectionByAffiliation.bDetectNeutrals   = true;
+	SightConfig->DetectionByAffiliation.bDetectFriendlies = true;
+
+	HearingConfig->DetectionByAffiliation.bDetectEnemies    = true;
+	HearingConfig->DetectionByAffiliation.bDetectNeutrals   = true;
+	HearingConfig->DetectionByAffiliation.bDetectFriendlies = true;
+
 
     // Assign configured senses to the AI Perception Component
     MyPerceptionComponent->ConfigureSense(*SightConfig);
     MyPerceptionComponent->ConfigureSense(*HearingConfig);
-
-    
     MyPerceptionComponent->SetDominantSense(SightConfig->GetSenseImplementation());
 
     // Binding the OnTargetPerceptionUpdate function
+    SetPerceptionComponent(*MyPerceptionComponent);
     MyPerceptionComponent->OnTargetPerceptionUpdated.AddDynamic(this, &AMyAIController::OnTargetPerceptionUpdate);
 
-    UE_LOG(LogTemp, Warning, TEXT("Hearing Config Range: %f"), HearingConfig->HearingRange);
 
 }
 
@@ -54,89 +65,110 @@ AMyAIController::AMyAIController()
     Check if behavior tree reference is not null
     Run behavior tree
 */
-
-
 void AMyAIController::OnPossess(APawn* InPawn)
 {
-    Super::OnPossess(InPawn);
-    AEnemyCharacter* EnemyCharacter = Cast<AEnemyCharacter>(InPawn);
+	Super::OnPossess(InPawn);
 
-    if (EnemyCharacter != nullptr)
-    {
-        UBehaviorTree* BehaviorTree = EnemyCharacter->BehaviorTree;
-        if (BehaviorTree != nullptr)
-        {
-            RunBehaviorTree(BehaviorTree);
-        }
-        
-        GetWorld()->GetTimerManager().SetTimerForNextTick([this]() { UpdateNearbyAgents(); });
-    }
+	AEnemyCharacter* Enemy = Cast<AEnemyCharacter>(InPawn);
+	if (!Enemy) return;
+
+	// Cache default speed to restore when not chasing.
+	if (UCharacterMovementComponent* Move = Enemy->GetCharacterMovement())
+	{
+		DefaultWalkSpeed = Move->MaxWalkSpeed;
+	}
+
+	if (UBehaviorTree* BT = Enemy->BehaviorTree)
+	{
+		if (BT->BlackboardAsset)
+		{
+			UBlackboardComponent* OutBB = nullptr;
+			if (UseBlackboard(BT->BlackboardAsset, OutBB))
+			{
+				// Initialize BB to safe defaults (prevents stale state on level start).
+				OutBB->SetValueAsBool(KEY_CanSeePlayer, false);
+				OutBB->SetValueAsBool(KEY_CanHearPlayer, false);
+				OutBB->SetValueAsBool(KEY_PlayerWithinAttackRange, false);
+				OutBB->SetValueAsVector(KEY_LastKnownPosition, FVector::ZeroVector);
+
+				// Resolve player once at start; will also be ensured on perception updates.
+				if (ACharacter* PC = UGameplayStatics::GetPlayerCharacter(GetWorld(), 0))
+				{
+					if (AMainCharacter* MC = Cast<AMainCharacter>(PC))
+					{
+						MainCharacter = MC;
+						OutBB->SetValueAsObject(KEY_Player, MC);
+					}
+				}
+
+				RunBehaviorTree(BT);
+			}
+		}
+	}
 }
+
 
 void AMyAIController::OnTargetPerceptionUpdate(AActor* Actor, FAIStimulus Stimulus)
 {
+	UBlackboardComponent* BB = GetBlackboardComponent();
+	if (!BB || !MyPerceptionComponent) return;
 
-    if (Stimulus.Type == UAISense_Hearing::StaticClass()->GetDefaultObject<UAISense>()->GetSenseID())
-    {
-        // UE_LOG(LogTemp, Warning, TEXT("Hearing Stimulus detected."));
-    }
-    // Retrieve all currently perceived Actors - OnTargetPerceptionUpdate requires array of actors 
-    // that it can fill
-    
-    // Retrieve all currently perceived Actors for sight
-    TArray<AActor*> PerceivedActorsSight;
-    PerceptionComponent->GetCurrentlyPerceivedActors(UAISense_Sight::StaticClass(), PerceivedActorsSight);
+	// Ensure we have a valid pointer to the player.
+	if (!MainCharacter.IsValid())
+	{
+		if (AMainCharacter* MCFromEvent = Cast<AMainCharacter>(Actor))
+		{
+			MainCharacter = MCFromEvent;
+		}
+		else if (ACharacter* PlayerChar = UGameplayStatics::GetPlayerCharacter(GetWorld(), 0))
+		{
+			MainCharacter = Cast<AMainCharacter>(PlayerChar);
+		}
+		if (MainCharacter.IsValid())
+		{
+			BB->SetValueAsObject(KEY_Player, MainCharacter.Get());
+		}
+	}
 
-    // Retrieve all currently perceived Actors for hearing
-    TArray<AActor*> PerceivedActorsHearing;
-    PerceptionComponent->GetCurrentlyPerceivedActors(UAISense_Hearing::StaticClass(), PerceivedActorsHearing);
+	AEnemyCharacter* Enemy = Cast<AEnemyCharacter>(GetPawn());
+	if (!Enemy || !MainCharacter.IsValid()) return;
 
-    // Combine unique actors from both lists
-    TArray<AActor*> AllPerceivedActors = PerceivedActorsSight;
-    for (AActor* HeardActor : PerceivedActorsHearing)
-    {
-        AllPerceivedActors.AddUnique(HeardActor);
-    }
+	// Ask perception about THIS actor only
+	FActorPerceptionBlueprintInfo Info;
+	MyPerceptionComponent->GetActorsPerception(MainCharacter.Get(), Info);
 
-    // Retrieve Blackboard Component
-    UBlackboardComponent* BlackboardComp = GetBlackboardComponent();
-    if (!BlackboardComp)
-    {
-        UE_LOG(LogTemp, Error, TEXT("Blackboard Component is nullptr."));
-        return;
-    }    
-    
-    // Cast the Actor to AMainCharacter
-    MainCharacter = Cast<AMainCharacter>(Actor);
-    if (MainCharacter && AllPerceivedActors.Contains(MainCharacter))
-    {
-        LastKnownPlayerPosition = Stimulus.StimulusLocation;
+	bool bSee = false, bHear = false;
+	FVector SightLoc = BB->GetValueAsVector(KEY_LastKnownPosition);
 
-        // test this approach if all else fails
-        // bool bCanSeePlayer = Stimulus.WasSuccessfullySensed();
-        bool bCanSeePlayer = PerceivedActorsSight.Contains(MainCharacter);
-        bool bCanHearPlayer = PerceivedActorsHearing.Contains(MainCharacter);
-        // UE_LOG(LogTemp, Warning, TEXT("Updated Blackboard with CanSeePlayer: %s, CanHearPlayer: %s"),
-        // bCanSeePlayer ? TEXT("true") : TEXT("false"),
-        // bCanHearPlayer ? TEXT("true") : TEXT("false"));
+	const FAISenseID SightID  = UAISense_Sight::StaticClass()->GetDefaultObject<UAISense>()->GetSenseID();
+	const FAISenseID HearID   = UAISense_Hearing::StaticClass()->GetDefaultObject<UAISense>()->GetSenseID();
 
-        BlackboardComp->SetValueAsBool("CanSeePlayer", bCanSeePlayer);
-        BlackboardComp->SetValueAsBool("CanHearPlayer", bCanHearPlayer);
-        // UE_LOG(LogTemp, Warning, TEXT("Blackboard Comp is valid"));
+	for (const FAIStimulus& S : Info.LastSensedStimuli)
+	{
+		if (!S.WasSuccessfullySensed()) continue;
+		if (S.Type == SightID)  { bSee  = true; SightLoc = S.StimulusLocation; }
+		if (S.Type == HearID)   { bHear = true; /* optional: keep S.StimulusLocation for heard */ }
+	}
 
-        if (bCanSeePlayer || bCanHearPlayer)
-        {
-            BlackboardComp->SetValueAsVector("LastKnownPosition", LastKnownPlayerPosition);
-        }
-    }
+	BB->SetValueAsBool(KEY_CanSeePlayer,  bSee);
+	BB->SetValueAsBool(KEY_CanHearPlayer, bHear);
 
-    else
-    {
-        BlackboardComp->SetValueAsBool("CanSeePlayer", false);
-        BlackboardComp->SetValueAsBool("CanHearPlayer", false);        
-    }
+	// Update LKP from sight if we have it (hearing could use a separate key if you want)
+	if (bSee)
+	{
+		BB->SetValueAsVector(KEY_LastKnownPosition, SightLoc);
+	}
 
-    
+	// Speed policy
+	if (UCharacterMovementComponent* Move = Enemy->GetCharacterMovement())
+	{
+		const float Desired = (bSee || bHear) ? Enemy->GetChaseSpeed() : DefaultWalkSpeed;
+		SetWalkSpeedIfChanged(Move, Desired);
+	}
+
+	// In-range check
+	const bool bInRange = IsPlayerWithinRange(MainCharacter.Get(), Enemy);
+	BB->SetValueAsBool(KEY_PlayerWithinAttackRange, bInRange);
 }
 
 void AMyAIController::UpdateNearbyAgents()
@@ -153,4 +185,23 @@ void AMyAIController::UpdateNearbyAgents()
             NearbyAgentLocations.Add(Agent->GetActorLocation());
         }
     }
+}
+
+
+bool AMyAIController::IsPlayerWithinRange(const AMainCharacter* Player, const AEnemyCharacter* Enemy) const
+{
+    if (!Player || !Enemy) return false;
+    const float Range = Enemy->GetAttackRange(); // cm
+    const float DistSq2D = FVector::DistSquared2D(Enemy->GetActorLocation(), Player->GetActorLocation());
+    return DistSq2D <= FMath::Square(Range);
+}
+
+
+void AMyAIController::SetWalkSpeedIfChanged(UCharacterMovementComponent* MoveComp, float Desired)
+{
+	if (!MoveComp) return;
+	if (!FMath::IsNearlyEqual(MoveComp->MaxWalkSpeed, Desired))
+	{
+		MoveComp->MaxWalkSpeed = Desired;
+	}
 }

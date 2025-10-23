@@ -5,6 +5,8 @@
 #include "BehaviorTree/BehaviorTree.h"
 #include "BehaviorTree/BlackboardComponent.h"
 #include "Kismet/GameplayStatics.h"
+#include "EnemyCharacter.h"
+#include "MainCharacter.h"
 #include "MyAIController.h"
 
 
@@ -13,12 +15,17 @@ UBTService_ChasingBehavior::UBTService_ChasingBehavior(const FObjectInitializer&
     // Set the update interval for the behavior
     bNotifyTick = true;
     Interval = 0.5f; // Adjust the interval as needed
+    RandomDeviation = 0.1f;
 
     bNotifyBecomeRelevant = true;
     bNotifyCeaseRelevant = false;
 
     // Filter the blackboard key selectors
     PlayerKey.AddObjectFilter(this, GET_MEMBER_NAME_CHECKED(UBTService_ChasingBehavior, PlayerKey), AActor::StaticClass());
+	LastKnownPositionKey.AddVectorFilter(this, GET_MEMBER_NAME_CHECKED(UBTService_ChasingBehavior, LastKnownPositionKey));
+	CanSeePlayerKey.AddBoolFilter(this, GET_MEMBER_NAME_CHECKED(UBTService_ChasingBehavior, CanSeePlayerKey));
+	CanHearPlayerKey.AddBoolFilter(this, GET_MEMBER_NAME_CHECKED(UBTService_ChasingBehavior, CanHearPlayerKey));
+	PlayerWithinAttackRangeKey.AddBoolFilter(this, GET_MEMBER_NAME_CHECKED(UBTService_ChasingBehavior, PlayerWithinAttackRangeKey));
 }
 
 
@@ -73,6 +80,7 @@ void UBTService_ChasingBehavior::TickNode(UBehaviorTreeComponent& OwnerComp, uin
 }
 
 
+
 // Called when auxiliary node becomes active; this function should be considered as const (doesn't modify state of object) if node is not instanced!
 void UBTService_ChasingBehavior::OnBecomeRelevant(UBehaviorTreeComponent& OwnerComp, uint8* NodeMemory)
 {
@@ -105,17 +113,26 @@ void UBTService_ChasingBehavior::OnBecomeRelevant(UBehaviorTreeComponent& OwnerC
     }
 }
 
+void UBTService_ChasingBehavior::OnCeaseRelevant(UBehaviorTreeComponent& OwnerComp, uint8* NodeMemory)
+{
+	Super::OnCeaseRelevant(OwnerComp, NodeMemory);
+
+	// Clear in-range when service stops to avoid stale "true".
+	if (UBlackboardComponent* BB = OwnerComp.GetBlackboardComponent())
+	{
+		if (PlayerWithinAttackRangeKey.IsSet())
+			BB->ClearValue(PlayerWithinAttackRangeKey.SelectedKeyName);
+		else
+			BB->SetValueAsBool(TEXT("PlayerWithinAttackRange"), false);
+	}
+}
 
 FString UBTService_ChasingBehavior::GetStaticDescription() const
 {
-    // Use FString::Printf to format strings and build the description
-    return FString::Printf(TEXT("%s: '%s'\n%s: '%s'\n%s: '%s'\n%s: '%s'"),
-        TEXT("Player Class"), PlayerClass ? *PlayerClass->GetName() : TEXT("None"),
-        TEXT("PlayerKey"), PlayerKey.IsSet() ? *PlayerKey.SelectedKeyName.ToString() : TEXT("None"),
-        TEXT("LastKnownPositionKey"), LastKnownPositionKey.IsSet() ? *LastKnownPositionKey.SelectedKeyName.ToString() : TEXT("None"),
-        TEXT("CanSeePlayerKey"), CanSeePlayerKey.IsSet() ? *CanSeePlayerKey.SelectedKeyName.ToString() : TEXT("None"),
-        TEXT("CanHearPlayerKey"), CanHearPlayerKey.IsSet() ? *CanHearPlayerKey.SelectedKeyName.ToString() : TEXT("None")
-
-    );
-
+	return FString::Printf(TEXT("%s: '%s'\n%s: '%s'\n%s: '%s'\n%s: '%s'\n%s: '%s'"),
+		TEXT("Player Class"), PlayerClass ? *PlayerClass->GetName() : TEXT("None"),
+		TEXT("PlayerKey"), PlayerKey.IsSet() ? *PlayerKey.SelectedKeyName.ToString() : TEXT("None"),
+		TEXT("LastKnownPositionKey"), LastKnownPositionKey.IsSet() ? *LastKnownPositionKey.SelectedKeyName.ToString() : TEXT("None"),
+		TEXT("CanSeePlayerKey"), CanSeePlayerKey.IsSet() ? *CanSeePlayerKey.SelectedKeyName.ToString() : TEXT("None"),
+		TEXT("CanHearPlayerKey"), CanHearPlayerKey.IsSet() ? *CanHearPlayerKey.SelectedKeyName.ToString() : TEXT("None"));
 }

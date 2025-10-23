@@ -2,11 +2,23 @@
 
 
 #include "EnemyCharacter.h"
-#include "Net/UnrealNetwork.h"
-#include "AI_EnemySpawner.h"
+#include "MyAIController.h"
+#include "BehaviorTree/BlackboardComponent.h"
+#include "Kismet/GameplayStatics.h"
+#include "GameFramework/DamageType.h"
+#include "Animation/AnimInstance.h"
 #include "Components/SphereComponent.h"
-#include "BaseGameMode.h"
+#include "Net/UnrealNetwork.h"
 
+static FORCEINLINE AActor* GetBBTarget(const AAIController* AIC, FName Key)
+{
+    if (!AIC) return nullptr;
+    if (const UBlackboardComponent* BB = AIC->GetBlackboardComponent())
+    {
+        return Cast<AActor>(BB->GetValueAsObject(Key));
+    }
+    return nullptr;
+}
 
 // Sets default values
 AEnemyCharacter::AEnemyCharacter()
@@ -55,11 +67,35 @@ void AEnemyCharacter::Tick(float DeltaTime)
 
 }
 
+
+
 // Called to bind functionality to input
 void AEnemyCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent)
 {
 	Super::SetupPlayerInputComponent(PlayerInputComponent);
 
+}
+
+
+void AEnemyCharacter::Attack()
+{
+    if (bIsDead || !AttackMontage) return;
+
+    const float Now = GetWorld()->GetTimeSeconds();
+    if (Now < NextAttackTime) return;                 // cooldown
+
+    AActor* Target = GetBBTarget(Cast<AAIController>(GetController()), BBKey_Player);
+    if (!Target) return;
+
+    // inline range check (squared to avoid sqrt)
+    if (FVector::DistSquared(GetActorLocation(), Target->GetActorLocation()) > FMath::Square(AttackRange))
+        return;
+
+    bHitAppliedThisSwing = false;                      // new swing
+    NextAttackTime = Now + AttackCooldown;            // set cooldown
+
+    if (UAnimInstance* Anim = GetMesh() ? GetMesh()->GetAnimInstance() : nullptr)
+        Anim->Montage_Play(AttackMontage);
 }
 
 
@@ -81,6 +117,22 @@ AController* EventInstigator, AActor* DamageCauser)
     }
 
     return DamageAmount; // Return the actual damage applied
+}
+
+
+void AEnemyCharacter::AnimNotify_MeleeHit()
+{
+    if (!HasAuthority() || bHitAppliedThisSwing || bIsDead) return;
+
+    AActor* Target = GetBBTarget(Cast<AAIController>(GetController()), BBKey_Player);
+    if (!Target) return;
+
+    if (FVector::DistSquared(GetActorLocation(), Target->GetActorLocation()) > FMath::Square(AttackRange))
+        return;                                       // still in range at hit frame?
+
+    UGameplayStatics::ApplyDamage(Target, AttackDamage, GetController(), this, UDamageType::StaticClass());
+
+    bHitAppliedThisSwing = true; // one hit per swing
 }
 
 

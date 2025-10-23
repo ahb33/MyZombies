@@ -33,24 +33,28 @@ private:
 	FBlackboardKeySelector CanHearPlayerKey;
 
 	UPROPERTY(EditAnywhere, Category = Blackboard)
+	FBlackboardKeySelector PlayerWithinAttackRangeKey;
+
+	UPROPERTY(EditAnywhere, Category = Blackboard)
 	FBlackboardKeySelector PlayerKey;
 
 	UPROPERTY(EditAnywhere, Category = Blackboard)
 	FBlackboardKeySelector LastKnownPositionKey;
-
-	bool bLastCanSeePlayer;
-
+	
 	UPROPERTY(EditAnywhere, Category = Player)
 	TSubclassOf<AActor> PlayerClass;
 
+	bool bLastCanSeePlayer = false;
+
 
 protected:
+
 	// Behavior Tree tick function
 	virtual void TickNode(UBehaviorTreeComponent& OwnerComp, uint8* NodeMemory, float DeltaSeconds) override;
 
 	virtual void OnBecomeRelevant(UBehaviorTreeComponent& OwnerComp, uint8* NodeMemory) override;
+	virtual void OnCeaseRelevant(UBehaviorTreeComponent& OwnerComp, uint8* NodeMemory) override; // WHY: clear stale flags
 
 	virtual FString GetStaticDescription() const override;
-
 
 };
