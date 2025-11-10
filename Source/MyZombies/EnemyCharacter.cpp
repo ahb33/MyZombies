@@ -36,14 +36,11 @@ AEnemyCharacter::AEnemyCharacter()
 // Called when the game starts or when spawned
 void AEnemyCharacter::BeginPlay()
 {
-	Super::BeginPlay();
-	// Ensure AnimInstanceRef is of the type UAI_AnimInstance
-    AnimInstanceRef = Cast<UAI_AnimInstance>(GetMesh()->GetAnimInstance());
-    if (!AnimInstanceRef)
+    Super::BeginPlay();
+    if (HasAuthority())
     {
-        UE_LOG(LogTemp, Warning, TEXT("Animation instance is not of type UAI_AnimInstance!"));
+        BaseHealth = MaxHealth;              
     }
-	
 }
 
 void AEnemyCharacter::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
@@ -76,62 +73,69 @@ void AEnemyCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputComp
 
 }
 
-
 void AEnemyCharacter::Attack()
 {
-    if (bIsDead || !AttackMontage) return;
+    if (bIsDead || !AttackMontage)
+    {
+        UE_LOG(LogTemp, Warning, TEXT("Attack Montage not valid"));
+    }
 
+    UE_LOG(LogTemp, Warning, TEXT("Enemy Attacking called"));
     const float Now = GetWorld()->GetTimeSeconds();
-    if (Now < NextAttackTime) return;                 // cooldown
+    if (Now < NextAttackTime) return;// cooldown
 
-    AActor* Target = GetBBTarget(Cast<AAIController>(GetController()), BBKey_Player);
-    if (!Target) return;
+    // (Optional) also ensure we're still in range before starting
+    if (AActor* Target = GetBBTarget(Cast<AAIController>(GetController()), BBKey_Player))
+    {
+        if (FVector::DistSquared(GetActorLocation(), Target->GetActorLocation()) >
+            FMath::Square(AttackRange)) return;
+    }
 
-    // inline range check (squared to avoid sqrt)
-    if (FVector::DistSquared(GetActorLocation(), Target->GetActorLocation()) > FMath::Square(AttackRange))
-        return;
+    bHitAppliedThisSwing = false;
+    NextAttackTime = Now + AttackCooldown;
 
-    bHitAppliedThisSwing = false;                      // new swing
-    NextAttackTime = Now + AttackCooldown;            // set cooldown
-
-    if (UAnimInstance* Anim = GetMesh() ? GetMesh()->GetAnimInstance() : nullptr)
+    if (UAnimInstance* Anim = GetMesh()->GetAnimInstance())
+    {
+        UE_LOG(LogTemp, Warning, TEXT("Anim Montage called"));
         Anim->Montage_Play(AttackMontage);
+        // randomize which strike plays
+        static const FName Sections[] = { TEXT("StrikeLeft"), TEXT("StrikeRight") };
+        Anim->Montage_JumpToSection(Sections[FMath::RandBool()], AttackMontage);
+    }
 }
-
 
 float AEnemyCharacter::TakeDamage(float DamageAmount, FDamageEvent const& DamageEvent,
 AController* EventInstigator, AActor* DamageCauser)
 {
-    if (HasAuthority()) // Ensure damage is processed only on the server
-    {
-        UE_LOG(LogTemp, Warning, TEXT("Enemy %s took damage: %f"), *GetName(), DamageAmount);
-        BaseHealth -= DamageAmount;
-        UE_LOG(LogTemp, Warning, TEXT("Enemy BaseHealth is now: %f"), BaseHealth);
+    if(!HasAuthority() || bIsDead) return 0.f;
+    BaseHealth = FMath::Clamp(BaseHealth - DamageAmount, 0.f, MaxHealth);
 
-        if (BaseHealth <= 0.f && !bIsDead)
-        {
-            bIsDead = true; // replicated flag
-            OnRep_IsDead(); // play immediately on server, clients get OnRep callback
-            GetWorld()->GetTimerManager().SetTimer(DestructionTimer, this, &AEnemyCharacter::Die, 1.0f, false);
-        }
+    UE_LOG(LogTemp, Warning, TEXT("Enemy BaseHealth is now: %f"), BaseHealth);
+
+    if(BaseHealth <= 0.f && !bIsDead) 
+    { 
+        bIsDead = true; OnRep_IsDead(); 
+        GetWorld()->GetTimerManager().SetTimer(DestructionTimer, this, &AEnemyCharacter::Die, 1.0f, false);
     }
-
-    return DamageAmount; // Return the actual damage applied
+    OnRep_Health();
+    return DamageAmount;
 }
 
 
 void AEnemyCharacter::AnimNotify_MeleeHit()
 {
+    // Single-frame contact (upgrade to AnimNotifyState for a window later)
     if (!HasAuthority() || bHitAppliedThisSwing || bIsDead) return;
 
-    AActor* Target = GetBBTarget(Cast<AAIController>(GetController()), BBKey_Player);
+    AAIController* AIC = Cast<AAIController>(GetController());
+    AActor* Target = GetBBTarget(AIC, BBKey_Player);
     if (!Target) return;
 
-    if (FVector::DistSquared(GetActorLocation(), Target->GetActorLocation()) > FMath::Square(AttackRange))
-        return;                                       // still in range at hit frame?
+    // Re-validate range at the contact frame
+    const float DistSq2D = FVector::DistSquared2D(GetActorLocation(), Target->GetActorLocation());
+    if (DistSq2D > FMath::Square(AttackRange)) return;
 
     UGameplayStatics::ApplyDamage(Target, AttackDamage, GetController(), this, UDamageType::StaticClass());
-
     bHitAppliedThisSwing = true; // one hit per swing
 }
 
@@ -169,14 +173,13 @@ void AEnemyCharacter::ApplyCharacterStats()
 {
     // Clean, consistent application of character stats
     // apply character stats for speed and so on
+    if (!HasAuthority()) return;
     if (GetCharacterMovement())
     {
         GetCharacterMovement()->MaxWalkSpeed *= CharacterStats.SpeedMultiplier;
     }
-    BaseHealth *= CharacterStats.HealthMultiplier;
-    BaseDamage *= CharacterStats.DamageMultiplier;
-
-    UE_LOG(LogTemp, Log, TEXT("Character stats applied: Health = %f, Speed = %f, Damage = %f"), 
-    BaseHealth, GetCharacterMovement()->MaxWalkSpeed, BaseDamage);
+    MaxHealth = FMath::Max(1.f, MaxHealth * CharacterStats.HealthMultiplier);
+    AttackDamage *= CharacterStats.DamageMultiplier;
+    BaseHealth = MaxHealth; // reset current to new max once
 }
 

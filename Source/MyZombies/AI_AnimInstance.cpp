@@ -62,7 +62,7 @@ void UAI_AnimInstance::NativeUpdateAnimation(float DeltaTime)
         if (UBlackboardComponent* BB = AIC->GetBlackboardComponent())
         {
             SetPlayerVisibility(BB->GetValueAsBool(TEXT("CanSeePlayer")));
-            SetPlayerAttackRange(BB->GetValueAsBool(TEXT("PlayerWithinAttackRange")));
+            SetPlayerAttackRange(BB->GetValueAsBool(TEXT("PlayerWithinRange")));
         }
     }
 }

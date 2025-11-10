@@ -10,6 +10,7 @@
 #include "MyPlayerController.h" 
 #include "Particles/ParticleSystemComponent.h"
 #include "Sound/SoundCue.h"
+#include "Perception/AISense_Hearing.h"
 #include "Kismet/GameplayStatics.h"            
 #include "Net/UnrealNetwork.h"                
 
@@ -144,6 +145,21 @@ void AWeapon::Fire(const FVector& HitTargetParam)
     }
     
     RoundFired();
+
+    FVector NoiseLocation = GetActorLocation(); // or muzzle socket
+    AActor* NoiseInstigator = Cast<AActor>(GetOwner());
+    const float Loudness = 1.5f;   // tweak per weapon
+    const float MaxRange = 3000.f; // cm
+    const FName Tag = TEXT("Gunfire");
+
+    UAISense_Hearing::ReportNoiseEvent(
+        GetWorld(),
+        NoiseLocation,
+        Loudness,
+        NoiseInstigator,
+        MaxRange,
+        Tag
+    );
 }
 
 void AWeapon::DealDamage(const FHitResult &HitResult)

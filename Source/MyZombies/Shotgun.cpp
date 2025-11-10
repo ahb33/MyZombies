@@ -22,26 +22,53 @@ void AShotgun::Fire(const FVector& HitTarget)
 
     const FVector Start = MuzzleSock->GetSocketLocation(GetWeaponMesh());
 
-    FVector AimDir = (HitTarget - Start).GetSafeNormal();
-    if (AimDir.IsNearlyZero()) AimDir = GetActorForwardVector();
+    // 1) Use your existing scatter builder
+    TArray<FVector_NetQuantize> PelletTargets;
+    WeaponTraceWithScatter(HitTarget, PelletTargets);
 
-    const float Range   = GetMaxTraceDistance();
-    const float ConeRad = FMath::DegreesToRadians(FMath::Max(ScatterAngle, 0.1f));
-    FRandomStream Stream(FMath::Rand());
+    // limit damage to 1 pellet
+    const float PelletDamage = GetDamage() / FMath::Max(1, NumPellets);
 
-    for (int32 i = 0; i < NumPellets; ++i)
+    // Choose one pellet (closest hit or first miss) to drive FX
+    FHitResult BestHR; 
+    bool bHaveBest = false;
+    FVector VisualEnd = Start;
+
+    for (const FVector_NetQuantize& T : PelletTargets)
     {
-        const FVector Dir = Stream.VRandCone(AimDir, ConeRad);
-        const FVector End = Start + Dir * Range;
+        const FVector End = FVector(T);
 
         FHitResult HR;
         const bool bHit = HitScanTrace(Start, End, HR);
-        if (HasAuthority() && bHit) DealDamage(HR);
+
+        if (HasAuthority() && bHit)
+        {
+            if (AActor* HitActor = HR.GetActor())
+            {
+                UGameplayStatics::ApplyDamage(
+                    HitActor, PelletDamage,
+                    GetOwner() ? GetOwner()->GetInstigatorController() : nullptr,
+                    this, UDamageType::StaticClass());
+            }
+        }
+
+        // Pick best visual ray (prefer a real impact)
+        if (bHit)
+        {
+            const float DistSq = FVector::DistSquared(Start, HR.ImpactPoint);
+            if (!bHaveBest || DistSq < FVector::DistSquared(Start, VisualEnd))
+            {
+                BestHR = HR; bHaveBest = true; VisualEnd = HR.ImpactPoint;
+            }
+        }
+        else if (!bHaveBest)
+        {
+            VisualEnd = End; // fallback if nothing hits
+        }
     }
 
-    // AWeapon::PlayFireEffects(FHitResult{});
+    AWeapon::PlayFireEffects(bHaveBest ? BestHR : FHitResult{}, Start, VisualEnd);
 }
-
 void AShotgun::WeaponTraceWithScatter(const FVector& HitTarget, TArray<FVector_NetQuantize>& OutTargets)
 {
     if (!GetWeaponMesh()) return;

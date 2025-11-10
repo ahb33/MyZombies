@@ -18,12 +18,12 @@ const FName AMyAIController::KEY_CanSeePlayer(TEXT("CanSeePlayer"));
 const FName AMyAIController::KEY_CanHearPlayer(TEXT("CanHearPlayer"));
 const FName AMyAIController::KEY_Player(TEXT("Player"));
 const FName AMyAIController::KEY_LastKnownPosition(TEXT("LastKnownPosition"));
-const FName AMyAIController::KEY_PlayerWithinAttackRange(TEXT("PlayerWithinAttackRange"));
+const FName AMyAIController::KEY_PlayerWithinRange(TEXT("PlayerWithinRange"));
 
 AMyAIController::AMyAIController()
 {
     // Create AI Perception component as well as Sight configuration
-    MyPerceptionComponent = CreateDefaultSubobject<UAIPerceptionComponent>(TEXT("MyPerceptionComponent"));
+    MyPerceptionComponent = CreateDefaultSubobject<UAIPerceptionComponent>(TEXT("PerceptionComponent"));
     SightConfig = CreateDefaultSubobject<UAISenseConfig_Sight>(TEXT("SightConfig"));
     HearingConfig = CreateDefaultSubobject<UAISenseConfig_Hearing>(TEXT("HearingConfig"));
 
@@ -88,7 +88,7 @@ void AMyAIController::OnPossess(APawn* InPawn)
 				// Initialize BB to safe defaults (prevents stale state on level start).
 				OutBB->SetValueAsBool(KEY_CanSeePlayer, false);
 				OutBB->SetValueAsBool(KEY_CanHearPlayer, false);
-				OutBB->SetValueAsBool(KEY_PlayerWithinAttackRange, false);
+				OutBB->SetValueAsBool(KEY_PlayerWithinRange, false);
 				OutBB->SetValueAsVector(KEY_LastKnownPosition, FVector::ZeroVector);
 
 				// Resolve player once at start; will also be ensured on perception updates.
@@ -168,7 +168,15 @@ void AMyAIController::OnTargetPerceptionUpdate(AActor* Actor, FAIStimulus Stimul
 
 	// In-range check
 	const bool bInRange = IsPlayerWithinRange(MainCharacter.Get(), Enemy);
-	BB->SetValueAsBool(KEY_PlayerWithinAttackRange, bInRange);
+	const bool prev = BB->GetValueAsBool(KEY_PlayerWithinRange);
+
+	
+	if (prev != bInRange)
+	{
+		BB->SetValueAsBool(KEY_PlayerWithinRange, bInRange);
+		UE_LOG(LogTemp, Warning, TEXT("PlayerWithinRange -> %s"), bInRange ? TEXT("true") : TEXT("false"));
+	}
+
 }
 
 void AMyAIController::UpdateNearbyAgents()

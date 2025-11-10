@@ -41,11 +41,9 @@ private:
 	UPROPERTY(VisibleAnywhere, Category = Item)
 	class UStaticMeshComponent* PickUpMesh;
 
-
 	//unlike in weapon class we cant overslap sphere 
 	UPROPERTY(EditAnywhere, Category = Item)
 	class USphereComponent* ItemOverlapSphere;
-
 
 	UPROPERTY(EditAnywhere, Category = Item)
 	class UWidgetComponent* PickUpWidget;

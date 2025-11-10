@@ -52,10 +52,6 @@ void UBTService_ChasingBehavior::TickNode(UBehaviorTreeComponent& OwnerComp, uin
 
     // Retrieve CanSeePlayer value from blckboard
     bool bCanSeePlayer = BlackboardComp->GetValueAsBool("CanSeePlayer"); // Make sure the key string matches
-    // UE_LOG(LogTemp, Warning, TEXT("bCanSeePlayer retrieved as %s"), bCanSeePlayer ? TEXT("true") : TEXT("false"));
-    
-    // // Retrieve CanHearPlayer value from blckboard
-    // bool bCanHearPlayer = BlackboardComp->GetValueAsBool(CanHearPlayerKey.SelectedKeyName);
 
     bool bCanHearPlayer = BlackboardComp->GetValueAsBool("CanHearPlayer");
 

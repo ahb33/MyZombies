@@ -65,7 +65,7 @@ private:
 	static const FName KEY_CanHearPlayer;
 	static const FName KEY_Player;
 	static const FName KEY_LastKnownPosition;
-	static const FName KEY_PlayerWithinAttackRange;
+	static const FName KEY_PlayerWithinRange;
 
 	// Helpers
 	static void SetWalkSpeedIfChanged(UCharacterMovementComponent* MoveComp, float Desired);
