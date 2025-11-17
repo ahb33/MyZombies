@@ -5,43 +5,18 @@
 #include "MainCharacter.h"
 #include "Weapon.h"
 
-void AAmmoPickUp::OnSphereBeginOverlap(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor,
-	UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult)
+
+bool AAmmoPickUp::TryConsume(APawn* ByPawn)
 {
-    /*
-    Create pointer to Weapon class
-    Construct variable that is pointer to MainCharacter and cast OtherActor from Sphere begin overlap
-    Check if MainCharacter is valid
-    Construct myWeapon variable that is pointer to Weapon class and call GetPrimaryWeapon within MainCharacter
-    Check if myWeapon is valid
+	if (!HasAuthority()) return false;
+	AMainCharacter* MC = Cast<AMainCharacter>(ByPawn);
+	if (!MC) return false;
 
-    */
+	if (AmmoAmount <= 0) AmmoAmount = GetAmmoAmountForWeaponType();
 
-    MainCharacter = Cast<AMainCharacter>(OtherActor);
-    if(MainCharacter)
-    {
-        // myWeapon = MainCharacter->GetEquippedWeapon();
-        // if (myWeapon)
-        // {
-            
-        //     // myWeapon->PickUpAmmo(WeaponType, AmmoAmount);
-        // }
+	const bool bAdded = MC->AddAmmoFromPickup(WeaponType, AmmoAmount); // why: polymorphic sink; wire to component/weapon
+	if (!bAdded) return false;
 
-    }
-
-    Destroy();
-
-}
-
-int32 AAmmoPickUp::GetAmmoAmountForWeaponType( )
-{
-	switch (WeaponType)
-	{
-	case EWeaponType::AssaultRifle:
-		return 50; // example amount for Assault Rifle
-	case EWeaponType::Shotgun:
-		return 8;  // example amount for Shotgun
-	default:
-		return 0;
-	}
+	Destroy();
+	return true;
 }

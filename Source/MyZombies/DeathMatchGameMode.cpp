@@ -10,13 +10,14 @@ ADeathMatchGameMode::ADeathMatchGameMode()
 {
     PlayerStateClass = ADeathMatchPlayerState::StaticClass();  // per-player stats
     GameStateClass   = ADeathMatchGameState::StaticClass();    // shared match state
+    GameStateClass = ABaseGameState::StaticClass();
 }
 
 
 void ADeathMatchGameMode::BeginPlay()
 {
     Super::BeginPlay();
-    UE_LOG(LogTemp, Warning, TEXT("ADeathMatchGameMode started"));
+    if (auto* GS = GetGameState<ABaseGameState>()) GS->SetMatchMode(EMatchMode::Deathmatch);
 }
 
 void ADeathMatchGameMode::OnMatchStart()

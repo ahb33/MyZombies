@@ -8,13 +8,13 @@
 #include "Net/UnrealNetwork.h"
 #include "CombatComponent.h"
 #include "Weapon.h"
-#include "PickUp.h"           // or HealthPickUp.h if only health
-#include "MyPlayerController.h"
-#include "MyHUD.h"
 #include "HealthPickUp.h"
 #include "Animation/AnimInstance.h"
 #include "Kismet/KismetMathLibrary.h"
 #include "MyGameInstance.h"
+#include "ZombiesGameMode.h"
+#include "BaseGameState.h"
+#include "MyPlayerController.h"
 #include "WeaponTypes.h"
 
 // redo initializer list
@@ -23,6 +23,7 @@ AMainCharacter::AMainCharacter()
     FollowCamera(CreateDefaultSubobject<UCameraComponent>(TEXT("FollowCamera"))),
     combatComponent(CreateDefaultSubobject<UCombatComponent>(TEXT("ComponentComponent")))
 {
+    bReplicates = true;
     PrimaryActorTick.bCanEverTick = true;
 
     // Attach the camera boom to the mesh to allow it to follow the character's movements (e.g., crouching)
@@ -38,6 +39,7 @@ AMainCharacter::AMainCharacter()
     bUseControllerRotationYaw = false; // Let the character movement handle rotation
     GetCharacterMovement()->bOrientRotationToMovement = true; // Character moves in the direction of input
     GetCharacterMovement()->NavAgentProps.bCanCrouch = true; // Enable crouching
+    CharacterTags.AddTag(FGameplayTag::RequestGameplayTag("Faction.Player"));
 
 }
 
@@ -57,10 +59,6 @@ void AMainCharacter::BeginPlay()
         {
             MyGameHUD->AddCharacterStats();
         }
-    }
-    else
-    {
-        UE_LOG(LogTemp, Warning, TEXT("Failed to initialize MyPlayerController"));
     }
 }
 
@@ -100,6 +98,7 @@ void AMainCharacter::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLi
     DOREPLIFETIME_CONDITION(AMainCharacter, OverlappingWeapon, COND_OwnerOnly);
 
     DOREPLIFETIME(AMainCharacter, PlayerHealth);
+    DOREPLIFETIME(AMainCharacter, CharacterTags);
 }
 
 // Called every frame
@@ -122,7 +121,6 @@ void AMainCharacter::InitValues()
             MyGameHUD = Cast<AMyHUD>(MyPlayerController->GetHUD());
             if (MyGameHUD)
             {
-                UE_LOG(LogTemp, Warning, TEXT("MyGameHUD is valid"));
                 MyGameHUD->AddCharacterStats();
             }
         }
@@ -250,37 +248,65 @@ void AMainCharacter::SetOverlappingItem(APickUp* PickUp)
 	{
 		OverlappingItem->ShowPickUpWidget(false);
 	}
-
+    
 	OverlappingItem = PickUp;
-
-	if(IsLocallyControlled())
+    
+	if (IsLocallyControlled() && OverlappingItem)
 	{
-		if (PickUp)
-		{
-			PickUp->ShowPickUpWidget(true);
-
-			pickUpHealth = Cast<AHealthPickUp>(PickUp); // Assign the value to the member variable
-		}
+        UE_LOG(LogTemp, Warning, TEXT("SetOverlapping Item Sucessful"));
+		OverlappingItem->ShowPickUpWidget(true);
 	}
-
 }
 
-
+bool AMainCharacter::AddAmmoFromPickup_Implementation(EWeaponType WeaponType, int32 Amount)
+{
+    return false;
+}
 
 void AMainCharacter::PickUpButtonPressed()
 {
-	if (pickUpHealth)
+    if (!OverlappingItem) 
+    {
+        UE_LOG(LogTemp, Warning, TEXT("pickup attempted- overlapping item not valid"));
+        return;
+    }
+
+
+    // why: authoritative consume; single path
+    Server_TryPickup(OverlappingItem);
+}
+
+void AMainCharacter::Server_TryPickup_Implementation(APickUp* Pickup)
+{
+    if (!Pickup) return;
+
+    
+    if (!Pickup->IsOverlappingActor(this)) return;
+
+    if (Pickup->TryConsume(this))
+    {
+        OverlappingItem = nullptr; // stop showing prompts after consume
+    }
+}
+
+void AMainCharacter::SetHealth(float NewValue)
+{
+	const float Clamped = FMath::Clamp(NewValue, 0.f, MaxHealth);
+
+	if (HasAuthority())
 	{
-		UE_LOG(LogTemp, Warning, TEXT("Calling AddHealth on pickUpHealth"));
-		pickUpHealth->AddHealth(PlayerHealth, MaxHealth);
-		pickUpHealth = nullptr; // Set the pickup reference to null
+		PlayerHealth = Clamped;
+		OnRep_Health(); // update server HUD immediately
 	}
 	else
-
 	{
-		UE_LOG(LogTemp, Warning, TEXT("No overlapping health pickup"));
+		Server_SetHealth(Clamped);
 	}
+}
 
+void AMainCharacter::Server_SetHealth_Implementation(float NewValue)
+{
+	SetHealth(NewValue);
 }
 
 void AMainCharacter::ZoomButtonPressed()
@@ -351,42 +377,36 @@ bool AMainCharacter::IsAiming() const
 void AMainCharacter::PlayFireMontage(bool bAiming)
 {
 
-    UAnimInstance* AnimInstance = GetMesh()->GetAnimInstance();
-    if (AnimInstance && FireMontage)
+    if (UAnimInstance* AnimInstance = GetMesh()->GetAnimInstance())
     {
-        FName SectionName = bAiming ? FName("FireIronSight") : FName("RifleHip");
-        AnimInstance->Montage_JumpToSection(SectionName);
+        if (FireMontage)
+        {
+            const FName SectionName = bAiming ? FName("FireIronSight") : FName("RifleHip");
+            AnimInstance->Montage_JumpToSection(SectionName);
+        }
     }
 }
 
 void AMainCharacter::PlayReloadMontage()
 {
-	
-	UAnimInstance* AnimInstance = GetMesh()->GetAnimInstance();
-	if(AnimInstance && ReloadMontage)
-	{	
-		UE_LOG(LogTemp, Warning, TEXT("AnimInstance And ReloadMontage correct") );
-		AnimInstance->Montage_Play(ReloadMontage);
-		FName SectionName;
-
-        EWeaponType WeaponType = GetEquippedWeapon()->GetWeaponType();
-        switch (WeaponType)
+    if (UAnimInstance* AnimInstance = GetMesh()->GetAnimInstance())
+    {
+        if (ReloadMontage)
         {
-            case EWeaponType::AssaultRifle:
-                UE_LOG(LogTemp, Warning, TEXT("Assault Rifle enum called"));
-                SectionName = FName("Rifle");
-                break;
-            case EWeaponType::Shotgun:
-                SectionName = FName("Shotgun");
-                break;
-            // Add cases for other weapon types
-            default:
-                UE_LOG(LogTemp, Error, TEXT("Unknown Weapon Type: %d"), static_cast<int32>(WeaponType));
-                return; // Early exit to avoid calling with an invalid SectionName
-        }
+            UE_LOG(LogTemp, Warning, TEXT("AnimInstance And ReloadMontage correct"));
+            AnimInstance->Montage_Play(ReloadMontage);
+            FName SectionName;
 
-        AnimInstance->Montage_JumpToSection(SectionName);
-	}
+            EWeaponType WeaponType = GetEquippedWeapon()->GetWeaponType();
+            switch (WeaponType)
+            {
+                case EWeaponType::AssaultRifle: UE_LOG(LogTemp, Warning, TEXT("Assault Rifle enum called")); SectionName = FName("Rifle"); break;
+                case EWeaponType::Shotgun:      SectionName = FName("Shotgun"); break;
+                default: UE_LOG(LogTemp, Error, TEXT("Unknown Weapon Type: %d"), static_cast<int32>(WeaponType)); return;
+            }
+            AnimInstance->Montage_JumpToSection(SectionName);
+        }
+    }
 }
 
 
@@ -415,13 +435,10 @@ void AMainCharacter::CrouchButtonPressed()
 // Aim Offset Functions
 void AMainCharacter::AimOffset(float DeltaTime)
 {
-
-
-    FVector velocity = GetVelocity();
+    const FVector velocity = GetVelocity();
     FVector lateralSpeed = FVector(velocity.X, velocity.Y, 0.f);
-    float movementSpeed = lateralSpeed.Size();
-
-    bool bIsInAir = GetCharacterMovement()->IsFalling();
+    const float movementSpeed = lateralSpeed.Size();
+    const bool bIsInAir = GetCharacterMovement()->IsFalling();
 
     if (movementSpeed == 0.f && !bIsInAir)
     {
@@ -467,10 +484,13 @@ void AMainCharacter::TurnInPlace(float DeltaTime)
 
 void AMainCharacter::OnRep_Health()
 {
-    if (MyPlayerController)
-    {
-        MyPlayerController->SetHUDHealth(PlayerHealth, MaxHealth);
-    }
+	if (APlayerController* PC = Cast<APlayerController>(Controller))
+	{
+		if (AMyPlayerController* MPC = Cast<AMyPlayerController>(PC))
+		{
+			MPC->SetHUDHealth(PlayerHealth, MaxHealth);
+		}
+	}
 }
 
 ECombatState AMainCharacter::GetCharacterCombatState() const
@@ -487,56 +507,76 @@ FVector AMainCharacter::GetHitTarget() const
 	// return combatComponent->GetLocalHitTarget();
 }
 
-float AMainCharacter::TakeDamage(float DamageAmount, FDamageEvent const& DamageEvent,
-AController* EventInstigator, AActor* DamageCauser)
+static bool IsZombiesMode(const UWorld* W){
+  if (const auto* GS = W ? W->GetGameState<ABaseGameState>() : nullptr) return GS->GetMatchMode()==EMatchMode::Zombies;
+  return false;
+}
+
+static bool IsZombiePawn(const APawn* P)
 {
-    float AppliedDamage = 0.f;
-
-    if (HasAuthority()) // Ensure damage is processed only on the server
+    // Swap this to your GameplayTags check when ready.
+    return P && P->ActorHasTag(TEXT("Zombie"));
+}
+static const APawn* ResolveKillerPawn(AController* Inst, AActor* Causer)
+{
+    if (Inst && Inst->GetPawn()) return Inst->GetPawn();
+    if (Causer)
     {
-        if (MyGameInstanceRef && MyGameInstanceRef->GetSelectedGameMode() == "Zombies")
-        {
-            if (EventInstigator)
-            {
-                APawn* InstigatorPawn = EventInstigator->GetPawn();
+        if (APawn* P = Causer->GetInstigator()) return P;                 // projectile/weapon path
+        if (AController* C = Causer->GetInstigatorController()) return C->GetPawn();
+    }
+    return nullptr;
+}
 
-                if (Cast<AMainCharacter>(InstigatorPawn))
-                {
-                    // Another player caused this in Zombies → ignore
-                    return 0.f;
-                }
-            }
-        }
+// TakeDamage(Server)
+float AMainCharacter::TakeDamage(float DamageAmount, const FDamageEvent& DamageEvent, AController* EventInstigator, AActor* DamageCauser)
+{
+    if (!HasAuthority()) return 0.f;
 
-        // Actually apply the damage
-        UE_LOG(LogTemp, Warning, TEXT("MainCharacter %s took damage: %f"), *GetName(), DamageAmount);
-        PlayerHealth -= DamageAmount;
-        AppliedDamage = DamageAmount;
+    const APawn* Killer = ResolveKillerPawn(EventInstigator, DamageCauser);
 
-        UE_LOG(LogTemp, Warning, TEXT("Main Character Health is now: %f"), PlayerHealth);
-
-        if (PlayerHealth <= 0.0f)
-        {
-            GetWorld()->GetTimerManager().SetTimer(DestructionTimer, this, &AMainCharacter::Die, 1.0f, false);
-        }
+    if (IsZombiesMode(GetWorld()))
+    {
+        if (!IsZombiePawn(Killer)) return 0.f;                 // only zombies can hurt you
+    }
+    else // Deathmatch
+    {
+        const bool bFromPlayer = Killer && Killer->IsPlayerControlled();  // <-- correct call
+        if (!bFromPlayer) return 0.f;                                     // reject AI/env in DM
     }
 
-    return AppliedDamage; 
+    const float Applied = Super::TakeDamage(DamageAmount, DamageEvent, EventInstigator, DamageCauser);
+
+    // health update using your variables
+    PlayerHealth = FMath::Clamp(PlayerHealth - Applied, 0.f, MaxHealth);
+    if (PlayerHealth <= 0.f) Die();
+
+    return Applied;
 }
+
+
 
 void AMainCharacter::Die()
 {
-    if(HasAuthority())
-    {
-        Destroy();
-        if (OnMainCharacterDeath.IsBound())
-        {
-            OnMainCharacterDeath.Broadcast();
-        }
-        else
-        {
-            UE_LOG(LogTemp, Warning, TEXT("OnMainCharacterDeath not bound for %s"), *GetName());
-        }
-    }
+    // Forward to server if called on a client.
+	if (!HasAuthority())
+	{
+		ServerDie();
+		return;
+	}
+
+    if (OnMainCharacterDeath.IsBound()) OnMainCharacterDeath.Broadcast();
+    else UE_LOG(LogTemp, Warning, TEXT("OnMainCharacterDeath not bound for %s"), *GetName());
+
+    if (IsZombiesMode(GetWorld()))
+        if (AMyPlayerController* PC = Cast<AMyPlayerController>(Controller))
+            PC->Client_ShowDeathScreen();
+
+    Destroy();
+}
+
+void AMainCharacter::ServerDie_Implementation()
+{
+	Die();
 }
 

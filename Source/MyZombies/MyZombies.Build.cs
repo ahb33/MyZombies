@@ -8,7 +8,7 @@ public class MyZombies : ModuleRules
 	{
 		PCHUsage = PCHUsageMode.UseExplicitOrSharedPCHs;
 
-		PublicDependencyModuleNames.AddRange(new string[] { "Core", "CoreUObject", "Engine", "InputCore", "UMG" , "GameplayTasks", "AIModule", "Niagara", "NavigationSystem", "MultiplayerPlugin", "OnlineSubsystem", "OnlineSubsystemSteam", "Sockets"});
+		PublicDependencyModuleNames.AddRange(new string[] { "Core", "CoreUObject", "Engine", "InputCore", "UMG" ,  "GameplayTags",  "GameplayTasks", "AIModule", "Niagara", "NavigationSystem", "MultiplayerPlugin", "OnlineSubsystem", "OnlineSubsystemSteam", "Sockets"});
 	
 		PrivateDependencyModuleNames.AddRange(new string[] { });
 	}

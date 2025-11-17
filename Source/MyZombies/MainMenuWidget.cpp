@@ -21,6 +21,7 @@ void UMainMenuWidget::MenuSetup()
 
     UE_LOG(LogTemp, Warning, TEXT("MainMenu constructor called"));
     
+    
     BindButtonEvents();
 }
 

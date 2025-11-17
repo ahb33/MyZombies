@@ -4,10 +4,10 @@
 #include "MyPlayerController.h"
 #include "MyHUD.h"
 #include "LobbyPlayerState.h"
-#include "LobbyMenuWidget.h"
 #include "Net/UnrealNetwork.h"
 #include "Blueprint/UserWidget.h"
-#include "WBP_ReadyButtonWidget.h"
+#include "ReadyButtonWidget.h"
+#include "YouDiedMenuWidget.h"
 #include "CharacterStats.h"
 #include "KillDeathStats.h"
 #include "Blueprint/UserWidget.h"
@@ -23,7 +23,7 @@ void AMyPlayerController::BeginPlay()
     const FString MapName = GetWorld()->GetMapName();
     if (MapName.Contains("LobbyLevel") && ReadyButtonWidgetClass)
     {
-        ReadyButtonWidgetInstance = CreateWidget<UWBP_ReadyButtonWidget>(this, ReadyButtonWidgetClass);
+        ReadyButtonWidgetInstance = CreateWidget<UReadyButtonWidget>(this, ReadyButtonWidgetClass);
         if (ReadyButtonWidgetInstance)
         {
             UE_LOG(LogTemp, Warning, TEXT("Adding Ready Button to viewport"));
@@ -47,6 +47,7 @@ void AMyPlayerController::HandleReadyInput()
 {
     Server_SetPlayerReady();
 }
+
 
 void AMyPlayerController::TravelToLobby_Implementation()
 {
@@ -117,4 +118,23 @@ AMyHUD* AMyPlayerController::GetMyHUD()
         MyPlayerHUD = Cast<AMyHUD>(GetHUD());
     }
     return MyPlayerHUD;
+}
+
+
+void AMyPlayerController::Client_ShowDeathScreen_Implementation()
+{
+
+}
+
+
+void AMyPlayerController::RequestRestartLevel()
+{
+	// const FName LevelName(*UGameplayStatics::GetCurrentLevelName(this, true));
+	// UGameplayStatics::OpenLevel(this, ZombieLevel);
+}
+
+void AMyPlayerController::GoToMainMenu()
+{
+	// static const FName MainMenuLevel(TEXT("MainMenu_Level"));
+	// UGameplayStatics::OpenLevel(this, MainMenuLevel);
 }

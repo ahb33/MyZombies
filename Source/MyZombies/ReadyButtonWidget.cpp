@@ -1,19 +1,19 @@
 // Fill out your copyright notice in the Description page of Project Settings.
 
 
-#include "WBP_ReadyButtonWidget.h"
+#include "ReadyButtonWidget.h"
 #include "Components/Button.h"
 #include "MyPlayerController.h"
 
-void UWBP_ReadyButtonWidget::NativeConstruct()
+void UReadyButtonWidget::NativeConstruct()
 {
     if (ReadyButton)
     {
-        ReadyButton->OnClicked.AddDynamic(this, &UWBP_ReadyButtonWidget::OnClicked);
+        ReadyButton->OnClicked.AddDynamic(this, &UReadyButtonWidget::OnClicked);
     }
 }
 
-void UWBP_ReadyButtonWidget::OnClicked()
+void UReadyButtonWidget::OnClicked()
 {
     if (AMyPlayerController* PC = Cast<AMyPlayerController>(GetOwningPlayer()))
     {

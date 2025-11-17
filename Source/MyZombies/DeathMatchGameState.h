@@ -4,6 +4,7 @@
 
 #include "CoreMinimal.h"
 #include "GameFramework/GameState.h"
+#include "BaseGameState.h"
 #include "DeathMatchGameState.generated.h"
 
 /**
@@ -17,7 +18,7 @@ enum class EMatchPhase : uint8 {
 };
 
 UCLASS()
-class MYZOMBIES_API ADeathMatchGameState : public AGameStateBase
+class MYZOMBIES_API ADeathMatchGameState : public ABaseGameState
 {
     GENERATED_BODY()
 

@@ -8,6 +8,7 @@
 #include "BehaviorTree/BehaviorTree.h"
 #include "AICharacterStats.h"
 #include "AI_AnimInstance.h"
+#include "GameplayTagContainer.h"
 #include "EnemyCharacter.generated.h"
 
 
@@ -97,6 +98,9 @@ private:
 
 	// AI Character stats for configuring properties in the editor
     FAICharacterStats CharacterStats;
+
+	UPROPERTY(Replicated, VisibleAnywhere, Category="Tags", meta=(AllowPrivateAccess="true"))
+	FGameplayTagContainer CharacterTags;
 
 protected:
 

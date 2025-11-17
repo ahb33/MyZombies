@@ -16,7 +16,8 @@
 class AMyHUD;
 class ULobbyMenuWidget;
 class UUserWidget;
-class UWBP_ReadyButtonWidget;
+class UReadyButtonWidget;
+class UYouDiedMenuWidget;
 
 UCLASS()
 class MYZOMBIES_API AMyPlayerController : public APlayerController
@@ -26,38 +27,57 @@ class MYZOMBIES_API AMyPlayerController : public APlayerController
 public:
 	AMyPlayerController();
 
-	// --- Core overrides ---
+protected:
+	// Lifecycle
 	virtual void BeginPlay() override;
 	virtual void SetupInputComponent() override;
 
-	// --- HUD Update Functions ---
+public:
+	// -------------------- Common Menu (used by any mode) --------------------
+	UFUNCTION(BlueprintCallable, Category="UI|Navigation")
+	void RequestRestartLevel();
+
+	UFUNCTION(BlueprintCallable, Category="UI|Navigation")
+	void GoToMainMenu();
+
+	// add pause menu
+	// pause should have 2 options : exi
+
+	// Server calls this on the owning client when Zombies + killed by zombie.
+	UFUNCTION(Client, Reliable)
+	void Client_ShowDeathScreen();
+
+	// HUD Helpers
 	void SetHUDHealth(float CurrentHealth, float MaxHealth);
 	void SetHUDAmmo(int32 Ammo);
 	void SetHUDMagAmmo(int32 AmmoInMag);
 	void UpdateHUDKillDeath(int32 Kills, int32 Deaths);
 
-	// Helper to cache HUD
-	AMyHUD* GetMyHUD();
-
-	// --- Input / Lobby ---
+	// Lobby Ready
 	void HandleReadyInput();
 
-	// --- Server RPCs ---
-	UFUNCTION(Server, Reliable, BlueprintCallable)
+	UFUNCTION(Server, Reliable)
 	void TravelToLobby();
 
-	UFUNCTION(Server, Reliable, BlueprintCallable)
+	UFUNCTION(Server, Reliable)
 	void Server_SetPlayerReady();
 
-protected:
-	// --- HUD Reference (runtime only, not editable in editor) ---
-	UPROPERTY()
+private:
+	class AMyHUD* GetMyHUD();
+
+	UPROPERTY(Transient)
 	AMyHUD* MyPlayerHUD = nullptr;
 
-	// --- Lobby UI ---
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "UI")
-	TSubclassOf<UUserWidget> ReadyButtonWidgetClass;
+	UPROPERTY(Transient)
+	bool bDeathVisible = false;
 
-	UPROPERTY()
-	UWBP_ReadyButtonWidget* ReadyButtonWidgetInstance = nullptr;
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="UI|Lobby", meta=(AllowPrivateAccess="true"))
+	TSubclassOf<UUserWidget> ReadyButtonWidgetClass;
+	UPROPERTY(Transient)
+	UReadyButtonWidget* ReadyButtonWidgetInstance = nullptr;
+
+	UPROPERTY(EditDefaultsOnly, Category="UI|Death")
+	TSubclassOf<UUserWidget> DeathScreenClass;
+	UPROPERTY(Transient)
+	UYouDiedMenuWidget* DeathScreenInstance = nullptr;
 };

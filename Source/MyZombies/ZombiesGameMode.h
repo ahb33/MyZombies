@@ -35,7 +35,6 @@ protected:
 
 	void BindZombieDeathEvents();
 
-
 	UPROPERTY(EditAnywhere, Category="AI Stats")
 	UDataTable* AIDifficultyTable;
 

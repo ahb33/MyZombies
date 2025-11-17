@@ -23,12 +23,15 @@ static FORCEINLINE AActor* GetBBTarget(const AAIController* AIC, FName Key)
 // Sets default values
 AEnemyCharacter::AEnemyCharacter()
 {
+    bReplicates = true;
  	// Set this character to call Tick() every frame.  You can turn this off to improve performance if you don't need it.
 	PrimaryActorTick.bCanEverTick = true;
 
     CollisionSphere = CreateDefaultSubobject<USphereComponent>(TEXT("CollisionSphere"));
     CollisionSphere->SetSphereRadius(50);
     CollisionSphere->SetupAttachment(RootComponent);
+
+    CharacterTags.AddTag(FGameplayTag::RequestGameplayTag("Faction.Zombie"));
 
 
 }
@@ -49,6 +52,7 @@ void AEnemyCharacter::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutL
 
     DOREPLIFETIME(AEnemyCharacter, BaseHealth);
     DOREPLIFETIME(AEnemyCharacter, bIsDead);
+    DOREPLIFETIME(AEnemyCharacter, CharacterTags);
 }
 
 void AEnemyCharacter::OnBeginOverlap(AActor *OverlappedActor, AActor *OtherActor)
@@ -80,7 +84,6 @@ void AEnemyCharacter::Attack()
         UE_LOG(LogTemp, Warning, TEXT("Attack Montage not valid"));
     }
 
-    UE_LOG(LogTemp, Warning, TEXT("Enemy Attacking called"));
     const float Now = GetWorld()->GetTimeSeconds();
     if (Now < NextAttackTime) return;// cooldown
 
@@ -96,7 +99,6 @@ void AEnemyCharacter::Attack()
 
     if (UAnimInstance* Anim = GetMesh()->GetAnimInstance())
     {
-        UE_LOG(LogTemp, Warning, TEXT("Anim Montage called"));
         Anim->Montage_Play(AttackMontage);
         // randomize which strike plays
         static const FName Sections[] = { TEXT("StrikeLeft"), TEXT("StrikeRight") };
@@ -148,10 +150,6 @@ void AEnemyCharacter::Die()
         if (OnZombieDeath.IsBound())
         {
             OnZombieDeath.Broadcast();
-        }
-        else
-        {
-            UE_LOG(LogTemp, Warning, TEXT("OnZombieDeath not bound for %s"), *GetName());
         }
     }
 }

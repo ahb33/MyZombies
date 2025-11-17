@@ -3,10 +3,7 @@
 
 #include "DeathMatchPlayerState.h"
 #include "Net/UnrealNetwork.h"
-
 #include "MyPlayerController.h"
-
-
 
 void ADeathMatchPlayerState::HandlePlayerStatsChanged()
 {

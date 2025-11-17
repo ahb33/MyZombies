@@ -4,6 +4,7 @@
 #include "PickUp.h"
 #include "Kismet/GameplayStatics.h"
 #include "Sound/SoundCue.h"
+#include "MainCharacter.h"
 #include "Components/WidgetComponent.h"
 #include "Components/SphereComponent.h"
 
@@ -12,8 +13,7 @@
 // Sets default values
 APickUp::APickUp()
 {
- 	// Set this actor to call Tick() every frame.  You can turn this off to improve performance if you don't need it.
-	PrimaryActorTick.bCanEverTick = true;
+	PrimaryActorTick.bCanEverTick = false;
 
 	// make sure this pick up class replicates
 	bReplicates = true;
@@ -24,7 +24,6 @@ APickUp::APickUp()
 
 	PickUpMesh = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("PickUpItems"));
 	PickUpMesh->SetupAttachment(RootSceneComponent);
-	PickUpMesh->SetCollisionResponseToAllChannels(ECollisionResponse::ECR_Block);
 	PickUpMesh->SetCollisionResponseToChannel(ECollisionChannel::ECC_Pawn, ECollisionResponse::ECR_Ignore); /*
 	if you want the pawn to run through the weapon without colliding with it */
 	PickUpMesh->SetCollisionEnabled(ECollisionEnabled::NoCollision);
@@ -48,6 +47,7 @@ APickUp::APickUp()
 
 	PickUpWidget = CreateDefaultSubobject<UWidgetComponent>(TEXT("PickupWidget"));
     PickUpWidget->SetupAttachment(RootComponent);
+	PickUpWidget->SetVisibility(false);
 
 }
 
@@ -59,23 +59,38 @@ void APickUp::BeginPlay()
 	// Check if has authority(this is a replicated actor, you only want to overlap events on server)
 	// Bind begin and end OnSphereOverlap functions to ItemOverlapSphere
 	ItemOverlapSphere->OnComponentBeginOverlap.AddDynamic(this, &APickUp::OnSphereBeginOverlap);
+	ItemOverlapSphere->OnComponentEndOverlap.AddDynamic(this, &APickUp::OnSphereEndOverlap);
+
+	ShowPickUpWidget(false);
 	
 }
 
-// Called every frame
-void APickUp::Tick(float DeltaTime)
+
+
+void APickUp::OnSphereBeginOverlap(UPrimitiveComponent*, AActor* OtherActor, UPrimitiveComponent*, int32, bool, const FHitResult&)
 {
-	Super::Tick(DeltaTime);
+	AMainCharacter* MC = Cast<AMainCharacter>(OtherActor);
+	if (!MC) return;
+
+	if(AMainCharacter* LocalMainCharacter = Cast<AMainCharacter>(OtherActor))
+	{
+		LocalMainCharacter->SetOverlappingItem(this);
+		ShowPickUpWidget(true);
+		UE_LOG(LogTemp, Warning, TEXT("Overlapping with pickup item"));
+	}
 
 }
 
-void APickUp::OnSphereBeginOverlap(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor,
-	UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult)
+void APickUp::OnSphereEndOverlap(UPrimitiveComponent*, AActor* OtherActor, UPrimitiveComponent*, int32)
 {
-
+	AMainCharacter* MC = Cast<AMainCharacter>(OtherActor);
+	if (!MC) return;
+	if (!HasAuthority() && MC->IsLocallyControlled())
+	{
+		ShowPickUpWidget(false);
+		MC->SetOverlappingItem(nullptr);
+	}
 }
-
-
 void APickUp::SetPickUpWidget(UUserWidget* Widget)
 {
 	// Construct Pickup Widget and attach to root component
@@ -86,8 +101,14 @@ void APickUp::ShowPickUpWidget(bool bShowWidget)
 {
 	if(PickUpWidget)
 	{
-		PickUpWidget->SetVisibility(false);
+		PickUpWidget->SetVisibility(bShowWidget);
 	}
+}
+
+bool APickUp::TryConsume(APawn* /*ByPawn*/)
+{
+	// Base does nothing.
+	return false;
 }
 
 void APickUp::Destroyed()

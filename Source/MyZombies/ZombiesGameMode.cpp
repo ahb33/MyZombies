@@ -4,6 +4,7 @@
 #include "ZombiesGameMode.h"
 #include "EnemyCharacter.h"
 #include "AI_EnemySpawner.h"
+#include "BaseGameState.h"
 #include "MyPlayerController.h"
 #include "Kismet/GameplayStatics.h"
 
@@ -11,11 +12,16 @@ AZombiesGameMode::AZombiesGameMode()
 {
     CurrentLevel = 1; // Initialize with the first wave
     RemainingEnemies = 0; // Initialize enemy count
+    GameStateClass = ABaseGameState::StaticClass();
 }
 
 void AZombiesGameMode::BeginPlay()
 {
     Super::BeginPlay();
+
+    if (auto* GS = GetGameState<ABaseGameState>())  GS->SetMatchMode(EMatchMode::Zombies);
+
+
     ApplyLevelModifiers();
     StartNextWave();
 }

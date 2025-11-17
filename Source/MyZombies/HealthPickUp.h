@@ -17,6 +17,11 @@
 
 
  */
+
+
+class UWidgetComponent;
+class AMainCharacter;
+
 UCLASS()
 class MYZOMBIES_API AHealthPickUp : public APickUp
 {
@@ -26,34 +31,21 @@ public:
 	// Create constructor
 	AHealthPickUp();
 
-	/*
-		This class will have its own behavior for inherited OnSphereBeginOverlap function
-		So we will call parent version and add functionality to it
-	*/
-	virtual void OnSphereBeginOverlap(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor,
-	UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult) override;
-	
-	void AddHealth(float PlayerHealth, float MaxHealth);
-
-	void ShowPickUpWidget(bool bShowWidget);
-	
-
+	virtual bool TryConsume(APawn* ByPawn) override;
 private:
+	UPROPERTY(VisibleAnywhere, Category="VFX")
+	TObjectPtr<UNiagaraComponent> NiagaraHealthComponent = nullptr;
 
-	class AMainCharacter* MainCharacter;
-
-    UWidgetComponent* HealthPickUpWidget;
+	class AMyPlayerController* myPlayerController = nullptr;
 	
-	UPROPERTY(VisibleAnywhere)
-	class UNiagaraComponent* NiagaraHealthComponent;
-
-	
-	class AMyPlayerController* myPlayerController;
-
-	UPROPERTY(EditAnywhere)
-	class UNiagaraSystem* PickupEffect;
+	UPROPERTY(EditAnywhere, Category="VFX")
+	TObjectPtr<UNiagaraSystem> PickupEffect = nullptr;
 
 	// Amount of health to add per pick up
-	UPROPERTY(EditAnywhere)
+	UPROPERTY(EditAnywhere, Category="Health")
 	int32 HealthAdd = 30;
+
+	UFUNCTION(NetMulticast, Reliable)
+	void Multicast_PlayPickupEffect(const FVector& AtLocation);
+
 };
