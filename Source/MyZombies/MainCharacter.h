@@ -5,6 +5,7 @@
 #include "CombatState.h" 
 #include "WeaponTypes.h"
 #include "GameplayTagContainer.h"
+#include "GameplayTagAssetInterface.h"
 #include "MainCharacter.generated.h"
 
 // forward-declares:
@@ -25,12 +26,12 @@ class USoundBase;
 DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnMainCharacterDeath);
 
 UCLASS()
-class MYZOMBIES_API AMainCharacter : public ACharacter
+class MYZOMBIES_API AMainCharacter : public ACharacter, public IGameplayTagAssetInterface
 {
 	GENERATED_BODY()
 
 public:
-	// --- Construction & core overrides ---
+// --- Construction & core overrides ---
 	AMainCharacter();
 	virtual void PostInitializeComponents() override;
 	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
@@ -43,27 +44,60 @@ public:
 	// --- Initialization ---
 	void InitValues();
 
-	// --- Input state helpers ---
-	bool IsWeaponEquipped() const;
-	bool IsAiming() const;
+	// --- Gameplay tags ---
+	virtual void GetOwnedGameplayTags(FGameplayTagContainer& OutTags) const override
+	{
+		OutTags.AppendTags(CharacterTags);
+	}
 
-	// --- Getters ---
+	// --- State / getters ---
+	// Anim & view
 	FORCEINLINE float GetCharacterYaw() const { return AO_Yaw; }
 	FORCEINLINE float GetCharacterPitch() const { return AO_Pitch; }
 	FORCEINLINE ETurningInPlace GetTurningInPlace() const { return TurningInPlace; }
 	FORCEINLINE UCameraComponent* GetFollowCamera() const { return FollowCamera; }
+
+	// Combat / controller
+	bool IsWeaponEquipped() const;
+	bool IsAiming() const;
 	float GetReloadDuration() const;
 	FVector GetHitTarget() const;
-	AMyPlayerController* GetMyPlayerController() const { return MyPlayerController; }
 	ECombatState GetCharacterCombatState() const;
+	AWeapon* GetEquippedWeapon() const;
+	AMyPlayerController* GetMyPlayerController() const { return MyPlayerController; }
 
+	// --- Health ---
 	UFUNCTION(BlueprintPure, Category="Health Stats")
 	float GetPlayerHealth() const { return PlayerHealth; }
-
+	
+	void SetPlayerHealth(float NewHealth);
+	
+	// Health setters that enforce authority and replication
+	UFUNCTION(Server, Reliable) void Server_SetPlayerHealth(float NewValue);
+	
 	UFUNCTION(BlueprintPure, Category="Health Stats")
-	float GetMaxHealth() const {return MaxHealth;}
+	float GetMaxHealth() const { return MaxHealth; }
 
-	AWeapon* GetEquippedWeapon() const;
+	// Health authority API
+	UFUNCTION()
+	void UpdateHUDHealth() const;
+
+	// Rep notifies (health)
+	UFUNCTION()
+	void OnRep_Health();
+
+	// --- Inventory / pickups & overlap ---
+	void SetOverlappingWeapon(AWeapon* Weapon);
+	void SetOverlappingItem(APickUp* PickUp);
+
+	// Rep notifies (overlap)
+	UFUNCTION()
+	void OnRep_OverlappingWeapon();
+
+	// Ammo hook (wire to CombatComponent/Weapon later)
+	UFUNCTION(BlueprintNativeEvent, Category="Combat")
+	bool AddAmmoFromPickup(EWeaponType WeaponType, int32 Amount);
+	virtual bool AddAmmoFromPickup_Implementation(EWeaponType WeaponType, int32 Amount);
 
 	// --- Input actions ---
 	void EquipButtonPressed();
@@ -79,28 +113,10 @@ public:
 
 	// --- RPCs ---
 	UFUNCTION(Server, Reliable) void Server_EquipButtonPressed();
-	UFUNCTION(Server, Reliable) void ServerDie();
 	UFUNCTION(Server, Reliable) void Server_TryPickup(APickUp* Pickup);
+	UFUNCTION(Server, Reliable) void ServerDie();
 
-
-	// Health authority API
-	UFUNCTION(BlueprintCallable, Category="Stats")
-	void SetHealth(float NewValue);
-
-	UFUNCTION(Server, Reliable) 
-	void Server_SetHealth(float NewValue);
-
-
-	// Ammo hook (wire to CombatComponent/Weapon later)
-	UFUNCTION(BlueprintNativeEvent, Category="Combat")
-	bool AddAmmoFromPickup(EWeaponType WeaponType, int32 Amount);
-	virtual bool AddAmmoFromPickup_Implementation(EWeaponType WeaponType, int32 Amount);
-
-
-
-	// --- Utility ---
-	void SetOverlappingWeapon(AWeapon* Weapon);
-	void SetOverlappingItem(APickUp* PickUp);
+	// --- Anim montages ---
 	void PlayFireMontage(bool bAiming);
 	void PlayReloadMontage();
 
@@ -122,6 +138,10 @@ protected:
 	void TurnInPlace(float DeltaTime);
 
 private:
+
+    void ApplyHealth_ServerOnly(float NewHealth); 
+
+	
 	// --- Components & replicated refs ---
 	UPROPERTY(VisibleAnywhere, Category="Camera")
 	USpringArmComponent* CameraBoom = nullptr;
@@ -137,8 +157,8 @@ private:
 
     UPROPERTY(Transient) bool bLastKillerWasZombie = false;
 
-	UPROPERTY(ReplicatedUsing=OnRep_Health, VisibleAnywhere, Category="Stats")
-	float PlayerHealth = 100.f;
+	UPROPERTY(ReplicatedUsing=OnRep_Health, EditAnywhere, Category="Stats")
+	float PlayerHealth = 50.f;
 
 	UPROPERTY(EditDefaultsOnly, Category="Stats")
 	float MaxHealth = 100.f;
@@ -153,7 +173,7 @@ private:
 	UPROPERTY(EditDefaultsOnly, Category="Audio")
 	USoundBase* DeathSFX = nullptr;
 
-	 AHealthPickUp* pickUpHealth = nullptr;
+	AHealthPickUp* pickUpHealth = nullptr;
 
 	UPROPERTY(Replicated, VisibleAnywhere, Category="Tags", Replicated, meta=(AllowPrivateAccess="true"))
 	FGameplayTagContainer CharacterTags;
@@ -170,7 +190,5 @@ private:
 	ETurningInPlace TurningInPlace = ETurningInPlace::ETIP_NotTurning;
 	FTimerHandle DestructionTimer;
 
-	// --- Rep notifies ---
-	UFUNCTION() void OnRep_OverlappingWeapon();
-	UFUNCTION() void OnRep_Health();
+
 };

@@ -58,10 +58,11 @@ void AWeapon::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeP
 {
 	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
 
-
-	/*We'd like ammo on hand and the ammo in the magazine to be replicated on all clients in case one player picked up a used weapon
-	  then you want the ammo count on that weapon to remain unchanged
-	  */
+    
+	/*
+        We'd like ammo on hand and the ammo in the magazine to be replicated on all clients in case one player picked up a used weapon
+	    then you want the ammo count on that weapon to remain unchanged
+	*/
 	DOREPLIFETIME_CONDITION(AWeapon, AmmoOnHand, COND_OwnerOnly);  // Ammo will only replicate to owning client
 	DOREPLIFETIME_CONDITION(AWeapon, AmmoInMag, COND_OwnerOnly);
     DOREPLIFETIME(AWeapon, WeaponState);

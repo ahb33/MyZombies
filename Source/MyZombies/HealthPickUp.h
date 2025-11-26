@@ -21,6 +21,7 @@
 
 class UWidgetComponent;
 class AMainCharacter;
+class UNiagaraComponent;
 
 UCLASS()
 class MYZOMBIES_API AHealthPickUp : public APickUp

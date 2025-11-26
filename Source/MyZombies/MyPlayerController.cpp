@@ -66,12 +66,18 @@ void AMyPlayerController::SetHUDHealth(float CurrentHealth, float MaxHealth)
 {
     if (!MyPlayerHUD)
     {
+
         MyPlayerHUD = Cast<AMyHUD>(GetHUD());
-        if (!MyPlayerHUD) return;
+        if (!MyPlayerHUD) 
+        {
+            UE_LOG(LogTemp, Warning, TEXT("MyPlayerHUD is not valid "));
+            return;
+        }
     }
 
     if (MyPlayerHUD->CharacterStats && MyPlayerHUD->CharacterStats->HealthBar)
     {
+        UE_LOG(LogTemp, Warning, TEXT("MyPlayerHUD->CharacterStats && MyPlayerHUD->CharacterStats->HealthBar are valid"));
         const float HealthPercent = CurrentHealth / MaxHealth;
         MyPlayerHUD->CharacterStats->HealthBar->SetPercent(HealthPercent);
     }

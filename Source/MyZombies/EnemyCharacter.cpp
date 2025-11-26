@@ -7,6 +7,7 @@
 #include "Kismet/GameplayStatics.h"
 #include "GameFramework/DamageType.h"
 #include "Animation/AnimInstance.h"
+#include "DamageHelpers.h"
 #include "Components/SphereComponent.h"
 #include "Net/UnrealNetwork.h"
 
@@ -51,6 +52,7 @@ void AEnemyCharacter::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutL
     Super::GetLifetimeReplicatedProps(OutLifetimeProps);
 
     DOREPLIFETIME(AEnemyCharacter, BaseHealth);
+    DOREPLIFETIME(AEnemyCharacter, BaseDamage);
     DOREPLIFETIME(AEnemyCharacter, bIsDead);
     DOREPLIFETIME(AEnemyCharacter, CharacterTags);
 }
@@ -106,17 +108,22 @@ void AEnemyCharacter::Attack()
     }
 }
 
-float AEnemyCharacter::TakeDamage(float DamageAmount, FDamageEvent const& DamageEvent,
-AController* EventInstigator, AActor* DamageCauser)
+float AEnemyCharacter::TakeDamage(float DamageAmount, const FDamageEvent& DamageEvent, AController* EventInstigator, AActor* DamageCauser)
 {
-    if(!HasAuthority() || bIsDead) return 0.f;
+    if (!HasAuthority() || bIsDead) return 0.f;
+
+    const APawn* Killer = DamageHelpers::ResolveKillerPawn(EventInstigator, DamageCauser);
+
+    if (DamageHelpers::IsZombiesMode(GetWorld()))
+    {
+        if (!Killer || !Killer->IsPlayerControlled()) return 0.f; // only players hurt zombies
+        if (DamageHelpers::IsZombieActor(Killer)) return 0.f; // block zombie→zombie
+    }
+
     BaseHealth = FMath::Clamp(BaseHealth - DamageAmount, 0.f, MaxHealth);
-
-    UE_LOG(LogTemp, Warning, TEXT("Enemy BaseHealth is now: %f"), BaseHealth);
-
-    if(BaseHealth <= 0.f && !bIsDead) 
-    { 
-        bIsDead = true; OnRep_IsDead(); 
+    if (BaseHealth <= 0.f && !bIsDead)
+    {
+        bIsDead = true; OnRep_IsDead();
         GetWorld()->GetTimerManager().SetTimer(DestructionTimer, this, &AEnemyCharacter::Die, 1.0f, false);
     }
     OnRep_Health();

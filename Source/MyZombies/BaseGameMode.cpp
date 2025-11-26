@@ -9,6 +9,7 @@
 #include "EnemyCharacter.h"
 #include "MyPlayerController.h"
 #include "UObject/ConstructorHelpers.h"
+#include "DamageQuery.h"
 
 ABaseGameMode::ABaseGameMode() {bUseSeamlessTravel = true;}
 
@@ -111,3 +112,23 @@ void ABaseGameMode::RequestSpawn(AController* Controller)
 
     RestartPlayer(PC);
 }
+
+bool ABaseGameMode::IsDamageAllowed(const AActor* Causer, const AActor* Target) const
+{
+    if (!Causer || !Target || Causer == Target) return true;
+
+    const EUnitKind CK = UDamageQuery::GetUnitKind(Causer);
+    const EUnitKind TK = UDamageQuery::GetUnitKind(Target);
+
+    if (CK == EUnitKind::Player && TK == EUnitKind::Player && !bAllowPlayerVsPlayer) return false;
+    if (CK == EUnitKind::AI     && TK == EUnitKind::AI     && !bAllowAIVsAI)         return false;
+
+    const uint8 CT = UDamageQuery::GetTeamId(Causer);
+    const uint8 TT = UDamageQuery::GetTeamId(Target);
+    const bool SameTeam = (CT != 255 && TT != 255 && CT == TT);
+    if (SameTeam && !bAllowFriendlyFireWithinTeam) return false;
+
+    return true;
+}
+
+

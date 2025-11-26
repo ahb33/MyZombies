@@ -8,6 +8,7 @@
 #include "BehaviorTree/BehaviorTree.h"
 #include "AICharacterStats.h"
 #include "AI_AnimInstance.h"
+#include "GameplayTagAssetInterface.h" 
 #include "GameplayTagContainer.h"
 #include "EnemyCharacter.generated.h"
 
@@ -20,7 +21,7 @@ class UAnimMontage;
 DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnZombieDeath);
 
 UCLASS(Abstract)
-class MYZOMBIES_API AEnemyCharacter : public ACharacter
+class MYZOMBIES_API AEnemyCharacter : public ACharacter , public IGameplayTagAssetInterface
 {
 	GENERATED_BODY()
 
@@ -37,6 +38,11 @@ public:
 
 	UFUNCTION(BlueprintCallable, Category="Combat")
     void AnimNotify_MeleeHit(); // use a notify that applies damage at the hit frame
+
+	virtual void GetOwnedGameplayTags(FGameplayTagContainer& OutTags) const override
+    {
+        OutTags.AppendTags(CharacterTags);
+    }
 
 	virtual float TakeDamage(float DamageAmount, struct FDamageEvent const& DamageEvent,
     class AController* EventInstigator, AActor* DamageCauser) override;

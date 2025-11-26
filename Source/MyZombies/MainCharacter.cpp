@@ -12,8 +12,11 @@
 #include "Animation/AnimInstance.h"
 #include "Kismet/KismetMathLibrary.h"
 #include "MyGameInstance.h"
+#include "EnemyCharacter.h"
 #include "ZombiesGameMode.h"
+#include "GameplayTagAssetInterface.h"
 #include "BaseGameState.h"
+#include "DamageHelpers.h"
 #include "MyPlayerController.h"
 #include "WeaponTypes.h"
 
@@ -289,24 +292,39 @@ void AMainCharacter::Server_TryPickup_Implementation(APickUp* Pickup)
     }
 }
 
-void AMainCharacter::SetHealth(float NewValue)
-{
-	const float Clamped = FMath::Clamp(NewValue, 0.f, MaxHealth);
 
-	if (HasAuthority())
-	{
-		PlayerHealth = Clamped;
-		OnRep_Health(); // update server HUD immediately
-	}
-	else
-	{
-		Server_SetHealth(Clamped);
-	}
+void AMainCharacter::SetPlayerHealth(float NewHealth)
+{
+    UE_LOG(LogTemp, Warning, TEXT("Calling set player health"));
+    const float Clamped = FMath::Clamp(NewHealth, 0.f, MaxHealth);
+    if (HasAuthority())
+    {
+        PlayerHealth = Clamped;    
+        if (IsLocallyControlled()) UpdateHUDHealth();  
+    }
+    else
+    {
+        Server_SetPlayerHealth(Clamped);        // client requests server to set
+    }
 }
 
-void AMainCharacter::Server_SetHealth_Implementation(float NewValue)
+
+void AMainCharacter::Server_SetPlayerHealth_Implementation(float NewHealth) 
 {
-	SetHealth(NewValue);
+    PlayerHealth = FMath::Clamp(NewHealth, 0.f, MaxHealth);     // runs on server
+    if (IsLocallyControlled()) UpdateHUDHealth();
+}
+
+void AMainCharacter::UpdateHUDHealth() const
+{
+    if (auto* PC = Cast<AMyPlayerController>(GetController()))
+    PC->SetHUDHealth(PlayerHealth, MaxHealth);
+}
+
+void AMainCharacter::OnRep_Health()
+{
+    UE_LOG(LogTemp, Warning, TEXT("OnRep_Health called "))
+	UpdateHUDHealth();
 }
 
 void AMainCharacter::ZoomButtonPressed()
@@ -482,16 +500,6 @@ void AMainCharacter::TurnInPlace(float DeltaTime)
 	}
 }
 
-void AMainCharacter::OnRep_Health()
-{
-	if (APlayerController* PC = Cast<APlayerController>(Controller))
-	{
-		if (AMyPlayerController* MPC = Cast<AMyPlayerController>(PC))
-		{
-			MPC->SetHUDHealth(PlayerHealth, MaxHealth);
-		}
-	}
-}
 
 ECombatState AMainCharacter::GetCharacterCombatState() const
 {
@@ -507,48 +515,25 @@ FVector AMainCharacter::GetHitTarget() const
 	// return combatComponent->GetLocalHitTarget();
 }
 
-static bool IsZombiesMode(const UWorld* W){
-  if (const auto* GS = W ? W->GetGameState<ABaseGameState>() : nullptr) return GS->GetMatchMode()==EMatchMode::Zombies;
-  return false;
-}
-
-static bool IsZombiePawn(const APawn* P)
-{
-    // Swap this to your GameplayTags check when ready.
-    return P && P->ActorHasTag(TEXT("Zombie"));
-}
-static const APawn* ResolveKillerPawn(AController* Inst, AActor* Causer)
-{
-    if (Inst && Inst->GetPawn()) return Inst->GetPawn();
-    if (Causer)
-    {
-        if (APawn* P = Causer->GetInstigator()) return P;                 // projectile/weapon path
-        if (AController* C = Causer->GetInstigatorController()) return C->GetPawn();
-    }
-    return nullptr;
-}
-
 // TakeDamage(Server)
 float AMainCharacter::TakeDamage(float DamageAmount, const FDamageEvent& DamageEvent, AController* EventInstigator, AActor* DamageCauser)
 {
     if (!HasAuthority()) return 0.f;
 
-    const APawn* Killer = ResolveKillerPawn(EventInstigator, DamageCauser);
+    const APawn* Killer = DamageHelpers::ResolveKillerPawn(EventInstigator, DamageCauser);
 
-    if (IsZombiesMode(GetWorld()))
+    if (DamageHelpers::IsZombiesMode(GetWorld()))
     {
-        if (!IsZombiePawn(Killer)) return 0.f;                 // only zombies can hurt you
-    }
-    else // Deathmatch
-    {
-        const bool bFromPlayer = Killer && Killer->IsPlayerControlled();  // <-- correct call
-        if (!bFromPlayer) return 0.f;                                     // reject AI/env in DM
+        // Zombies mode: only zombies may hurt the player
+        if (!DamageHelpers::IsZombieActor(Killer)) return 0.f;
     }
 
     const float Applied = Super::TakeDamage(DamageAmount, DamageEvent, EventInstigator, DamageCauser);
 
     // health update using your variables
     PlayerHealth = FMath::Clamp(PlayerHealth - Applied, 0.f, MaxHealth);
+    if (IsLocallyControlled()) UpdateHUDHealth(); 
+
     if (PlayerHealth <= 0.f) Die();
 
     return Applied;
@@ -568,7 +553,7 @@ void AMainCharacter::Die()
     if (OnMainCharacterDeath.IsBound()) OnMainCharacterDeath.Broadcast();
     else UE_LOG(LogTemp, Warning, TEXT("OnMainCharacterDeath not bound for %s"), *GetName());
 
-    if (IsZombiesMode(GetWorld()))
+    if (DamageHelpers::IsZombiesMode(GetWorld()))
         if (AMyPlayerController* PC = Cast<AMyPlayerController>(Controller))
             PC->Client_ShowDeathScreen();
 
