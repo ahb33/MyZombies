@@ -5,6 +5,7 @@
 #include "EnemyCharacter.h"
 #include "AI_EnemySpawner.h"
 #include "BaseGameState.h"
+#include "ZombiesGameState.h"
 #include "MyPlayerController.h"
 #include "Kismet/GameplayStatics.h"
 
@@ -12,7 +13,7 @@ AZombiesGameMode::AZombiesGameMode()
 {
     CurrentLevel = 1; // Initialize with the first wave
     RemainingEnemies = 0; // Initialize enemy count
-    GameStateClass = ABaseGameState::StaticClass();
+    GameStateClass = AZombiesGameState::StaticClass();
 }
 
 void AZombiesGameMode::BeginPlay()
@@ -42,27 +43,23 @@ void AZombiesGameMode::SetupInputForGameplay(APlayerController* PC)
     PC->bShowMouseCursor = false;
 }
 
-void AZombiesGameMode::OnZombieKilled()
+void AZombiesGameMode::OnZombieSpawned()
 {
-    UE_LOG(LogTemp, Warning, TEXT("Zombie killed"));
-    
-    RemainingEnemies--;
-    if (RemainingEnemies <= 0)
-    {
-        CurrentLevel++;
-        ApplyLevelModifiers();
-        StartNextWave();
-    }
+    ++ZombiesSpawnedThisWave;
+    ++RemainingEnemies;
 }
 
-
-
-void AZombiesGameMode::CheckEnemiesAlive()
+void AZombiesGameMode::OnZombieKilled()
 {
-    if (RemainingEnemies <= 0)
+    --RemainingEnemies;
+    TryAdvanceWave();
+}
+
+void AZombiesGameMode::TryAdvanceWave()
+{
+    if (ZombiesSpawnedThisWave >= ZombiesToSpawnThisWave && RemainingEnemies <= 0)
     {
-        UE_LOG(LogTemp, Warning, TEXT("All enemies dead, starting next wave"));
-        CurrentLevel++;
+        ++CurrentLevel;
         ApplyLevelModifiers();
         StartNextWave();
     }
@@ -71,6 +68,7 @@ void AZombiesGameMode::CheckEnemiesAlive()
 
 void AZombiesGameMode::ApplyLevelModifiers()
 {
+    if (!HasAuthority()) return;
     UE_LOG(LogTemp, Warning, TEXT("Applying level modifiers"));
     if (AIDifficultyTable)
     {
@@ -98,7 +96,39 @@ void AZombiesGameMode::ApplyLevelModifiers()
 
 void AZombiesGameMode::StartNextWave()
 {
+    if(!HasAuthority()) return;
+
+    ZombiesToSpawnThisWave = NumberOfZombiesForCurrentLevel;
+    ZombiesSpawnedThisWave = 0;
+    RemainingEnemies = 0;
     UE_LOG(LogTemp, Warning, TEXT("Starting next wave"));
+
+    if (AZombiesGameState* ZGS = GetGameState<AZombiesGameState>())
+    {
+        ZGS->SetRoundNumber(CurrentLevel);
+        ZGS->SetRoundPhase(ERoundPhase::Intro);
+    }
+
+    // Tell every client (including listen-host) to play intro + show widget
+    if (UWorld* World = GetWorld())
+    {
+        for (FConstPlayerControllerIterator It = World->GetPlayerControllerIterator(); It; ++It)
+        {
+            if (AMyPlayerController* PC = Cast<AMyPlayerController>(It->Get()))
+            {
+                PC->Client_PlayRoundIntro(CurrentLevel);
+            }
+        }
+    }
+
+    // delay actual spawning
+    GetWorldTimerManager().SetTimer(WaveIntroTimer, this, &AZombiesGameMode::BeginWaveActive,RoundIntroDelay, false);
+}
+
+void AZombiesGameMode::BeginWaveActive()
+{
+    if(!HasAuthority()) return;
+    if (AZombiesGameState* ZGS = GetGameState<AZombiesGameState>()) ZGS->SetRoundPhase(ERoundPhase::Active);
 
     // Retrieve all spawners in the game
     TArray<AActor*> Spawners;
@@ -109,9 +139,6 @@ void AZombiesGameMode::StartNextWave()
         UE_LOG(LogTemp, Error, TEXT("No spawners found in the level!"));
         return;
     }
-
-    // Reset RemainingEnemies for the current wave
-    RemainingEnemies = NumberOfZombiesForCurrentLevel;
 
     // Distribute zombies across random spawners
     int32 ZombiesToSpawn = NumberOfZombiesForCurrentLevel;
@@ -132,26 +159,6 @@ void AZombiesGameMode::StartNextWave()
             // Deduct from remaining zombies
             ZombiesToSpawn -= SpawnCount;
         }
-    }
-
-    // Bind events for the newly spawned zombies
-    BindZombieDeathEvents();
-
+    }       
     UE_LOG(LogTemp, Warning, TEXT("Wave %d started with %d zombies."), CurrentLevel, NumberOfZombiesForCurrentLevel);
 }
-void AZombiesGameMode::BindZombieDeathEvents()
-{
-    UE_LOG(LogTemp, Warning, TEXT("BindZombieDeathEvents called"));
-    TArray<AActor*> Zombies;
-    UGameplayStatics::GetAllActorsOfClass(GetWorld(), AEnemyCharacter::StaticClass(), Zombies);
-
-    for (AActor* ZombieActor : Zombies) // for each iteration of Zombies clear then bind the OnZombieKilled function to delegate
-    {
-        if (AEnemyCharacter* Zombie = Cast<AEnemyCharacter>(ZombieActor))
-        {
-            Zombie->OnZombieDeath.RemoveDynamic(this, &AZombiesGameMode::OnZombieKilled); // Avoid duplicate bindings
-            Zombie->OnZombieDeath.AddDynamic(this, &AZombiesGameMode::OnZombieKilled);
-        }
-    }
-}
-

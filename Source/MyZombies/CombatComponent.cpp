@@ -165,7 +165,6 @@ void UCombatComponent::ShotgunLocalFire(const FVector_NetQuantize& TraceHitTarge
 
 void UCombatComponent::ServerHitScanFire_Implementation(const FVector_NetQuantize& TraceHitTarget)
 {
-    UE_LOG(LogTemp, Warning, TEXT("ServerHitScanFire called: spawning authoritative HitScan"));
     MulticastFireHitScan(TraceHitTarget);
 }
 
@@ -419,7 +418,6 @@ void UCombatComponent::ServerSetAiming_Implementation(bool bIsAimingIn)
 void UCombatComponent::SetCombatState(ECombatState State)
 {
     CombatState = State;
-    UE_LOG(LogTemp, Warning, TEXT("Combat State being called. Current state is %d"), static_cast<int32>(CombatState));    
 }
 
 void UCombatComponent::OnRep_CombatState()
@@ -430,12 +428,14 @@ void UCombatComponent::OnRep_CombatState()
     {
         case ECombatState::ECS_Reloading:
             bIsReloading = true;
+            bCanFire = false;
             if (UWorld* W = GetWorld()) W->GetTimerManager().ClearTimer(FireTimerHandle);
             if (!GetMainCharacter()->IsLocallyControlled()) GetMainCharacter()->PlayReloadMontage();
             break;
 
         case ECombatState::ECS_Unoccupied:
             bIsReloading = false;
+            bCanFire = true;
             break;
 
         default: break;

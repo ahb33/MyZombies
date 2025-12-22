@@ -12,8 +12,13 @@
 				"Engine",
 				"UMG",
 				"AIModule",
-				"CoreUObject"
+				"CoreUObject",
 			]
+		},
+		{
+			"Name": "CCDebug",
+			"Type": "Editor",
+			"LoadingPhase": "Default"
 		}
 	],
 	"Plugins": [

@@ -31,6 +31,9 @@ protected:
 	// Lifecycle
 	virtual void BeginPlay() override;
 	virtual void SetupInputComponent() override;
+	virtual void OnPossess(APawn* InPawn) override;
+	virtual void OnUnPossess() override;
+
 
 public:
 	// -------------------- Common Menu (used by any mode) --------------------
@@ -47,6 +50,8 @@ public:
 	UFUNCTION(Client, Reliable)
 	void Client_ShowDeathScreen();
 
+	 UFUNCTION(BlueprintCallable) void ShowDeathScreenLocal(); // local-only UI creator (used by Client RPC + OnRep fallback)
+
 	// HUD Helpers
 	void SetHUDHealth(float CurrentHealth, float MaxHealth);
 	void SetHUDAmmo(int32 Ammo);
@@ -62,11 +67,20 @@ public:
 	UFUNCTION(Server, Reliable)
 	void Server_SetPlayerReady();
 
+	UFUNCTION(Client, Reliable)
+	void Client_PlayRoundIntro(int32 Round);
+
+	void PlayRoundIntroSound(int32 Round);
+
+	void ShowRoundIntroWidget(int32 Round);
+
 private:
 	class AMyHUD* GetMyHUD();
 
 	UPROPERTY(Transient)
 	AMyHUD* MyPlayerHUD = nullptr;
+
+	UFUNCTION() void HandlePlayerDeath(); // needed for dynamic multicast
 
 	UPROPERTY(Transient)
 	bool bDeathVisible = false;
@@ -80,4 +94,8 @@ private:
 	TSubclassOf<UUserWidget> DeathScreenClass;
 	UPROPERTY(Transient)
 	UYouDiedMenuWidget* DeathScreenInstance = nullptr;
+
+	TSubclassOf<UUserWidget> RoundIntroWidgetClass;
+	UUserWidget* RoundIntroWidgetInstance = nullptr;
+	
 };

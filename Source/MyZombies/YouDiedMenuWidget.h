@@ -24,7 +24,7 @@ protected:
     UButton* PlayAgainButton;
 
 	UPROPERTY(meta = (BindWidget),  BlueprintReadOnly)
-    UButton* ExitToMainMenuButton;
+    UButton* QuitButton;
   
 	UFUNCTION()
 	void OnPlayAgainClicked();

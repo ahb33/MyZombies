@@ -56,6 +56,9 @@ private:
 	UPROPERTY(VisibleAnywhere,BlueprintReadOnly, Category = Animation, meta = (AllowPrivateAccess = "true"))
 	bool bAiming;
 
+	UPROPERTY(VisibleAnywhere,BlueprintReadOnly, Category = Animation, meta = (AllowPrivateAccess = "true"))
+	bool bIsDead;
+
 	UPROPERTY(BlueprintReadOnly, Category = Animation, meta = (AllowPrivateAccess = "true"))
 	bool bIsPlayerReloading;
 

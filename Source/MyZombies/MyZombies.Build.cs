@@ -10,6 +10,6 @@ public class MyZombies : ModuleRules
 
 		PublicDependencyModuleNames.AddRange(new string[] { "Core", "CoreUObject", "Engine", "InputCore", "UMG" ,  "GameplayTags",  "GameplayTasks", "AIModule", "Niagara", "NavigationSystem", "MultiplayerPlugin", "OnlineSubsystem", "OnlineSubsystemSteam", "Sockets"});
 	
-		PrivateDependencyModuleNames.AddRange(new string[] { });
+		PrivateDependencyModuleNames.AddRange(new string[] { "CCDebug" });
 	}
 }

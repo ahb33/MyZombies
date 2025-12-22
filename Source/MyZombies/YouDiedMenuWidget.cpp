@@ -16,9 +16,9 @@ void UYouDiedMenuWidget::NativeConstruct()
 	{
 		PlayAgainButton->OnClicked.AddDynamic(this, &UYouDiedMenuWidget::OnPlayAgainClicked);
 	}
-	if (ExitToMainMenuButton)
+	if (QuitButton)
 	{
-		ExitToMainMenuButton->OnClicked.AddDynamic(this, &UYouDiedMenuWidget::OnExitToMainMenuClicked);
+		QuitButton->OnClicked.AddDynamic(this, &UYouDiedMenuWidget::OnExitToMainMenuClicked);
 	}
 }
 

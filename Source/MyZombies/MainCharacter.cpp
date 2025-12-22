@@ -17,7 +17,9 @@
 #include "GameplayTagAssetInterface.h"
 #include "BaseGameState.h"
 #include "DamageHelpers.h"
+#include "Kismet/GameplayStatics.h"
 #include "MyPlayerController.h"
+#include "CCDebug.h"
 #include "WeaponTypes.h"
 
 // redo initializer list
@@ -51,18 +53,7 @@ void AMainCharacter::BeginPlay()
 {
     Super::BeginPlay();
 
-    MyPlayerController = Cast<AMyPlayerController>(GetController());
-    if (MyPlayerController)
-    {
-        MyPlayerController->SetHUDHealth(PlayerHealth, MaxHealth);
-
-        MyGameHUD = Cast<AMyHUD>(MyPlayerController->GetHUD());
-        MyGameInstanceRef = GetWorld()->GetGameInstance<UMyGameInstance>();
-        if (MyGameHUD)
-        {
-            MyGameHUD->AddCharacterStats();
-        }
-    }
+    InitValues();
 }
 
 // Called to bind functionality to input
@@ -102,33 +93,53 @@ void AMainCharacter::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLi
 
     DOREPLIFETIME(AMainCharacter, PlayerHealth);
     DOREPLIFETIME(AMainCharacter, CharacterTags);
+    DOREPLIFETIME(AMainCharacter, bIsDead);
 }
 
 // Called every frame
 void AMainCharacter::Tick(float DeltaTime)
 {				
 	Super::Tick(DeltaTime);
-	AimOffset(DeltaTime);
-    InitValues();
-				 
+	AimOffset(DeltaTime);				 
 }
 
 // hud 
 void AMainCharacter::InitValues()
 {
-    if (!MyPlayerController)
+    if (bUIInitDone) return;   
+
+    if (AMyPlayerController* PC = Cast<AMyPlayerController>(Controller))
     {
-        MyPlayerController = Cast<AMyPlayerController>(Controller);
-        if (MyPlayerController)
+        if (AMyHUD* HUD = Cast<AMyHUD>(PC->GetHUD()))
         {
-            MyGameHUD = Cast<AMyHUD>(MyPlayerController->GetHUD());
-            if (MyGameHUD)
-            {
-                MyGameHUD->AddCharacterStats();
-            }
+            HUD->AddCharacterStats();
+            PC->SetHUDHealth(PlayerHealth, MaxHealth);
+
+            MyPlayerController = PC;
+            MyGameHUD = HUD;
+            bUIInitDone = true;
         }
     }
 
+}
+
+
+void AMainCharacter::PossessedBy(AController* NewController)
+{
+    Super::PossessedBy(NewController);     // server
+    InitValues();
+}
+
+void AMainCharacter::OnRep_Controller()
+{
+    Super::OnRep_Controller();
+    InitValues();
+}
+
+void AMainCharacter::UnPossessed()
+{
+    // Unbind delegates here if you bound any.
+    Super::UnPossessed();
 }
 
 void AMainCharacter::PostInitializeComponents()
@@ -256,7 +267,6 @@ void AMainCharacter::SetOverlappingItem(APickUp* PickUp)
     
 	if (IsLocallyControlled() && OverlappingItem)
 	{
-        UE_LOG(LogTemp, Warning, TEXT("SetOverlapping Item Sucessful"));
 		OverlappingItem->ShowPickUpWidget(true);
 	}
 }
@@ -270,7 +280,6 @@ void AMainCharacter::PickUpButtonPressed()
 {
     if (!OverlappingItem) 
     {
-        UE_LOG(LogTemp, Warning, TEXT("pickup attempted- overlapping item not valid"));
         return;
     }
 
@@ -323,7 +332,6 @@ void AMainCharacter::UpdateHUDHealth() const
 
 void AMainCharacter::OnRep_Health()
 {
-    UE_LOG(LogTemp, Warning, TEXT("OnRep_Health called "))
 	UpdateHUDHealth();
 }
 
@@ -411,7 +419,6 @@ void AMainCharacter::PlayReloadMontage()
     {
         if (ReloadMontage)
         {
-            UE_LOG(LogTemp, Warning, TEXT("AnimInstance And ReloadMontage correct"));
             AnimInstance->Montage_Play(ReloadMontage);
             FName SectionName;
 
@@ -520,6 +527,8 @@ float AMainCharacter::TakeDamage(float DamageAmount, const FDamageEvent& DamageE
 {
     if (!HasAuthority()) return 0.f;
 
+    CCDBG_SCOPE(this, "TakeDamage");
+
     const APawn* Killer = DamageHelpers::ResolveKillerPawn(EventInstigator, DamageCauser);
 
     if (DamageHelpers::IsZombiesMode(GetWorld()))
@@ -543,6 +552,9 @@ float AMainCharacter::TakeDamage(float DamageAmount, const FDamageEvent& DamageE
 
 void AMainCharacter::Die()
 {
+    CCDBG_SCOPE(this, "Die");
+
+    
     // Forward to server if called on a client.
 	if (!HasAuthority())
 	{
@@ -550,14 +562,19 @@ void AMainCharacter::Die()
 		return;
 	}
 
-    if (OnMainCharacterDeath.IsBound()) OnMainCharacterDeath.Broadcast();
-    else UE_LOG(LogTemp, Warning, TEXT("OnMainCharacterDeath not bound for %s"), *GetName());
+    if (bIsDead) return;
 
-    if (DamageHelpers::IsZombiesMode(GetWorld()))
-        if (AMyPlayerController* PC = Cast<AMyPlayerController>(Controller))
-            PC->Client_ShowDeathScreen();
+    bIsDead = true;  
+    SetNetDormancy(DORM_Awake);     // ensure awake for this burst
+    CCDBG(this, TEXT("Die start  HasAuth=%d  bIsDead=%d"), HasAuthority()?1:0, bIsDead?1:0);
 
-    Destroy();
+    OnMainCharacterDeath.Broadcast(); 
+
+    Multicast_OnDied();
+    if (Controller) Client_OnDied();
+
+    TearOff();
+    SetLifeSpan(0.3f);
 }
 
 void AMainCharacter::ServerDie_Implementation()
@@ -565,3 +582,42 @@ void AMainCharacter::ServerDie_Implementation()
 	Die();
 }
 
+void AMainCharacter::OnRep_IsDead()
+{
+
+	// Only react when transitioning to dead
+	if (!bIsDead)
+	{
+		return;
+	}
+
+	// Local UI for owning client (covers late/packet-order cases)
+	if (!bDeathUIShown && IsLocallyControlled())
+	{
+		if (AMyPlayerController* PC = Cast<AMyPlayerController>(GetController()))
+		{
+			PC->ShowDeathScreenLocal();
+            bDeathUIShown = true;
+		}
+	}
+}
+
+void AMainCharacter::Multicast_OnDied_Implementation()
+{
+    if (DeathSFX) UGameplayStatics::PlaySoundAtLocation(this, DeathSFX, GetActorLocation());
+
+}
+
+void AMainCharacter::Client_OnDied_Implementation()
+{
+	// Local-only UI
+	if (!bDeathUIShown && IsLocallyControlled())
+	{	
+        if (AMyPlayerController* PC = Cast<AMyPlayerController>(GetController()))
+		{
+			PC->ShowDeathScreenLocal();
+            bDeathUIShown = true;
+		}
+	}
+
+}

@@ -138,7 +138,6 @@ void AWeapon::DropWeapon()
 
 void AWeapon::Fire(const FVector& HitTargetParam)
 {
-    UE_LOG(LogTemp, Warning, TEXT("Fire function called"));
     if (!GetOwner() || !GetWeaponMesh())
     {
         UE_LOG(LogTemp, Warning, TEXT("Cannot fire: Weapon is empty or invalid owner/mesh."));
@@ -166,9 +165,7 @@ void AWeapon::Fire(const FVector& HitTargetParam)
 void AWeapon::DealDamage(const FHitResult &HitResult)
 {
     if (AActor* HitActor = HitResult.GetActor())
-    {
-        UE_LOG(LogTemp, Warning, TEXT("Deal Damage called"));
-        
+    {        
         UGameplayStatics::ApplyDamage(
             HitActor,
             GetDamage(),
@@ -212,7 +209,6 @@ void AWeapon::RefreshHUD()
         AMyPlayerController* PlayerController = Cast<AMyPlayerController>(MainCharacter->GetController());
         if (PlayerController)
         {
-            UE_LOG(LogTemp, Warning, TEXT("RefreshHUD called"));
             PlayerController->SetHUDAmmo(GetCurrentAmmoOnHand());
             PlayerController->SetHUDMagAmmo(GetCurrentAmmoInMag());
         }
@@ -363,7 +359,6 @@ void AWeapon::UpdateTracer(const FVector& SourceWS, const FVector& TargetWS)
 
 void AWeapon::PlayFireEffects(const FHitResult& Hit, const FVector& Start, const FVector& End)
 {
-    UE_LOG(LogTemp, Warning, TEXT("Playing Fire Effects"));
     static const FName MuzzleName("MuzzleFlash");
     const FVector MuzzleLoc = GetWeaponMesh()->GetSocketLocation(MuzzleName);
 

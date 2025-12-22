@@ -23,17 +23,16 @@ public:
 	void OnZombieKilled();
     void SetupInputForGameplay(class APlayerController* PC);
 	virtual void PostLogin(APlayerController* NewPlayer) override;
- 
+	void BeginWaveActive();
+	void OnZombieSpawned();
 
 protected:
 	virtual void BeginPlay() override;
 
-	virtual void CheckEnemiesAlive() override;
-
     void StartNextWave();
     void ApplyLevelModifiers();
 
-	void BindZombieDeathEvents();
+	void TryAdvanceWave();
 
 	UPROPERTY(EditAnywhere, Category="AI Stats")
 	UDataTable* AIDifficultyTable;
@@ -43,5 +42,10 @@ private:
 	int32 RemainingEnemies;
 
 	int32 NumberOfZombiesForCurrentLevel;
+
+	FTimerHandle WaveIntroTimer;
+	float RoundIntroDelay = 2.0f; // tweak
+	int32 ZombiesToSpawnThisWave = 0;
+	int32 ZombiesSpawnedThisWave = 0;
 	
 };

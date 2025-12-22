@@ -96,7 +96,6 @@ void AMyHUD::AddCharacterStats()
     if (CharacterStats)
     {
         CharacterStats->AddToViewport();
-        UE_LOG(LogTemp, Log, TEXT("CharacterStats widget created and added to viewport"));
     }
 }
 
@@ -105,7 +104,6 @@ void AMyHUD::AddKillDeathWidget()
     APlayerController* PC = GetOwningPlayerController();
     if (!PC || !KillDeathStatsClass)
     {
-        UE_LOG(LogTemp, Warning, TEXT("AddKillDeathWidget: Missing PlayerController or KillDeathStatsClass"));
         return;
     }
 

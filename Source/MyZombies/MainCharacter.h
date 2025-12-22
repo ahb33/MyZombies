@@ -37,8 +37,13 @@ public:
 	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
 	virtual void SetupPlayerInputComponent(class UInputComponent* PlayerInputComponent) override;
 	virtual void Tick(float DeltaTime) override;
-	virtual float TakeDamage(float DamageAmount, struct FDamageEvent const& DamageEvent,
-		class AController* EventInstigator, AActor* DamageCauser) override;
+	virtual float TakeDamage(float DamageAmount, struct FDamageEvent const& DamageEvent, 
+	class AController* EventInstigator, AActor* DamageCauser) override;
+
+	UFUNCTION(BlueprintPure, Category="Health Stats")
+	FORCEINLINE bool IsDead() const { return bIsDead; }
+
+	
 	void Die();
 
 	// --- Initialization ---
@@ -64,7 +69,10 @@ public:
 	FVector GetHitTarget() const;
 	ECombatState GetCharacterCombatState() const;
 	AWeapon* GetEquippedWeapon() const;
-	AMyPlayerController* GetMyPlayerController() const { return MyPlayerController; }
+	
+	virtual void PossessedBy(AController* NewController) override;
+	virtual void OnRep_Controller() override;
+	virtual void UnPossessed() override;
 
 	// --- Health ---
 	UFUNCTION(BlueprintPure, Category="Health Stats")
@@ -82,17 +90,18 @@ public:
 	UFUNCTION()
 	void UpdateHUDHealth() const;
 
-	// Rep notifies (health)
-	UFUNCTION()
-	void OnRep_Health();
-
 	// --- Inventory / pickups & overlap ---
 	void SetOverlappingWeapon(AWeapon* Weapon);
 	void SetOverlappingItem(APickUp* PickUp);
 
-	// Rep notifies (overlap)
+	// Rep notifies
 	UFUNCTION()
 	void OnRep_OverlappingWeapon();
+	UFUNCTION()
+	void OnRep_Health();
+	UFUNCTION()
+	void OnRep_IsDead();
+
 
 	// Ammo hook (wire to CombatComponent/Weapon later)
 	UFUNCTION(BlueprintNativeEvent, Category="Combat")
@@ -115,12 +124,15 @@ public:
 	UFUNCTION(Server, Reliable) void Server_EquipButtonPressed();
 	UFUNCTION(Server, Reliable) void Server_TryPickup(APickUp* Pickup);
 	UFUNCTION(Server, Reliable) void ServerDie();
+	UFUNCTION(NetMulticast, Reliable) void Multicast_OnDied();
+	UFUNCTION(Client, Unreliable) void Client_OnDied();
 
 	// --- Anim montages ---
 	void PlayFireMontage(bool bAiming);
 	void PlayReloadMontage();
 
 	// --- Events ---
+	UPROPERTY(BlueprintAssignable)  
 	FOnMainCharacterDeath OnMainCharacterDeath;
 
 protected:
@@ -139,9 +151,8 @@ protected:
 
 private:
 
-    void ApplyHealth_ServerOnly(float NewHealth); 
+	UPROPERTY(Transient) bool bUIInitDone = false; // idempotent guard
 
-	
 	// --- Components & replicated refs ---
 	UPROPERTY(VisibleAnywhere, Category="Camera")
 	USpringArmComponent* CameraBoom = nullptr;
@@ -171,11 +182,16 @@ private:
 	UAnimMontage* ReloadMontage = nullptr;
 
 	UPROPERTY(EditDefaultsOnly, Category="Audio")
-	USoundBase* DeathSFX = nullptr;
+	USoundBase* DeathSFX = nullptr;  // noise to be played when dead
+
+	UPROPERTY(ReplicatedUsing=OnRep_IsDead) 
+	bool bIsDead = false;
 
 	AHealthPickUp* pickUpHealth = nullptr;
 
-	UPROPERTY(Replicated, VisibleAnywhere, Category="Tags", Replicated, meta=(AllowPrivateAccess="true"))
+	UPROPERTY(Transient) bool bDeathUIShown = false;
+
+	UPROPERTY(Replicated, VisibleAnywhere, Category="Tags", meta=(AllowPrivateAccess="true"))
 	FGameplayTagContainer CharacterTags;
 
 	// --- Runtime (non-UObject ownership) ---

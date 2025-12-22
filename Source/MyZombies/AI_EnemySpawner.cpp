@@ -83,6 +83,7 @@ void AAI_EnemySpawner::Spawn()
         if (AZombiesGameMode* GameMode = GetWorld()->GetAuthGameMode<AZombiesGameMode>())
         {
             SpawnedZombie->OnZombieDeath.AddDynamic(GameMode, &AZombiesGameMode::OnZombieKilled);
+            GameMode->OnZombieSpawned();
         }
     }
 }

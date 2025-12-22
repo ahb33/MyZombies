@@ -4,6 +4,7 @@
 #include "MyPlayerController.h"
 #include "MyHUD.h"
 #include "LobbyPlayerState.h"
+#include "MainCharacter.h"
 #include "Net/UnrealNetwork.h"
 #include "Blueprint/UserWidget.h"
 #include "ReadyButtonWidget.h"
@@ -26,14 +27,38 @@ void AMyPlayerController::BeginPlay()
         ReadyButtonWidgetInstance = CreateWidget<UReadyButtonWidget>(this, ReadyButtonWidgetClass);
         if (ReadyButtonWidgetInstance)
         {
-            UE_LOG(LogTemp, Warning, TEXT("Adding Ready Button to viewport"));
             ReadyButtonWidgetInstance->AddToViewport();
         }
-        else UE_LOG(LogTemp, Warning, TEXT("ReadyButtonWidgetInstance invalid"));
     }
     
     else UE_LOG(LogTemp, Warning, TEXT("MapName invalid"));
 
+}
+
+void AMyPlayerController::OnPossess(APawn* InPawn)
+{
+    Super::OnPossess(InPawn);
+    if(HasAuthority())
+    {
+        if(auto* MC = Cast<AMainCharacter>(InPawn))
+        {
+            MC->OnMainCharacterDeath.RemoveAll(this); // avoid dup binds on re-possess
+            MC->OnMainCharacterDeath.AddUniqueDynamic(this, &AMyPlayerController::HandlePlayerDeath);
+        }
+    }
+}
+
+void AMyPlayerController::OnUnPossess()
+{
+    if (HasAuthority())
+        if (auto* MC = Cast<AMainCharacter>(GetPawn()))
+            MC->OnMainCharacterDeath.RemoveDynamic(this, &AMyPlayerController::HandlePlayerDeath);
+    Super::OnUnPossess();
+}
+
+void AMyPlayerController::HandlePlayerDeath()
+{
+    Client_ShowDeathScreen();               // server → owning client
 }
 
 void AMyPlayerController::SetupInputComponent()
@@ -77,7 +102,6 @@ void AMyPlayerController::SetHUDHealth(float CurrentHealth, float MaxHealth)
 
     if (MyPlayerHUD->CharacterStats && MyPlayerHUD->CharacterStats->HealthBar)
     {
-        UE_LOG(LogTemp, Warning, TEXT("MyPlayerHUD->CharacterStats && MyPlayerHUD->CharacterStats->HealthBar are valid"));
         const float HealthPercent = CurrentHealth / MaxHealth;
         MyPlayerHUD->CharacterStats->HealthBar->SetPercent(HealthPercent);
     }
@@ -129,9 +153,26 @@ AMyHUD* AMyPlayerController::GetMyHUD()
 
 void AMyPlayerController::Client_ShowDeathScreen_Implementation()
 {
-
+    if (!IsLocalController()) return;
+    ShowDeathScreenLocal(); 
 }
 
+void AMyPlayerController::ShowDeathScreenLocal()
+{
+    if (!DeathScreenClass) return;
+
+    if (!DeathScreenInstance)
+    {
+        DeathScreenInstance = CreateWidget<UYouDiedMenuWidget>(this, DeathScreenClass);
+    }
+    if (DeathScreenInstance && !DeathScreenInstance->IsInViewport())
+    {
+        DeathScreenInstance->AddToViewport(1000);
+        FInputModeUIOnly Mode; Mode.SetWidgetToFocus(DeathScreenInstance->TakeWidget());
+        SetInputMode(Mode);
+        bShowMouseCursor = true;
+    }
+}
 
 void AMyPlayerController::RequestRestartLevel()
 {
@@ -143,4 +184,19 @@ void AMyPlayerController::GoToMainMenu()
 {
 	// static const FName MainMenuLevel(TEXT("MainMenu_Level"));
 	// UGameplayStatics::OpenLevel(this, MainMenuLevel);
+}
+
+void AMyPlayerController::Client_PlayRoundIntro_Implementation(int32 Round)
+{
+    PlayRoundIntroSound(Round);
+    ShowRoundIntroWidget(Round);
+
+}
+
+void AMyPlayerController::PlayRoundIntroSound(int32 Round)
+{
+}
+
+void AMyPlayerController::ShowRoundIntroWidget(int32 Round)
+{
 }

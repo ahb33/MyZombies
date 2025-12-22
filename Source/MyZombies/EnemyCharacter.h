@@ -36,8 +36,11 @@ public:
 	UFUNCTION(BlueprintCallable, Category="Combat")
     virtual void Attack();
 
-	UFUNCTION(BlueprintCallable, Category="Combat")
-    void AnimNotify_MeleeHit(); // use a notify that applies damage at the hit frame
+	UFUNCTION(Server, Reliable)
+	void Server_Attack();
+
+	UFUNCTION(NetMulticast, Reliable)
+	void Multicast_PlayAttackMontage(FName SectionName);
 
 	virtual void GetOwnedGameplayTags(FGameplayTagContainer& OutTags) const override
     {
@@ -46,9 +49,6 @@ public:
 
 	virtual float TakeDamage(float DamageAmount, struct FDamageEvent const& DamageEvent,
     class AController* EventInstigator, AActor* DamageCauser) override;
-
-	// Called every frame
-	virtual void Tick(float DeltaTime) override;
 
 	// Called to bind functionality to input
 	virtual void SetupPlayerInputComponent(class UInputComponent* PlayerInputComponent) override;
@@ -79,8 +79,6 @@ protected:
 
 	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
 
-	void OnBeginOverlap(AActor* OverlappedActor, AActor* OtherActor); // function will be used to attack maincharater when overlapping with it
-
 private:	
 
 	// overlap
@@ -92,14 +90,9 @@ private:
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = Health, meta = (AllowPrivateAccess = "true"))
     float MaxHealth;
 	
-    UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = Health, meta = (AllowPrivateAccess = "true"), ReplicatedUsing = OnRep_Health)
-    float BaseDamage;
-
 	UPROPERTY(ReplicatedUsing = OnRep_IsDead)
 	bool bIsDead = false;
 	
-	UAI_AnimInstance* AnimInstanceRef;
-
 	FTimerHandle DestructionTimer; // Timer handle for delayed destruction
 
 	// AI Character stats for configuring properties in the editor
@@ -118,7 +111,6 @@ protected:
 	UPROPERTY(EditAnywhere, Category="AI|Blackboard") FName BBKey_Player = TEXT("Player");
 
 	float NextAttackTime = 0.f;          // per-enemy cooldown
-	bool  bHitAppliedThisSwing = false;   // guard multiple notifies
 
 	UPROPERTY(EditAnywhere, Category="Movement") float WalkSpeed  = 120.f;
     UPROPERTY(EditAnywhere, Category="Movement") float ChaseSpeed = 360.f; // set your chase speed

@@ -174,7 +174,6 @@ void AMyAIController::OnTargetPerceptionUpdate(AActor* Actor, FAIStimulus Stimul
 	if (prev != bInRange)
 	{
 		BB->SetValueAsBool(KEY_PlayerWithinRange, bInRange);
-		UE_LOG(LogTemp, Warning, TEXT("PlayerWithinRange -> %s"), bInRange ? TEXT("true") : TEXT("false"));
 	}
 
 }

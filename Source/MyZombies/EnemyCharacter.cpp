@@ -26,7 +26,7 @@ AEnemyCharacter::AEnemyCharacter()
 {
     bReplicates = true;
  	// Set this character to call Tick() every frame.  You can turn this off to improve performance if you don't need it.
-	PrimaryActorTick.bCanEverTick = true;
+	PrimaryActorTick.bCanEverTick = false;
 
     CollisionSphere = CreateDefaultSubobject<USphereComponent>(TEXT("CollisionSphere"));
     CollisionSphere->SetSphereRadius(50);
@@ -52,24 +52,9 @@ void AEnemyCharacter::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutL
     Super::GetLifetimeReplicatedProps(OutLifetimeProps);
 
     DOREPLIFETIME(AEnemyCharacter, BaseHealth);
-    DOREPLIFETIME(AEnemyCharacter, BaseDamage);
     DOREPLIFETIME(AEnemyCharacter, bIsDead);
     DOREPLIFETIME(AEnemyCharacter, CharacterTags);
 }
-
-void AEnemyCharacter::OnBeginOverlap(AActor *OverlappedActor, AActor *OtherActor)
-{
-    // add code for when overlapping with character
-    // debug line when overlapping 
-}
-
-// Called every frame
-void AEnemyCharacter::Tick(float DeltaTime)
-{
-	Super::Tick(DeltaTime);
-
-}
-
 
 
 // Called to bind functionality to input
@@ -84,6 +69,14 @@ void AEnemyCharacter::Attack()
     if (bIsDead || !AttackMontage)
     {
         UE_LOG(LogTemp, Warning, TEXT("Attack Montage not valid"));
+        return;
+    }
+
+    // Route to server; AI calls usually originate on server, but this makes it robust.
+    if (!HasAuthority())
+    {
+        Server_Attack();
+        return;
     }
 
     const float Now = GetWorld()->GetTimeSeconds();
@@ -96,15 +89,34 @@ void AEnemyCharacter::Attack()
             FMath::Square(AttackRange)) return;
     }
 
-    bHitAppliedThisSwing = false;
     NextAttackTime = Now + AttackCooldown;
+
+    const FName Section = FMath::RandBool() ? TEXT("StrikeLeft") : TEXT("StrikeRight");
+    Multicast_PlayAttackMontage(Section);
+}
+
+void AEnemyCharacter::Server_Attack_Implementation()
+{
+    // Keep actual logic in Attack(); this call merely ensures server entry.
+    Attack(); // why: reuses server-side validation + multicast.
+}
+
+void AEnemyCharacter::Multicast_PlayAttackMontage_Implementation(FName SectionName)
+{
+    if (!AttackMontage || !GetMesh()) return;
 
     if (UAnimInstance* Anim = GetMesh()->GetAnimInstance())
     {
-        Anim->Montage_Play(AttackMontage);
-        // randomize which strike plays
-        static const FName Sections[] = { TEXT("StrikeLeft"), TEXT("StrikeRight") };
-        Anim->Montage_JumpToSection(Sections[FMath::RandBool()], AttackMontage);
+        // why: avoid double-plays if rapid multicast happens
+        if (!Anim->Montage_IsPlaying(AttackMontage))
+        {
+            Anim->Montage_Play(AttackMontage, 1.0f);
+        }
+
+        if (SectionName != NAME_None)
+        {
+            Anim->Montage_JumpToSection(SectionName, AttackMontage); // same section for everyone
+        }
     }
 }
 
@@ -131,22 +143,6 @@ float AEnemyCharacter::TakeDamage(float DamageAmount, const FDamageEvent& Damage
 }
 
 
-void AEnemyCharacter::AnimNotify_MeleeHit()
-{
-    // Single-frame contact (upgrade to AnimNotifyState for a window later)
-    if (!HasAuthority() || bHitAppliedThisSwing || bIsDead) return;
-
-    AAIController* AIC = Cast<AAIController>(GetController());
-    AActor* Target = GetBBTarget(AIC, BBKey_Player);
-    if (!Target) return;
-
-    // Re-validate range at the contact frame
-    const float DistSq2D = FVector::DistSquared2D(GetActorLocation(), Target->GetActorLocation());
-    if (DistSq2D > FMath::Square(AttackRange)) return;
-
-    UGameplayStatics::ApplyDamage(Target, AttackDamage, GetController(), this, UDamageType::StaticClass());
-    bHitAppliedThisSwing = true; // one hit per swing
-}
 
 
 void AEnemyCharacter::Die()
