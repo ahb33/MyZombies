@@ -10,6 +10,24 @@
 /**
  * 
  */
+
+USTRUCT(BlueprintType)
+struct FRoundState
+{
+	GENERATED_BODY()
+
+    UPROPERTY(BlueprintReadOnly)
+    int32 RoundNumber = 1;
+
+    UPROPERTY(BlueprintReadOnly)
+    ERoundPhase Phase = ERoundPhase::Intro;
+
+};
+
+
+DECLARE_MULTICAST_DELEGATE_TwoParams(FOnRoundStateChanged, int32, ERoundPhase);
+
+
 UCLASS()
 class MYZOMBIES_API AZombiesGameState : public ABaseGameState
 {
@@ -18,20 +36,24 @@ class MYZOMBIES_API AZombiesGameState : public ABaseGameState
 
 public: 
 
+	FOnRoundStateChanged OnRoundStateChanged;
+
+	FORCEINLINE int32 GetRoundNumber() const {return RoundState.RoundNumber;;}
+	FORCEINLINE ERoundPhase GetRoundPhase() const {return RoundState.Phase;}
+
+    void ServerSetRoundState(int32 NewRoundNumber, ERoundPhase NewPhase);
+
+protected:
+
 	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
 
+    UPROPERTY(ReplicatedUsing=OnRep_RoundState)
+    FRoundState RoundState;
 
-	FORCEINLINE int32 GetRoundNumber() const {return RoundNumber;}
-	FORCEINLINE ERoundPhase GetRoundPhase() const {return RoundPhase;}
-
-	FORCEINLINE void SetRoundNumber(int32 InRound) { if (HasAuthority()) RoundNumber = InRound; }
-	FORCEINLINE void SetRoundPhase(ERoundPhase InPhase) { if (HasAuthority()) RoundPhase = InPhase; }
-
+	UFUNCTION()
+    void OnRep_RoundState();
 
 private:
+    void BroadcastRoundState();
 
-	UPROPERTY(Replicated) int32 RoundNumber;
-	UPROPERTY(Replicated) ERoundPhase RoundPhase;
-
-	
 };

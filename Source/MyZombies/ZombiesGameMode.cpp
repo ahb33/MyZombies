@@ -20,7 +20,7 @@ void AZombiesGameMode::BeginPlay()
 {
     Super::BeginPlay();
 
-    if (auto* GS = GetGameState<ABaseGameState>())  GS->SetMatchMode(EMatchMode::Zombies);
+    if (auto* GS = GetGameState<AZombiesGameState>())  GS->SetMatchMode(EMatchMode::Zombies);
 
 
     ApplyLevelModifiers();
@@ -105,8 +105,7 @@ void AZombiesGameMode::StartNextWave()
 
     if (AZombiesGameState* ZGS = GetGameState<AZombiesGameState>())
     {
-        ZGS->SetRoundNumber(CurrentLevel);
-        ZGS->SetRoundPhase(ERoundPhase::Intro);
+        ZGS->ServerSetRoundState(CurrentLevel, ERoundPhase::Active);
     }
 
     // Tell every client (including listen-host) to play intro + show widget
@@ -116,7 +115,7 @@ void AZombiesGameMode::StartNextWave()
         {
             if (AMyPlayerController* PC = Cast<AMyPlayerController>(It->Get()))
             {
-                PC->Client_PlayRoundIntro(CurrentLevel);
+                // PC->Client_PlayRoundIntro(CurrentLevel);
             }
         }
     }
@@ -128,7 +127,7 @@ void AZombiesGameMode::StartNextWave()
 void AZombiesGameMode::BeginWaveActive()
 {
     if(!HasAuthority()) return;
-    if (AZombiesGameState* ZGS = GetGameState<AZombiesGameState>()) ZGS->SetRoundPhase(ERoundPhase::Active);
+    if (AZombiesGameState* ZGS = GetGameState<AZombiesGameState>()) ZGS->ServerSetRoundState(ZGS->GetRoundNumber(), ERoundPhase::Active);
 
     // Retrieve all spawners in the game
     TArray<AActor*> Spawners;

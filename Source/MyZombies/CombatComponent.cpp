@@ -364,6 +364,7 @@ void UCombatComponent::ServerReload_Implementation()
 
     if (UWorld* World = GetWorld())
     {
+        World->GetTimerManager().ClearTimer(ReloadTimerHandle);
         World->GetTimerManager().SetTimer(
             ReloadTimerHandle, this, &UCombatComponent::FinishReloading, ReloadDuration, false);
     }

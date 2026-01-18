@@ -4,6 +4,8 @@
 
 #include "CoreMinimal.h"
 #include "GameFramework/PlayerController.h"
+#include "TimerManager.h"
+#include "ZombiesTypes.h"
 #include "MyPlayerController.generated.h"
 
 
@@ -18,6 +20,10 @@ class ULobbyMenuWidget;
 class UUserWidget;
 class UReadyButtonWidget;
 class UYouDiedMenuWidget;
+class UZombiesRoundWidget;
+class UAudioComponent;
+class AZombiesGameState;
+
 
 UCLASS()
 class MYZOMBIES_API AMyPlayerController : public APlayerController
@@ -50,7 +56,7 @@ public:
 	UFUNCTION(Client, Reliable)
 	void Client_ShowDeathScreen();
 
-	 UFUNCTION(BlueprintCallable) void ShowDeathScreenLocal(); // local-only UI creator (used by Client RPC + OnRep fallback)
+	UFUNCTION(BlueprintCallable) void ShowDeathScreenLocal(); // local-only UI creator (used by Client RPC + OnRep fallback)
 
 	// HUD Helpers
 	void SetHUDHealth(float CurrentHealth, float MaxHealth);
@@ -67,20 +73,27 @@ public:
 	UFUNCTION(Server, Reliable)
 	void Server_SetPlayerReady();
 
-	UFUNCTION(Client, Reliable)
-	void Client_PlayRoundIntro(int32 Round);
-
-	void PlayRoundIntroSound(int32 Round);
-
-	void ShowRoundIntroWidget(int32 Round);
+	virtual void EndPlay(const EEndPlayReason::Type EndPlayReason) override;
 
 private:
+
 	class AMyHUD* GetMyHUD();
+
+    void HandleRoundStateChanged(int32 RoundNumber, ERoundPhase Phase);
+	void BindRoundDelegate(); // your delegate binding helper
+
+	void InitRoundUI(); // Create (if needed) and keep the persistent corner “Round X” widget on-screen.
+	void UpdateZombiesRoundWidget(int32 Round); // Push the latest round value into the persistent corner widget (calls Ensure first).
+    void ShowRoundIntroSplashWidget(int32 RoundNumber);
+	void PlayRoundIntroSound(int32 Round); // Play BOOM + “Round X” VO locally as part of the intro.
+
+	UFUNCTION()
+	void HandlePlayerDeath(); // needed for dynamic multicast
+	
+private:
 
 	UPROPERTY(Transient)
 	AMyHUD* MyPlayerHUD = nullptr;
-
-	UFUNCTION() void HandlePlayerDeath(); // needed for dynamic multicast
 
 	UPROPERTY(Transient)
 	bool bDeathVisible = false;
@@ -95,7 +108,36 @@ private:
 	UPROPERTY(Transient)
 	UYouDiedMenuWidget* DeathScreenInstance = nullptr;
 
-	TSubclassOf<UUserWidget> RoundIntroWidgetClass;
-	UUserWidget* RoundIntroWidgetInstance = nullptr;
-	
+	UPROPERTY(EditDefaultsOnly, Category="UI|Round Info")
+	TSubclassOf<UUserWidget> RoundHUDWidgetClass;
+	UPROPERTY(Transient)
+	UZombiesRoundWidget* RoundHUDWidgetInstance  = nullptr; // ZombiesRoundWidgetInstance
+
+	UPROPERTY(EditDefaultsOnly, Category="UI|Round Info")
+	TSubclassOf<UUserWidget> RoundSplashWidgetClass;
+	UPROPERTY(Transient)
+	UZombiesRoundWidget* RoundSplashWidgetInstance = nullptr;
+
+    UPROPERTY(EditDefaultsOnly, Category="Audio")
+    TObjectPtr<USoundBase> RoundThudSound = nullptr;
+
+    // Index = Round-1
+    UPROPERTY(EditDefaultsOnly, Category="Audio")
+    TArray<TObjectPtr<USoundBase>> RoundVoiceSounds;
+
+    UPROPERTY(Transient)
+    TObjectPtr<UAudioComponent> RoundIntroThudComp = nullptr;
+
+    UPROPERTY(Transient)
+    TObjectPtr<UAudioComponent> RoundIntroVoiceComp = nullptr;
+
+	FTimerHandle RoundVoiceTimerHandle;
+	FTimerHandle RoundIntroHideTimerHandle;
+
+	UPROPERTY(EditDefaultsOnly)
+	float RoundIntroWidgetDuration = 2.0f;
+
+	UPROPERTY()
+    TObjectPtr<AZombiesGameState> CachedZGS = nullptr;
+
 };

@@ -18,8 +18,7 @@ void UCreateSessionMenuWidget::NativeConstruct()
     {
         MultiplayerSubsystem = GI->GetMultiplayerSessions();
 
-        if (MultiplayerSubsystem && 
-            !MultiplayerSubsystem->MultiplayerOnCreateSessionComplete.IsAlreadyBound(this, &UCreateSessionMenuWidget::OnCreateSessionComplete))
+        if (MultiplayerSubsystem && !MultiplayerSubsystem->MultiplayerOnCreateSessionComplete.IsAlreadyBound(this, &UCreateSessionMenuWidget::OnCreateSessionComplete))
         {
             MultiplayerSubsystem->MultiplayerOnCreateSessionComplete.AddDynamic(this, &UCreateSessionMenuWidget::OnCreateSessionComplete);
         }

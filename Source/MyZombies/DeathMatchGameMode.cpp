@@ -17,7 +17,7 @@ ADeathMatchGameMode::ADeathMatchGameMode()
 void ADeathMatchGameMode::BeginPlay()
 {
     Super::BeginPlay();
-    if (auto* GS = GetGameState<ABaseGameState>()) GS->SetMatchMode(EMatchMode::Deathmatch);
+    if (auto* GS = GetGameState<ADeathMatchGameState>()) GS->SetMatchMode(EMatchMode::Deathmatch);
 }
 
 void ADeathMatchGameMode::OnMatchStart()

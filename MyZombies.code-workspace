@@ -11,91 +11,7 @@
 	],
 	"settings": {
 		"typescript.tsc.autoDetect": "off",
-		"npm.autoDetect": "off",
-		"files.associations": {
-			"*.rh": "cpp",
-			"algorithm": "cpp",
-			"__bit_reference": "cpp",
-			"__bits": "cpp",
-			"__config": "cpp",
-			"__debug": "cpp",
-			"__errc": "cpp",
-			"__hash_table": "cpp",
-			"__locale": "cpp",
-			"__mutex_base": "cpp",
-			"__node_handle": "cpp",
-			"__split_buffer": "cpp",
-			"__threading_support": "cpp",
-			"__tree": "cpp",
-			"__tuple": "cpp",
-			"__verbose_abort": "cpp",
-			"any": "cpp",
-			"array": "cpp",
-			"atomic": "cpp",
-			"bit": "cpp",
-			"bitset": "cpp",
-			"cctype": "cpp",
-			"charconv": "cpp",
-			"cinttypes": "cpp",
-			"clocale": "cpp",
-			"cmath": "cpp",
-			"codecvt": "cpp",
-			"complex": "cpp",
-			"condition_variable": "cpp",
-			"csignal": "cpp",
-			"cstdarg": "cpp",
-			"cstddef": "cpp",
-			"cstdint": "cpp",
-			"cstdio": "cpp",
-			"cstdlib": "cpp",
-			"cstring": "cpp",
-			"ctime": "cpp",
-			"cwchar": "cpp",
-			"cwctype": "cpp",
-			"deque": "cpp",
-			"exception": "cpp",
-			"format": "cpp",
-			"forward_list": "cpp",
-			"fstream": "cpp",
-			"future": "cpp",
-			"initializer_list": "cpp",
-			"iomanip": "cpp",
-			"ios": "cpp",
-			"iosfwd": "cpp",
-			"iostream": "cpp",
-			"istream": "cpp",
-			"limits": "cpp",
-			"list": "cpp",
-			"locale": "cpp",
-			"map": "cpp",
-			"memory": "cpp",
-			"mutex": "cpp",
-			"new": "cpp",
-			"optional": "cpp",
-			"ostream": "cpp",
-			"queue": "cpp",
-			"ratio": "cpp",
-			"regex": "cpp",
-			"set": "cpp",
-			"sstream": "cpp",
-			"stack": "cpp",
-			"stdexcept": "cpp",
-			"streambuf": "cpp",
-			"string": "cpp",
-			"string_view": "cpp",
-			"system_error": "cpp",
-			"thread": "cpp",
-			"tuple": "cpp",
-			"type_traits": "cpp",
-			"typeinfo": "cpp",
-			"unordered_map": "cpp",
-			"unordered_set": "cpp",
-			"variant": "cpp",
-			"vector": "cpp",
-			"xlocale": "cpp",
-			"hash_map": "cpp",
-			"xstring": "cpp"
-		}
+		"npm.autoDetect": "off"
 	},
 	"extensions": {
 		"recommendations": [
@@ -269,173 +185,11 @@
 				}
 			},
 			{
-				"label": "MyZombiesGame Win64 Debug Build",
+				"label": "MyZombies Win64 Test Build",
 				"group": "build",
 				"command": "Engine\\Build\\BatchFiles\\Build.bat",
 				"args": [
-					"MyZombiesGame",
-					"Win64",
-					"Debug",
-					"C:\\Documents\\Unreal Projects\\MyZombies\\MyZombies.uproject",
-					"-waitmutex"
-				],
-				"problemMatcher": "$msCompile",
-				"type": "shell",
-				"options": {
-					"cwd": "C:\\Program Files\\Epic Games\\UE_5.4"
-				}
-			},
-			{
-				"label": "MyZombiesGame Win64 Debug Rebuild",
-				"group": "build",
-				"command": "Engine\\Build\\BatchFiles\\Build.bat",
-				"args": [
-					"MyZombiesGame",
-					"Win64",
-					"Debug",
-					"C:\\Documents\\Unreal Projects\\MyZombies\\MyZombies.uproject",
-					"-waitmutex"
-				],
-				"problemMatcher": "$msCompile",
-				"dependsOn": [
-					"MyZombiesGame Win64 Debug Clean"
-				],
-				"type": "shell",
-				"options": {
-					"cwd": "C:\\Program Files\\Epic Games\\UE_5.4"
-				}
-			},
-			{
-				"label": "MyZombiesGame Win64 Debug Clean",
-				"group": "build",
-				"command": "Engine\\Build\\BatchFiles\\Clean.bat",
-				"args": [
-					"MyZombiesGame",
-					"Win64",
-					"Debug",
-					"C:\\Documents\\Unreal Projects\\MyZombies\\MyZombies.uproject",
-					"-waitmutex"
-				],
-				"problemMatcher": "$msCompile",
-				"type": "shell",
-				"options": {
-					"cwd": "C:\\Program Files\\Epic Games\\UE_5.4"
-				}
-			},
-			{
-				"label": "MyZombiesGame Win64 DebugGame Build",
-				"group": "build",
-				"command": "Engine\\Build\\BatchFiles\\Build.bat",
-				"args": [
-					"MyZombiesGame",
-					"Win64",
-					"DebugGame",
-					"C:\\Documents\\Unreal Projects\\MyZombies\\MyZombies.uproject",
-					"-waitmutex"
-				],
-				"problemMatcher": "$msCompile",
-				"type": "shell",
-				"options": {
-					"cwd": "C:\\Program Files\\Epic Games\\UE_5.4"
-				}
-			},
-			{
-				"label": "MyZombiesGame Win64 DebugGame Rebuild",
-				"group": "build",
-				"command": "Engine\\Build\\BatchFiles\\Build.bat",
-				"args": [
-					"MyZombiesGame",
-					"Win64",
-					"DebugGame",
-					"C:\\Documents\\Unreal Projects\\MyZombies\\MyZombies.uproject",
-					"-waitmutex"
-				],
-				"problemMatcher": "$msCompile",
-				"dependsOn": [
-					"MyZombiesGame Win64 DebugGame Clean"
-				],
-				"type": "shell",
-				"options": {
-					"cwd": "C:\\Program Files\\Epic Games\\UE_5.4"
-				}
-			},
-			{
-				"label": "MyZombiesGame Win64 DebugGame Clean",
-				"group": "build",
-				"command": "Engine\\Build\\BatchFiles\\Clean.bat",
-				"args": [
-					"MyZombiesGame",
-					"Win64",
-					"DebugGame",
-					"C:\\Documents\\Unreal Projects\\MyZombies\\MyZombies.uproject",
-					"-waitmutex"
-				],
-				"problemMatcher": "$msCompile",
-				"type": "shell",
-				"options": {
-					"cwd": "C:\\Program Files\\Epic Games\\UE_5.4"
-				}
-			},
-			{
-				"label": "MyZombiesGame Win64 Development Build",
-				"group": "build",
-				"command": "Engine\\Build\\BatchFiles\\Build.bat",
-				"args": [
-					"MyZombiesGame",
-					"Win64",
-					"Development",
-					"C:\\Documents\\Unreal Projects\\MyZombies\\MyZombies.uproject",
-					"-waitmutex"
-				],
-				"problemMatcher": "$msCompile",
-				"type": "shell",
-				"options": {
-					"cwd": "C:\\Program Files\\Epic Games\\UE_5.4"
-				}
-			},
-			{
-				"label": "MyZombiesGame Win64 Development Rebuild",
-				"group": "build",
-				"command": "Engine\\Build\\BatchFiles\\Build.bat",
-				"args": [
-					"MyZombiesGame",
-					"Win64",
-					"Development",
-					"C:\\Documents\\Unreal Projects\\MyZombies\\MyZombies.uproject",
-					"-waitmutex"
-				],
-				"problemMatcher": "$msCompile",
-				"dependsOn": [
-					"MyZombiesGame Win64 Development Clean"
-				],
-				"type": "shell",
-				"options": {
-					"cwd": "C:\\Program Files\\Epic Games\\UE_5.4"
-				}
-			},
-			{
-				"label": "MyZombiesGame Win64 Development Clean",
-				"group": "build",
-				"command": "Engine\\Build\\BatchFiles\\Clean.bat",
-				"args": [
-					"MyZombiesGame",
-					"Win64",
-					"Development",
-					"C:\\Documents\\Unreal Projects\\MyZombies\\MyZombies.uproject",
-					"-waitmutex"
-				],
-				"problemMatcher": "$msCompile",
-				"type": "shell",
-				"options": {
-					"cwd": "C:\\Program Files\\Epic Games\\UE_5.4"
-				}
-			},
-			{
-				"label": "MyZombiesGame Win64 Test Build",
-				"group": "build",
-				"command": "Engine\\Build\\BatchFiles\\Build.bat",
-				"args": [
-					"MyZombiesGame",
+					"MyZombies",
 					"Win64",
 					"Test",
 					"C:\\Documents\\Unreal Projects\\MyZombies\\MyZombies.uproject",
@@ -448,11 +202,11 @@
 				}
 			},
 			{
-				"label": "MyZombiesGame Win64 Test Rebuild",
+				"label": "MyZombies Win64 Test Rebuild",
 				"group": "build",
 				"command": "Engine\\Build\\BatchFiles\\Build.bat",
 				"args": [
-					"MyZombiesGame",
+					"MyZombies",
 					"Win64",
 					"Test",
 					"C:\\Documents\\Unreal Projects\\MyZombies\\MyZombies.uproject",
@@ -460,7 +214,7 @@
 				],
 				"problemMatcher": "$msCompile",
 				"dependsOn": [
-					"MyZombiesGame Win64 Test Clean"
+					"MyZombies Win64 Test Clean"
 				],
 				"type": "shell",
 				"options": {
@@ -468,11 +222,11 @@
 				}
 			},
 			{
-				"label": "MyZombiesGame Win64 Test Clean",
+				"label": "MyZombies Win64 Test Clean",
 				"group": "build",
 				"command": "Engine\\Build\\BatchFiles\\Clean.bat",
 				"args": [
-					"MyZombiesGame",
+					"MyZombies",
 					"Win64",
 					"Test",
 					"C:\\Documents\\Unreal Projects\\MyZombies\\MyZombies.uproject",
@@ -485,11 +239,11 @@
 				}
 			},
 			{
-				"label": "MyZombiesGame Win64 Shipping Build",
+				"label": "MyZombies Win64 Shipping Build",
 				"group": "build",
 				"command": "Engine\\Build\\BatchFiles\\Build.bat",
 				"args": [
-					"MyZombiesGame",
+					"MyZombies",
 					"Win64",
 					"Shipping",
 					"C:\\Documents\\Unreal Projects\\MyZombies\\MyZombies.uproject",
@@ -502,11 +256,11 @@
 				}
 			},
 			{
-				"label": "MyZombiesGame Win64 Shipping Rebuild",
+				"label": "MyZombies Win64 Shipping Rebuild",
 				"group": "build",
 				"command": "Engine\\Build\\BatchFiles\\Build.bat",
 				"args": [
-					"MyZombiesGame",
+					"MyZombies",
 					"Win64",
 					"Shipping",
 					"C:\\Documents\\Unreal Projects\\MyZombies\\MyZombies.uproject",
@@ -514,7 +268,7 @@
 				],
 				"problemMatcher": "$msCompile",
 				"dependsOn": [
-					"MyZombiesGame Win64 Shipping Clean"
+					"MyZombies Win64 Shipping Clean"
 				],
 				"type": "shell",
 				"options": {
@@ -522,13 +276,175 @@
 				}
 			},
 			{
-				"label": "MyZombiesGame Win64 Shipping Clean",
+				"label": "MyZombies Win64 Shipping Clean",
 				"group": "build",
 				"command": "Engine\\Build\\BatchFiles\\Clean.bat",
 				"args": [
-					"MyZombiesGame",
+					"MyZombies",
 					"Win64",
 					"Shipping",
+					"C:\\Documents\\Unreal Projects\\MyZombies\\MyZombies.uproject",
+					"-waitmutex"
+				],
+				"problemMatcher": "$msCompile",
+				"type": "shell",
+				"options": {
+					"cwd": "C:\\Program Files\\Epic Games\\UE_5.4"
+				}
+			},
+			{
+				"label": "MyZombiesEditor Win64 Debug Build",
+				"group": "build",
+				"command": "Engine\\Build\\BatchFiles\\Build.bat",
+				"args": [
+					"MyZombiesEditor",
+					"Win64",
+					"Debug",
+					"C:\\Documents\\Unreal Projects\\MyZombies\\MyZombies.uproject",
+					"-waitmutex"
+				],
+				"problemMatcher": "$msCompile",
+				"type": "shell",
+				"options": {
+					"cwd": "C:\\Program Files\\Epic Games\\UE_5.4"
+				}
+			},
+			{
+				"label": "MyZombiesEditor Win64 Debug Rebuild",
+				"group": "build",
+				"command": "Engine\\Build\\BatchFiles\\Build.bat",
+				"args": [
+					"MyZombiesEditor",
+					"Win64",
+					"Debug",
+					"C:\\Documents\\Unreal Projects\\MyZombies\\MyZombies.uproject",
+					"-waitmutex"
+				],
+				"problemMatcher": "$msCompile",
+				"dependsOn": [
+					"MyZombiesEditor Win64 Debug Clean"
+				],
+				"type": "shell",
+				"options": {
+					"cwd": "C:\\Program Files\\Epic Games\\UE_5.4"
+				}
+			},
+			{
+				"label": "MyZombiesEditor Win64 Debug Clean",
+				"group": "build",
+				"command": "Engine\\Build\\BatchFiles\\Clean.bat",
+				"args": [
+					"MyZombiesEditor",
+					"Win64",
+					"Debug",
+					"C:\\Documents\\Unreal Projects\\MyZombies\\MyZombies.uproject",
+					"-waitmutex"
+				],
+				"problemMatcher": "$msCompile",
+				"type": "shell",
+				"options": {
+					"cwd": "C:\\Program Files\\Epic Games\\UE_5.4"
+				}
+			},
+			{
+				"label": "MyZombiesEditor Win64 DebugGame Build",
+				"group": "build",
+				"command": "Engine\\Build\\BatchFiles\\Build.bat",
+				"args": [
+					"MyZombiesEditor",
+					"Win64",
+					"DebugGame",
+					"C:\\Documents\\Unreal Projects\\MyZombies\\MyZombies.uproject",
+					"-waitmutex"
+				],
+				"problemMatcher": "$msCompile",
+				"type": "shell",
+				"options": {
+					"cwd": "C:\\Program Files\\Epic Games\\UE_5.4"
+				}
+			},
+			{
+				"label": "MyZombiesEditor Win64 DebugGame Rebuild",
+				"group": "build",
+				"command": "Engine\\Build\\BatchFiles\\Build.bat",
+				"args": [
+					"MyZombiesEditor",
+					"Win64",
+					"DebugGame",
+					"C:\\Documents\\Unreal Projects\\MyZombies\\MyZombies.uproject",
+					"-waitmutex"
+				],
+				"problemMatcher": "$msCompile",
+				"dependsOn": [
+					"MyZombiesEditor Win64 DebugGame Clean"
+				],
+				"type": "shell",
+				"options": {
+					"cwd": "C:\\Program Files\\Epic Games\\UE_5.4"
+				}
+			},
+			{
+				"label": "MyZombiesEditor Win64 DebugGame Clean",
+				"group": "build",
+				"command": "Engine\\Build\\BatchFiles\\Clean.bat",
+				"args": [
+					"MyZombiesEditor",
+					"Win64",
+					"DebugGame",
+					"C:\\Documents\\Unreal Projects\\MyZombies\\MyZombies.uproject",
+					"-waitmutex"
+				],
+				"problemMatcher": "$msCompile",
+				"type": "shell",
+				"options": {
+					"cwd": "C:\\Program Files\\Epic Games\\UE_5.4"
+				}
+			},
+			{
+				"label": "MyZombiesEditor Win64 Development Build",
+				"group": "build",
+				"command": "Engine\\Build\\BatchFiles\\Build.bat",
+				"args": [
+					"MyZombiesEditor",
+					"Win64",
+					"Development",
+					"C:\\Documents\\Unreal Projects\\MyZombies\\MyZombies.uproject",
+					"-waitmutex"
+				],
+				"problemMatcher": "$msCompile",
+				"type": "shell",
+				"options": {
+					"cwd": "C:\\Program Files\\Epic Games\\UE_5.4"
+				}
+			},
+			{
+				"label": "MyZombiesEditor Win64 Development Rebuild",
+				"group": "build",
+				"command": "Engine\\Build\\BatchFiles\\Build.bat",
+				"args": [
+					"MyZombiesEditor",
+					"Win64",
+					"Development",
+					"C:\\Documents\\Unreal Projects\\MyZombies\\MyZombies.uproject",
+					"-waitmutex"
+				],
+				"problemMatcher": "$msCompile",
+				"dependsOn": [
+					"MyZombiesEditor Win64 Development Clean"
+				],
+				"type": "shell",
+				"options": {
+					"cwd": "C:\\Program Files\\Epic Games\\UE_5.4"
+				}
+			},
+			{
+				"label": "MyZombiesEditor Win64 Development Clean",
+				"group": "build",
+				"command": "Engine\\Build\\BatchFiles\\Clean.bat",
+				"args": [
+					"MyZombiesEditor",
+					"Win64",
+					"Development",
 					"C:\\Documents\\Unreal Projects\\MyZombies\\MyZombies.uproject",
 					"-waitmutex"
 				],
@@ -546,10 +462,9 @@
 			{
 				"name": "Launch MyZombies (Debug)",
 				"request": "launch",
-				"program": "C:\\Program Files\\Epic Games\\UE_5.4\\Engine\\Binaries\\Win64\\UnrealEditor-Win64-Debug.exe",
+				"program": "C:\\Documents\\Unreal Projects\\MyZombies\\Binaries\\Win64\\UnrealGame-Win64-Debug.exe",
 				"preLaunchTask": "MyZombies Win64 Debug Build",
 				"args": [
-					"C:\\Documents\\Unreal Projects\\MyZombies\\MyZombies.uproject"
 				],
 				"cwd": "C:\\Program Files\\Epic Games\\UE_5.4",
 				"stopAtEntry": false,
@@ -563,10 +478,9 @@
 			{
 				"name": "Launch MyZombies (DebugGame)",
 				"request": "launch",
-				"program": "C:\\Program Files\\Epic Games\\UE_5.4\\Engine\\Binaries\\Win64\\UnrealEditor-Win64-DebugGame.exe",
+				"program": "C:\\Documents\\Unreal Projects\\MyZombies\\Binaries\\Win64\\UnrealGame-Win64-DebugGame.exe",
 				"preLaunchTask": "MyZombies Win64 DebugGame Build",
 				"args": [
-					"C:\\Documents\\Unreal Projects\\MyZombies\\MyZombies.uproject"
 				],
 				"cwd": "C:\\Program Files\\Epic Games\\UE_5.4",
 				"stopAtEntry": false,
@@ -580,8 +494,56 @@
 			{
 				"name": "Launch MyZombies (Development)",
 				"request": "launch",
-				"program": "C:\\Program Files\\Epic Games\\UE_5.4\\Engine\\Binaries\\Win64\\UnrealEditor.exe",
+				"program": "C:\\Documents\\Unreal Projects\\MyZombies\\Binaries\\Win64\\UnrealGame.exe",
 				"preLaunchTask": "MyZombies Win64 Development Build",
+				"args": [
+				],
+				"cwd": "C:\\Program Files\\Epic Games\\UE_5.4",
+				"stopAtEntry": false,
+				"console": "integratedTerminal",
+				"type": "cppvsdbg",
+				"visualizerFile": "C:\\Program Files\\Epic Games\\UE_5.4\\Engine\\Extras\\VisualStudioDebugging\\Unreal.natvis",
+				"sourceFileMap": {
+					"D:\\build\\++UE5\\Sync": "C:\\Program Files\\Epic Games\\UE_5.4"
+				}
+			},
+			{
+				"name": "Launch MyZombies (Test)",
+				"request": "launch",
+				"program": "C:\\Documents\\Unreal Projects\\MyZombies\\Binaries\\Win64\\UnrealGame-Win64-Test.exe",
+				"preLaunchTask": "MyZombies Win64 Test Build",
+				"args": [
+				],
+				"cwd": "C:\\Program Files\\Epic Games\\UE_5.4",
+				"stopAtEntry": false,
+				"console": "integratedTerminal",
+				"type": "cppvsdbg",
+				"visualizerFile": "C:\\Program Files\\Epic Games\\UE_5.4\\Engine\\Extras\\VisualStudioDebugging\\Unreal.natvis",
+				"sourceFileMap": {
+					"D:\\build\\++UE5\\Sync": "C:\\Program Files\\Epic Games\\UE_5.4"
+				}
+			},
+			{
+				"name": "Launch MyZombies (Shipping)",
+				"request": "launch",
+				"program": "C:\\Documents\\Unreal Projects\\MyZombies\\Binaries\\Win64\\UnrealGame-Win64-Shipping.exe",
+				"preLaunchTask": "MyZombies Win64 Shipping Build",
+				"args": [
+				],
+				"cwd": "C:\\Program Files\\Epic Games\\UE_5.4",
+				"stopAtEntry": false,
+				"console": "integratedTerminal",
+				"type": "cppvsdbg",
+				"visualizerFile": "C:\\Program Files\\Epic Games\\UE_5.4\\Engine\\Extras\\VisualStudioDebugging\\Unreal.natvis",
+				"sourceFileMap": {
+					"D:\\build\\++UE5\\Sync": "C:\\Program Files\\Epic Games\\UE_5.4"
+				}
+			},
+			{
+				"name": "Launch MyZombiesEditor (Debug)",
+				"request": "launch",
+				"program": "C:\\Program Files\\Epic Games\\UE_5.4\\Engine\\Binaries\\Win64\\UnrealEditor-Win64-Debug.exe",
+				"preLaunchTask": "MyZombiesEditor Win64 Debug Build",
 				"args": [
 					"C:\\Documents\\Unreal Projects\\MyZombies\\MyZombies.uproject"
 				],
@@ -595,11 +557,12 @@
 				}
 			},
 			{
-				"name": "Launch MyZombiesGame (Debug)",
+				"name": "Launch MyZombiesEditor (DebugGame)",
 				"request": "launch",
-				"program": "C:\\Documents\\Unreal Projects\\MyZombies\\Binaries\\Win64\\UnrealGame-Win64-Debug.exe",
-				"preLaunchTask": "MyZombiesGame Win64 Debug Build",
+				"program": "C:\\Program Files\\Epic Games\\UE_5.4\\Engine\\Binaries\\Win64\\UnrealEditor-Win64-DebugGame.exe",
+				"preLaunchTask": "MyZombiesEditor Win64 DebugGame Build",
 				"args": [
+					"C:\\Documents\\Unreal Projects\\MyZombies\\MyZombies.uproject"
 				],
 				"cwd": "C:\\Program Files\\Epic Games\\UE_5.4",
 				"stopAtEntry": false,
@@ -611,59 +574,12 @@
 				}
 			},
 			{
-				"name": "Launch MyZombiesGame (DebugGame)",
+				"name": "Launch MyZombiesEditor (Development)",
 				"request": "launch",
-				"program": "C:\\Documents\\Unreal Projects\\MyZombies\\Binaries\\Win64\\UnrealGame-Win64-DebugGame.exe",
-				"preLaunchTask": "MyZombiesGame Win64 DebugGame Build",
+				"program": "C:\\Program Files\\Epic Games\\UE_5.4\\Engine\\Binaries\\Win64\\UnrealEditor.exe",
+				"preLaunchTask": "MyZombiesEditor Win64 Development Build",
 				"args": [
-				],
-				"cwd": "C:\\Program Files\\Epic Games\\UE_5.4",
-				"stopAtEntry": false,
-				"console": "integratedTerminal",
-				"type": "cppvsdbg",
-				"visualizerFile": "C:\\Program Files\\Epic Games\\UE_5.4\\Engine\\Extras\\VisualStudioDebugging\\Unreal.natvis",
-				"sourceFileMap": {
-					"D:\\build\\++UE5\\Sync": "C:\\Program Files\\Epic Games\\UE_5.4"
-				}
-			},
-			{
-				"name": "Launch MyZombiesGame (Development)",
-				"request": "launch",
-				"program": "C:\\Documents\\Unreal Projects\\MyZombies\\Binaries\\Win64\\UnrealGame.exe",
-				"preLaunchTask": "MyZombiesGame Win64 Development Build",
-				"args": [
-				],
-				"cwd": "C:\\Program Files\\Epic Games\\UE_5.4",
-				"stopAtEntry": false,
-				"console": "integratedTerminal",
-				"type": "cppvsdbg",
-				"visualizerFile": "C:\\Program Files\\Epic Games\\UE_5.4\\Engine\\Extras\\VisualStudioDebugging\\Unreal.natvis",
-				"sourceFileMap": {
-					"D:\\build\\++UE5\\Sync": "C:\\Program Files\\Epic Games\\UE_5.4"
-				}
-			},
-			{
-				"name": "Launch MyZombiesGame (Test)",
-				"request": "launch",
-				"program": "C:\\Documents\\Unreal Projects\\MyZombies\\Binaries\\Win64\\UnrealGame-Win64-Test.exe",
-				"preLaunchTask": "MyZombiesGame Win64 Test Build",
-				"args": [
-				],
-				"cwd": "C:\\Program Files\\Epic Games\\UE_5.4",
-				"stopAtEntry": false,
-				"console": "integratedTerminal",
-				"type": "cppvsdbg",
-				"visualizerFile": "C:\\Program Files\\Epic Games\\UE_5.4\\Engine\\Extras\\VisualStudioDebugging\\Unreal.natvis",
-				"sourceFileMap": {
-					"D:\\build\\++UE5\\Sync": "C:\\Program Files\\Epic Games\\UE_5.4"
-				}
-			},
-			{
-				"name": "Launch MyZombiesGame (Shipping)",
-				"request": "launch",
-				"program": "C:\\Documents\\Unreal Projects\\MyZombies\\Binaries\\Win64\\UnrealGame-Win64-Shipping.exe",
-				"preLaunchTask": "MyZombiesGame Win64 Shipping Build",
-				"args": [
+					"C:\\Documents\\Unreal Projects\\MyZombies\\MyZombies.uproject"
 				],
 				"cwd": "C:\\Program Files\\Epic Games\\UE_5.4",
 				"stopAtEntry": false,
