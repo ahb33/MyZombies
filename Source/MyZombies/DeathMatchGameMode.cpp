@@ -10,14 +10,16 @@ ADeathMatchGameMode::ADeathMatchGameMode()
 {
     PlayerStateClass = ADeathMatchPlayerState::StaticClass();  // per-player stats
     GameStateClass   = ADeathMatchGameState::StaticClass();    // shared match state
-    GameStateClass = ABaseGameState::StaticClass();
 }
-
 
 void ADeathMatchGameMode::BeginPlay()
 {
     Super::BeginPlay();
-    if (auto* GS = GetGameState<ADeathMatchGameState>()) GS->SetMatchMode(EMatchMode::Deathmatch);
+    if (ADeathMatchGameState* DMGS = GetGameState<ADeathMatchGameState>()) 
+    {
+        DMGS->SetInputProfile(EInputProfile::Gameplay);
+        DMGS->SetMatchMode(EMatchMode::Deathmatch);
+    }
 }
 
 void ADeathMatchGameMode::OnMatchStart()

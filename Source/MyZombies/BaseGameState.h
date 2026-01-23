@@ -3,35 +3,68 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "GameFramework/GameState.h"
+#include "GameFramework/GameStateBase.h"
 #include "BaseGameState.generated.h"
 
 /**
  * 
  */
 
-UENUM(BlueprintType) enum class EMatchMode : uint8 { Zombies, Deathmatch };
+UENUM(BlueprintType)
+enum class EInputProfile : uint8
+{
+  Lobby,
+  Gameplay
+};
+
+
+
+UENUM(BlueprintType) 
+enum class EMatchMode : uint8 
+{ 
+  Zombies, 
+  Deathmatch
+};
+
+
+DECLARE_MULTICAST_DELEGATE_OneParam(FOnInputProfileChanged, EInputProfile);
+
 
 UCLASS()
-class MYZOMBIES_API ABaseGameState : public AGameState
+class MYZOMBIES_API ABaseGameState : public AGameStateBase
 {
 	GENERATED_BODY()
 
 public:
 
-  UFUNCTION(BlueprintPure) 
+  FOnInputProfileChanged OnInputProfileChanged; 
+
+  UFUNCTION() 
   EMatchMode GetMatchMode() const { return MatchMode; }
 
-  UFUNCTION(BlueprintAuthorityOnly)
+  UFUNCTION()
+  EInputProfile GetInputProfile() const { return InputProfile;}
+
+  UFUNCTION()
   void SetMatchMode(EMatchMode InMode) { if (HasAuthority()) { MatchMode = InMode; } }
+
+  UFUNCTION()
+  void SetInputProfile(EInputProfile InputProfile);
 
 
 protected:
+  virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
 
-  UPROPERTY(ReplicatedUsing=OnRep_MatchMode, BlueprintReadOnly, Category="Match")
+  UPROPERTY(Replicated, BlueprintReadOnly, Category="Match")
   EMatchMode MatchMode = EMatchMode::Zombies; // set default
 
-  UFUNCTION() void OnRep_MatchMode() {}
-  virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
+  UPROPERTY(ReplicatedUsing=OnRep_InputProfile, BlueprintReadOnly, Category="Input")
+  EInputProfile InputProfile = EInputProfile::Lobby; // set default
+
+  UFUNCTION() void OnRep_InputProfile();
+
+private:
+
+  void BroadcastInputProfile();
 	
 };

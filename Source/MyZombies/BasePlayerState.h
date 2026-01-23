@@ -7,6 +7,10 @@
 #include "BasePlayerState.generated.h"
 
 
+ 
+
+
+
 
 /// make ABasePlayerState abstract so it cant be instantiated 
 UCLASS(Abstract)

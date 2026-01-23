@@ -51,8 +51,6 @@ void AAI_EnemySpawner::SpawnZombies(int32 NumberOfZombies)
 	// if actor does not have authority to spawn return
     if (ZombieSpawnArray.IsEmpty() || GetLocalRole() != ROLE_Authority) return;
     
-    UE_LOG(LogTemp, Warning, TEXT("SpawnZombies not empty"));
-
     // Spawning zombies with a cooldown interval
     GetWorld()->GetTimerManager().SetTimer(SpawnTimerHandle, this, &AAI_EnemySpawner::Spawn, SpawnCooldown, true);
 }

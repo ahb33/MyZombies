@@ -12,7 +12,7 @@
 				"Engine",
 				"UMG",
 				"AIModule",
-				"CoreUObject",
+				"CoreUObject"
 			]
 		},
 		{
@@ -39,6 +39,10 @@
 		},
 		{
 			"Name": "MultiplayerPlugin",
+			"Enabled": true
+		},
+		{
+			"Name": "ConsoleVariables",
 			"Enabled": true
 		}
 	]

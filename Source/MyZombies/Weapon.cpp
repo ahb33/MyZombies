@@ -312,15 +312,13 @@ void AWeapon::OnRep_Owner()
 void AWeapon::SetWeaponState(EWeaponState State)
 {
 	WeaponState = State;
-    OnRep_WeaponState();
-
 }
 void AWeapon::OnRep_WeaponState()
 {
 
 	switch(WeaponState)
 	{
-		case EWeaponState::EWS_Equipped:
+		case EWeaponState::Equipped:
 			AreaSphere->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 			WeaponMesh->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 			WeaponMesh->SetSimulatePhysics(false);
@@ -328,7 +326,7 @@ void AWeapon::OnRep_WeaponState()
 			// Perform additional actions when the weapon is equipped
 			break;
 
-		case EWeaponState::EWS_EquippedSecondary:
+		case EWeaponState::EquippedSecondary:
 			// could refactor block of code below and above into one function -
 			AreaSphere->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 			WeaponMesh->SetCollisionEnabled(ECollisionEnabled::NoCollision);
@@ -336,7 +334,7 @@ void AWeapon::OnRep_WeaponState()
 			WeaponMesh->SetEnableGravity(false);
             break;
 
-		case EWeaponState::EWS_Dropped:
+		case EWeaponState::Dropped:
 			AreaSphere->SetCollisionEnabled(ECollisionEnabled::QueryOnly);
 			WeaponMesh->SetSimulatePhysics(true);
 			WeaponMesh->SetEnableGravity(true);

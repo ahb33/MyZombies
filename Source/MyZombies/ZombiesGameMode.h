@@ -21,8 +21,6 @@ public:
 
 	UFUNCTION()
 	void OnZombieKilled();
-    void SetupInputForGameplay(class APlayerController* PC);
-	virtual void PostLogin(APlayerController* NewPlayer) override;
 	void BeginWaveActive();
 	void OnZombieSpawned();
 

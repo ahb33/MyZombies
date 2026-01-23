@@ -20,6 +20,8 @@ void ABaseGameMode::BeginPlay()
 
     UGameplayStatics::GetAllActorsOfClass(GetWorld(), APlayerStart::StaticClass(), AvailableSpawnPoints); // GetAllActorsOfClass Finds all actors of a class in the world and stores them in OutArray.
 
+
+    
 }
 
 /*
@@ -37,10 +39,7 @@ void ABaseGameMode::PostLogin(APlayerController* NewPlayer)
     {
         // Spawn and possess the default pawn for this player
         RestartPlayer(PC);
-        
-        // Apply controller setup
-        PC->SetPause(false);
-        PC->bShowMouseCursor = true;
+    
     }
 }
 

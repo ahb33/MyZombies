@@ -14,6 +14,10 @@
 void ALobbyGameMode::PostLogin(APlayerController* NewPlayer)
 {
     Super::PostLogin(NewPlayer);
+    if(ALobbyGameState* LGS = GetGameState<ALobbyGameState>())
+    LGS->SetInputProfile(EInputProfile::Lobby);
+
+
     UE_LOG(LogTemp, Log, TEXT("Player joined. Now in lobby."));
     CheckLobbyReady(); // re-evaluate on join
 }

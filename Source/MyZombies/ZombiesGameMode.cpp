@@ -20,29 +20,16 @@ void AZombiesGameMode::BeginPlay()
 {
     Super::BeginPlay();
 
-    if (auto* GS = GetGameState<AZombiesGameState>())  GS->SetMatchMode(EMatchMode::Zombies);
-
-
+    if(AZombiesGameState* ZGS = GetGameState<AZombiesGameState>())
+    {
+        ZGS->SetInputProfile(EInputProfile::Gameplay);
+        ZGS->SetMatchMode(EMatchMode::Zombies);
+    }
+    
     ApplyLevelModifiers();
     StartNextWave();
-}
 
-void AZombiesGameMode::PostLogin(APlayerController* NewPlayer)
-{
-    Super::PostLogin(NewPlayer);
-
-    if (AMyPlayerController* PC = Cast<AMyPlayerController>(NewPlayer))
-    {
-        SetupInputForGameplay(PC);
-    }
 }
-void AZombiesGameMode::SetupInputForGameplay(APlayerController* PC)
-{
-    if (!PC) return;
-    PC->SetInputMode(FInputModeGameOnly());
-    PC->bShowMouseCursor = false;
-}
-
 void AZombiesGameMode::OnZombieSpawned()
 {
     ++ZombiesSpawnedThisWave;
@@ -105,19 +92,7 @@ void AZombiesGameMode::StartNextWave()
 
     if (AZombiesGameState* ZGS = GetGameState<AZombiesGameState>())
     {
-        ZGS->ServerSetRoundState(CurrentLevel, ERoundPhase::Active);
-    }
-
-    // Tell every client (including listen-host) to play intro + show widget
-    if (UWorld* World = GetWorld())
-    {
-        for (FConstPlayerControllerIterator It = World->GetPlayerControllerIterator(); It; ++It)
-        {
-            if (AMyPlayerController* PC = Cast<AMyPlayerController>(It->Get()))
-            {
-                // PC->Client_PlayRoundIntro(CurrentLevel);
-            }
-        }
+        ZGS->ServerSetRoundState(CurrentLevel, ERoundPhase::Intro);
     }
 
     // delay actual spawning

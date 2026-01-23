@@ -3,7 +3,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "GameFramework/GameStateBase.h"
+#include "BaseGameState.h"
 #include "LobbyGameState.generated.h"
 
 /**
@@ -13,7 +13,7 @@
 class UMultiplayerSessions;
 
 UCLASS()
-class MYZOMBIES_API ALobbyGameState : public AGameStateBase
+class MYZOMBIES_API ALobbyGameState : public ABaseGameState
 {
 	GENERATED_BODY()
 

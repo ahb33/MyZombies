@@ -10,6 +10,6 @@ public class MyZombiesTarget : TargetRules
         Type = TargetType.Game;
         DefaultBuildSettings = BuildSettingsVersion.V5;
         IncludeOrderVersion = EngineIncludeOrderVersion.Unreal5_4;
-        ExtraModuleNames.AddRange(new[] {"MyZombies", "CCDebug"});
+        ExtraModuleNames.AddRange(new[] {"MyZombies", "CCDebug","CCGameplayDebugger"});
     }
 }

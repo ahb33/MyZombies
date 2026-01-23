@@ -218,7 +218,7 @@ void UCombatComponent::EquipWeapon(AWeapon* WeaponToEquip)
 void UCombatComponent::ApplyPrimaryEquipSetup(AWeapon* WeaponToEquip)
 {
     EquippedWeapon = WeaponToEquip;
-    GetEquippedWeapon()->SetWeaponState(EWeaponState::EWS_Equipped);
+    GetEquippedWeapon()->SetWeaponState(EWeaponState::Equipped);
     if (GetMainCharacter()) GetEquippedWeapon()->SetOwner(GetMainCharacter());
     AttachActorToRightHand(GetEquippedWeapon());
     GetEquippedWeapon()->ShowPickUpWidget(false);
@@ -243,7 +243,7 @@ void UCombatComponent::EquipSecondaryWeapon(AWeapon* WeaponToEquip)
 {
     if (!WeaponToEquip || !GetMainCharacter()) return;
     SecondaryWeapon = WeaponToEquip;
-    GetSecondaryWeapon()->SetWeaponState(EWeaponState::EWS_EquippedSecondary);
+    GetSecondaryWeapon()->SetWeaponState(EWeaponState::EquippedSecondary);
     GetSecondaryWeapon()->SetOwner(GetMainCharacter());
     AttachWeaponToBackSocket(GetSecondaryWeapon());
     GetSecondaryWeapon()->ShowPickUpWidget(false);
@@ -286,12 +286,12 @@ void UCombatComponent::SwapWeapons()
     // Attach new primary weapon to right hand
     AttachActorToRightHand(GetEquippedWeapon());
     GetEquippedWeapon()->SetOwner(GetMainCharacter());
-    GetEquippedWeapon()->SetWeaponState(EWeaponState::EWS_Equipped);
+    GetEquippedWeapon()->SetWeaponState(EWeaponState::Equipped);
 
     // Attach new secondary weapon to back
     AttachWeaponToBackSocket(GetSecondaryWeapon());
     GetSecondaryWeapon()->SetOwner(GetMainCharacter());
-    GetSecondaryWeapon()->SetWeaponState(EWeaponState::EWS_EquippedSecondary);
+    GetSecondaryWeapon()->SetWeaponState(EWeaponState::EquippedSecondary);
 
     GetEquippedWeapon()->RefreshHUD();
 

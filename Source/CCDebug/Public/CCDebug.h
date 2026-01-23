@@ -35,7 +35,9 @@ FORCEINLINE const TCHAR* CCD_RoleStr(const AActor* A)
 
 struct FCCDScopeTimer
 {
-	AActor* Actor; const TCHAR* Label; double Start;
+	AActor* Actor; 
+	const TCHAR* Label; 
+	double Start;
 	explicit FCCDScopeTimer(AActor* InActor, const TCHAR* InLabel)
 		: Actor(InActor), Label(InLabel), Start(FPlatformTime::Seconds()) {}
 	~FCCDScopeTimer()

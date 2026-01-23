@@ -40,21 +40,68 @@ void AMyPlayerController::BeginPlay()
 
 }
 
+
 void AMyPlayerController::BindRoundDelegate()
 {
+    // Bind base GS (always)
+    CachedBGS = GetWorld() ? GetWorld()->GetGameState<ABaseGameState>() : nullptr;
+    if (CachedBGS)
+    {
+        CachedBGS->OnInputProfileChanged.RemoveAll(this);
+        CachedBGS->OnInputProfileChanged.AddUObject(this, &AMyPlayerController::ApplyInputProfile);
+
+        ApplyInputProfile(CachedBGS->GetInputProfile()); // initial sync (add getter)
+    }
+
+    // Bind zombies GS (only exists in Zombies mode)
     CachedZGS = GetWorld() ? GetWorld()->GetGameState<AZombiesGameState>() : nullptr;
-    
-    if(!CachedZGS) return;
+    if (CachedZGS)
+    {
+        CachedZGS->OnRoundStateChanged.RemoveAll(this);
+        CachedZGS->OnRoundStateChanged.AddUObject(this, &AMyPlayerController::HandleRoundStateChanged);
 
-    CachedZGS->OnRoundStateChanged.RemoveAll(this);
-    CachedZGS->OnRoundStateChanged.AddUObject(this, &AMyPlayerController::HandleRoundStateChanged);
+        HandleRoundStateChanged(CachedZGS->GetRoundNumber(), CachedZGS->GetRoundPhase()); // initial sync
+    }
+}
 
-    HandleRoundStateChanged(CachedZGS->GetRoundNumber(), CachedZGS->GetRoundPhase()); // initial sync
+void AMyPlayerController::ApplyInputProfile(EInputProfile Profile)
+{
+    switch(Profile)
+
+    {
+        case EInputProfile::Gameplay:
+        {
+            FInputModeGameOnly Mode;
+            SetInputMode(Mode);
+
+            bShowMouseCursor = false;
+            bEnableClickEvents = false;
+            bEnableMouseOverEvents = false;
+            break;
+
+        }
+
+        case EInputProfile::Lobby:
+        {
+            UE_LOG(LogTemp, Warning, TEXT("Lobby input profile set"))
+            FInputModeGameAndUI Mode;
+            Mode.SetLockMouseToViewportBehavior(EMouseLockMode::DoNotLock);
+            SetInputMode(Mode);
+
+            bShowMouseCursor = true;
+            bEnableClickEvents = true;
+            bEnableMouseOverEvents = true;
+            break;
+
+        }
+    }
 }
 
 void AMyPlayerController::EndPlay(const EEndPlayReason::Type EndPlayReason)
 {
     if (CachedZGS) CachedZGS->OnRoundStateChanged.RemoveAll(this);
+    if (CachedBGS) CachedBGS->OnInputProfileChanged.RemoveAll(this);
+
 
     Super::EndPlay(EndPlayReason);
 }
@@ -215,76 +262,56 @@ void AMyPlayerController::GoToMainMenu()
 
 void AMyPlayerController::ShowRoundIntroSplashWidget(int32 Round)
 {
-    // if(!RoundIntroWidgetClass) return;
+    if(!RoundSplashWidgetClass) return;
 
-    // if(!RoundIntroWidgetInstance)
-    // {
-    //     RoundIntroWidgetInstance = CreateWidget<URoundIntroSplashWidget>(this, RoundIntroWidgetClass);
-    //     if(!RoundIntroWidgetInstance) return;
-    // }
+    if(!RoundSplashWidgetInstance)
+    {
+        RoundSplashWidgetInstance = CreateWidget<UZombiesRoundWidget>(this, RoundSplashWidgetClass);
+        if(!RoundSplashWidgetInstance) return;
+    }
 
-    // if(RoundIntroWidgetInstance && !RoundIntroWidgetInstance->IsInViewport())
-    // {
-    //     RoundIntroWidgetInstance->AddToViewport(1000);
-    // }
+    if(RoundSplashWidgetInstance && !RoundSplashWidgetInstance->IsInViewport())
+    {
+        RoundSplashWidgetInstance->AddToViewport(1000);
+    }
     
-    // RoundIntroWidgetInstance->SetVisibility(ESlateVisibility::Visible); 
-    // RoundIntroWidgetInstance->SetRound(Round);
-    // PlayRoundIntroSound(Round);
+    RoundSplashWidgetInstance->SetVisibility(ESlateVisibility::Visible); 
+    RoundSplashWidgetInstance->SetRound(Round);
+    PlayRoundIntroSound(Round);
 
-
-
-    // if (UWorld* World = GetWorld())
-    // {
-    //     World->GetTimerManager().ClearTimer(RoundIntroHideTimerHandle);
-    //     World->GetTimerManager().SetTimer(RoundIntroHideTimerHandle, this, &AMyPlayerController::HideRoundIntroSplashWidget, RoundIntroWidgetDuration, false);
-    // }
+    if (UWorld* World = GetWorld())
+    {
+        World->GetTimerManager().ClearTimer(RoundIntroHideTimerHandle);
+        World->GetTimerManager().SetTimer(RoundIntroHideTimerHandle, this, &AMyPlayerController::HideRoundIntroSplashWidget, RoundIntroWidgetDuration, false);
+    }
 }
 
-// void AMyPlayerController::HideRoundIntroSplashWidget()
-// {
-//     if (!RoundIntroWidgetInstance) return;
+void AMyPlayerController::HideRoundIntroSplashWidget()
+{
+    if (!RoundSplashWidgetInstance) return;
 
-//     // why: reuse the same instance next round (no re-create, no duplicate widgets)
-//     RoundIntroWidgetInstance->SetVisibility(ESlateVisibility::Hidden);
-// }
+    // why: reuse the same instance next round (no re-create, no duplicate widgets)
+    RoundSplashWidgetInstance->SetVisibility(ESlateVisibility::Hidden);
+}
 
 
 void AMyPlayerController::PlayRoundIntroSound(int32 Round)
 {
-    // UWorld* World = GetWorld();
+    UWorld* World = GetWorld();
 
-    // if(!World) return;
-    // if (RoundIntroThudComp && RoundIntroThudComp->IsPlaying()) RoundIntroThudComp->Stop();
-    // if (RoundIntroVoiceComp && RoundIntroVoiceComp->IsPlaying()) RoundIntroVoiceComp->Stop();
+    if(!World) return;
 
-    // float VoiceDelay = 0.15f;
+    if(RoundIntroThudComp && RoundIntroThudComp->IsPlaying()) RoundIntroThudComp->Stop();
+    if(RoundIntroVoiceComp && RoundIntroVoiceComp->IsPlaying()) RoundIntroVoiceComp->Stop();
 
-    // if (RoundThudSound)
-    // {
-    //     RoundIntroThudComp = UGameplayStatics::SpawnSound2D(this, RoundThudSound);
-    //     const float Dur = RoundThudSound->GetDuration();
-    //     if (Dur > 0.f && Dur < 60.f) VoiceDelay = Dur;
-    // }
+    float VoiceDelay = 0.15f;
 
-    // const int32 Idx = Round - 1;
-
-    // if (!RoundVoiceSounds.IsValidIndex(Idx) || !RoundVoiceSounds[Idx]) return;
-
-    // auto& TM = World->GetTimerManager();
-    // TM.ClearTimer(RoundVoiceTimerHandle);
-
-    // TM.SetTimer(
-    //     RoundVoiceTimerHandle,
-    //     [WeakPC = TWeakObjectPtr<AMyPlayerController>(this), Voice = TWeakObjectPtr<USoundBase>(RoundVoiceSounds[Idx])]()
-    //     {
-    //         if (!WeakPC.IsValid() || !Voice.IsValid()) return;
-    //         WeakPC->RoundIntroVoiceComp = UGameplayStatics::SpawnSound2D(WeakPC.Get(), Voice.Get());
-    //     },
-    //     VoiceDelay,
-    //     false
-    // );
-
+    if(RoundThudSound)    
+    {
+        RoundIntroThudComp = UGameplayStatics::SpawnSound2D(this, RoundThudSound);
+        const float Dur = RoundThudSound->GetDuration();
+        VoiceDelay = FMath::Clamp(Dur, 0.10f, 1.00f);
+    }
 }
 
 void AMyPlayerController::InitRoundUI()
@@ -306,19 +333,25 @@ void AMyPlayerController::InitRoundUI()
 }
 
 
-void AMyPlayerController::UpdateZombiesRoundWidget(int32 Round)
-{
-    InitRoundUI();
-    /*   
-        Then call a method on the widget like SetRound(Round) (or set the TextBlock) to update the displayed “Round X”.
-        This is what keeps the bottom corner always correct.      
-    */
-}
 
 
 
 void AMyPlayerController::HandleRoundStateChanged(int32 RoundNumber, ERoundPhase Phase)
 {
+    InitRoundUI();
+
+    UE_LOG(LogTemp, Warning, TEXT("RoundNumber %d RoundPhase %d"), RoundNumber,(int32)Phase);
+
+    if (!RoundHUDWidgetInstance) return;
+
+    RoundHUDWidgetInstance->SetVisibility(ESlateVisibility::Visible);
+    RoundHUDWidgetInstance->SetRound(RoundNumber);
+
+    if (Phase == ERoundPhase::Intro) ShowRoundIntroSplashWidget(RoundNumber);
+    /*   
+        Then call a method on the widget like SetRound(Round) (or set the TextBlock) to update the displayed “Round X”.
+        This is what keeps the bottom corner always correct.      
+    */
     
 }
 

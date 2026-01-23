@@ -10,6 +10,6 @@ public class MyZombiesEditorTarget : TargetRules
         Type = TargetType.Editor;
         DefaultBuildSettings = BuildSettingsVersion.V5; // Use latest build settings
         IncludeOrderVersion = EngineIncludeOrderVersion.Latest;
-        ExtraModuleNames.AddRange(new[] { "MyZombies", "CCDebug" });
+        ExtraModuleNames.AddRange(new[] { "MyZombies", "CCDebug", "CCGameplayDebugger" });
     }
 }

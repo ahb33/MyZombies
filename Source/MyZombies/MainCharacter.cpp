@@ -304,7 +304,6 @@ void AMainCharacter::Server_TryPickup_Implementation(APickUp* Pickup)
 
 void AMainCharacter::SetPlayerHealth(float NewHealth)
 {
-    UE_LOG(LogTemp, Warning, TEXT("Calling set player health"));
     const float Clamped = FMath::Clamp(NewHealth, 0.f, MaxHealth);
     if (HasAuthority())
     {
@@ -564,15 +563,18 @@ void AMainCharacter::Die()
 
     if (bIsDead) return;
 
-    bIsDead = true;  
-    SetNetDormancy(DORM_Awake);     // ensure awake for this burst
     CCDBG(this, TEXT("Die start  HasAuth=%d  bIsDead=%d"), HasAuthority()?1:0, bIsDead?1:0);
+    bIsDead = true;  
+    CCDBG(this, TEXT("Die start  HasAuth=%d  bIsDead=%d"), HasAuthority()?1:0, bIsDead?1:0);
+
+    SetNetDormancy(DORM_Awake); // ensure awake for this burst
 
     OnMainCharacterDeath.Broadcast(); 
 
     Multicast_OnDied();
     if (Controller) Client_OnDied();
 
+    GetEquippedWeapon()->SetWeaponState(EWeaponState::Dropped);
     TearOff();
     SetLifeSpan(0.3f);
 }

@@ -27,10 +27,8 @@ bool AHealthPickUp::TryConsume(APawn* ByPawn)
 	if (!HasAuthority()) return false;
 	AMainCharacter* MC = Cast<AMainCharacter>(ByPawn);
 	if (!MC) return false;
-	UE_LOG(LogTemp, Warning, TEXT("Health before pick up is %f"), MC->GetPlayerHealth());
 
 	const float NewH = FMath::Clamp(MC->GetPlayerHealth() + (float)HealthAdd, 0.f, MC->GetMaxHealth());
-	UE_LOG(LogTemp, Warning, TEXT("Health is now %f"), NewH);
 	
 	MC->SetPlayerHealth(NewH); 
 

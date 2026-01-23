@@ -25,9 +25,9 @@ void AZombiesGameState::ServerSetRoundState(int32 NewRoundNumber, ERoundPhase Ne
 
 void AZombiesGameState::BroadcastRoundState()
 {
+    UE_LOG(LogTemp, Warning, TEXT("Broadcasting Round State"));
 
     OnRoundStateChanged.Broadcast(RoundState.RoundNumber, RoundState.Phase);
-
 }
 
 void AZombiesGameState::OnRep_RoundState()

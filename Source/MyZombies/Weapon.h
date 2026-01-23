@@ -165,7 +165,7 @@ private:
     EWeaponType WeaponType = EWeaponType::AssaultRifle;  // example default
 
     UPROPERTY(ReplicatedUsing=OnRep_WeaponState)
-    EWeaponState WeaponState = EWeaponState::EWS_Unequipped;
+    EWeaponState WeaponState = EWeaponState::Unequipped;
 
     // Other
     UPROPERTY(EditAnywhere, Category=Casing) TSubclassOf<ACasing> Casing;

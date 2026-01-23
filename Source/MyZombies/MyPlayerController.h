@@ -6,6 +6,7 @@
 #include "GameFramework/PlayerController.h"
 #include "TimerManager.h"
 #include "ZombiesTypes.h"
+#include "BaseGameState.h"
 #include "MyPlayerController.generated.h"
 
 
@@ -81,11 +82,11 @@ private:
 
     void HandleRoundStateChanged(int32 RoundNumber, ERoundPhase Phase);
 	void BindRoundDelegate(); // your delegate binding helper
-
-	void InitRoundUI(); // Create (if needed) and keep the persistent corner “Round X” widget on-screen.
-	void UpdateZombiesRoundWidget(int32 Round); // Push the latest round value into the persistent corner widget (calls Ensure first).
+	void ApplyInputProfile(EInputProfile Profile);
+	void InitRoundUI(); // Create (if needed) and keep the persistent corner “Round X” widget on-screen
     void ShowRoundIntroSplashWidget(int32 RoundNumber);
-	void PlayRoundIntroSound(int32 Round); // Play BOOM + “Round X” VO locally as part of the intro.
+	void PlayRoundIntroSound(int32 Round); // Play BOOM + “Round X” VO locally as part of the intro
+	void HideRoundIntroSplashWidget();
 
 	UFUNCTION()
 	void HandlePlayerDeath(); // needed for dynamic multicast
@@ -139,5 +140,8 @@ private:
 
 	UPROPERTY()
     TObjectPtr<AZombiesGameState> CachedZGS = nullptr;
+
+	UPROPERTY()
+	TObjectPtr<ABaseGameState> CachedBGS = nullptr;
 
 };
