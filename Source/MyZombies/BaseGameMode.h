@@ -30,9 +30,6 @@ public:
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Damage Rules") bool bAllowAIVsAI = true;
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Damage Rules") bool bAllowFriendlyFireWithinTeam = false;
 
-	// Central allow/deny hook (server)
-    UFUNCTION()
-    bool IsDamageAllowed(const AActor* Causer, const AActor* Target) const;
 
 protected:
 	virtual void BeginPlay() override;

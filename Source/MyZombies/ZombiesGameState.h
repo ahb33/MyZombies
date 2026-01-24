@@ -38,7 +38,7 @@ public:
 
 	FOnRoundStateChanged OnRoundStateChanged;
 
-	FORCEINLINE int32 GetRoundNumber() const {return RoundState.RoundNumber;;}
+	FORCEINLINE int32 GetRoundNumber() const {return RoundState.RoundNumber;}
 	FORCEINLINE ERoundPhase GetRoundPhase() const {return RoundState.Phase;}
 
     void ServerSetRoundState(int32 NewRoundNumber, ERoundPhase NewPhase);

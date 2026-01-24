@@ -11,16 +11,9 @@
 #include "HealthPickUp.h"
 #include "Animation/AnimInstance.h"
 #include "Kismet/KismetMathLibrary.h"
-#include "MyGameInstance.h"
-#include "EnemyCharacter.h"
-#include "ZombiesGameMode.h"
-#include "GameplayTagAssetInterface.h"
-#include "BaseGameState.h"
 #include "DamageHelpers.h"
-#include "Kismet/GameplayStatics.h"
 #include "MyPlayerController.h"
 #include "CCDebug.h"
-#include "WeaponTypes.h"
 
 // redo initializer list
 AMainCharacter::AMainCharacter()
@@ -94,12 +87,21 @@ void AMainCharacter::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLi
     DOREPLIFETIME(AMainCharacter, PlayerHealth);
     DOREPLIFETIME(AMainCharacter, CharacterTags);
     DOREPLIFETIME(AMainCharacter, bIsDead);
+    DOREPLIFETIME(AMainCharacter, ReplicatedAimYaw);
 }
 
 // Called every frame
 void AMainCharacter::Tick(float DeltaTime)
 {				
 	Super::Tick(DeltaTime);
+
+    // Server computes aim-yaw for everyone (server receives clients' control rotation)
+    if (HasAuthority() && Controller)
+    {
+        const FRotator Aim(0.f, Controller->GetControlRotation().Yaw, 0.f);
+        const FRotator Actor(0.f, GetActorRotation().Yaw, 0.f);
+        ReplicatedAimYaw = UKismetMathLibrary::NormalizedDeltaRotator(Aim, Actor).Yaw;
+    }
 	AimOffset(DeltaTime);				 
 }
 
@@ -480,6 +482,15 @@ void AMainCharacter::AimOffset(float DeltaTime)
         TurningInPlace = ETurningInPlace::ETIP_NotTurning;
     }
     AO_Pitch = GetBaseAimRotation().Pitch;
+    if (!IsLocallyControlled() && AO_Pitch > 90.f)
+    {
+        AO_Pitch = FMath::GetMappedRangeValueClamped(FVector2D(270.f, 360.f), FVector2D(-90.f, 0.f), AO_Pitch);
+    }
+
+    if (!IsLocallyControlled())
+    {
+        AO_Yaw = ReplicatedAimYaw;
+    }
 }
 
 void AMainCharacter::TurnInPlace(float DeltaTime)
@@ -539,10 +550,9 @@ float AMainCharacter::TakeDamage(float DamageAmount, const FDamageEvent& DamageE
     const float Applied = Super::TakeDamage(DamageAmount, DamageEvent, EventInstigator, DamageCauser);
 
     // health update using your variables
-    PlayerHealth = FMath::Clamp(PlayerHealth - Applied, 0.f, MaxHealth);
-    if (IsLocallyControlled()) UpdateHUDHealth(); 
+    SetPlayerHealth(PlayerHealth - Applied);
 
-    if (PlayerHealth <= 0.f) Die();
+    if (PlayerHealth <= 0.f && !bIsDead) Die();
 
     return Applied;
 }
@@ -571,11 +581,7 @@ void AMainCharacter::Die()
 
     OnMainCharacterDeath.Broadcast(); 
 
-    Multicast_OnDied();
-    if (Controller) Client_OnDied();
-
     GetEquippedWeapon()->SetWeaponState(EWeaponState::Dropped);
-    TearOff();
     SetLifeSpan(0.3f);
 }
 
@@ -584,42 +590,5 @@ void AMainCharacter::ServerDie_Implementation()
 	Die();
 }
 
-void AMainCharacter::OnRep_IsDead()
-{
 
-	// Only react when transitioning to dead
-	if (!bIsDead)
-	{
-		return;
-	}
 
-	// Local UI for owning client (covers late/packet-order cases)
-	if (!bDeathUIShown && IsLocallyControlled())
-	{
-		if (AMyPlayerController* PC = Cast<AMyPlayerController>(GetController()))
-		{
-			PC->ShowDeathScreenLocal();
-            bDeathUIShown = true;
-		}
-	}
-}
-
-void AMainCharacter::Multicast_OnDied_Implementation()
-{
-    if (DeathSFX) UGameplayStatics::PlaySoundAtLocation(this, DeathSFX, GetActorLocation());
-
-}
-
-void AMainCharacter::Client_OnDied_Implementation()
-{
-	// Local-only UI
-	if (!bDeathUIShown && IsLocallyControlled())
-	{	
-        if (AMyPlayerController* PC = Cast<AMyPlayerController>(GetController()))
-		{
-			PC->ShowDeathScreenLocal();
-            bDeathUIShown = true;
-		}
-	}
-
-}

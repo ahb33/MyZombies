@@ -7,12 +7,7 @@
 #include "BasePlayerState.generated.h"
 
 
- 
-
-
-
-
-/// make ABasePlayerState abstract so it cant be instantiated 
+ /// make ABasePlayerState abstract so it cant be instantiated 
 UCLASS(Abstract)
 class MYZOMBIES_API ABasePlayerState : public APlayerState
 {
@@ -27,9 +22,6 @@ public:
 	UFUNCTION()
 	void OnRep_PlayerStats(); // sigle notify that updates HUD once 
 
-
-
-	
 	// Accessors
 	virtual int32 GetPlayerKills() const { return Kills; }
 	virtual int32 GetPlayerDeaths() const { return Deaths; }

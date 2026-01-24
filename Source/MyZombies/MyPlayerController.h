@@ -73,7 +73,7 @@ public:
 
 	UFUNCTION(Server, Reliable)
 	void Server_SetPlayerReady();
-
+	
 	virtual void EndPlay(const EEndPlayReason::Type EndPlayReason) override;
 
 private:

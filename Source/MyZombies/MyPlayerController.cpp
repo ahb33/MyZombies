@@ -222,8 +222,6 @@ AMyHUD* AMyPlayerController::GetMyHUD()
     return MyPlayerHUD;
 }
 
-
-
 void AMyPlayerController::Client_ShowDeathScreen_Implementation()
 {
     if (!IsLocalController()) return;
@@ -246,6 +244,8 @@ void AMyPlayerController::ShowDeathScreenLocal()
         bShowMouseCursor = true;
     }
 }
+
+
 
 void AMyPlayerController::RequestRestartLevel()
 {
@@ -331,9 +331,6 @@ void AMyPlayerController::InitRoundUI()
     // This function should never change the round text; it only guarantees the widget exists.
 
 }
-
-
-
 
 
 void AMyPlayerController::HandleRoundStateChanged(int32 RoundNumber, ERoundPhase Phase)

@@ -28,7 +28,7 @@ enum class EMatchMode : uint8
 
 
 DECLARE_MULTICAST_DELEGATE_OneParam(FOnInputProfileChanged, EInputProfile);
-
+DECLARE_MULTICAST_DELEGATE_OneParam(FOnInputProfileChanged, EInputProfile);
 
 UCLASS()
 class MYZOMBIES_API ABaseGameState : public AGameStateBase

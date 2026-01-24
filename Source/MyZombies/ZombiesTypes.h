@@ -11,10 +11,12 @@ enum class ERoundPhase : uint8
     End          UMETA(DisplayName="End")
 };
 
-UENUM(BlueprintType)
-enum class EPlayerLifeState : uint8
-{
-    Alive  UMETA(DisplayName="Alive"),
-    Downed UMETA(DisplayName="Downed"),
-    Dead   UMETA(DisplayName="Dead"),
-};
+
+// // use to add functionality 
+// UENUM(BlueprintType)
+// enum class EPlayerLifeState : uint8
+// {
+//     Alive  UMETA(DisplayName="Alive"),
+//     Downed UMETA(DisplayName="Downed"),
+//     Dead   UMETA(DisplayName="Dead"),
+// };

@@ -20,7 +20,6 @@ class AMyHUD;
 class UAnimMontage;
 class UInputComponent;
 class UMyGameInstance;
-class USoundBase;  
 
 
 DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnMainCharacterDeath);
@@ -99,8 +98,6 @@ public:
 	void OnRep_OverlappingWeapon();
 	UFUNCTION()
 	void OnRep_Health();
-	UFUNCTION()
-	void OnRep_IsDead();
 
 
 	// Ammo hook (wire to CombatComponent/Weapon later)
@@ -124,8 +121,6 @@ public:
 	UFUNCTION(Server, Reliable) void Server_EquipButtonPressed();
 	UFUNCTION(Server, Reliable) void Server_TryPickup(APickUp* Pickup);
 	UFUNCTION(Server, Reliable) void ServerDie();
-	UFUNCTION(NetMulticast, Reliable) void Multicast_OnDied();
-	UFUNCTION(Client, Unreliable) void Client_OnDied();
 
 	// --- Anim montages ---
 	void PlayFireMontage(bool bAiming);
@@ -181,15 +176,10 @@ private:
 	UPROPERTY(EditAnywhere, Category="Combat")
 	UAnimMontage* ReloadMontage = nullptr;
 
-	UPROPERTY(EditDefaultsOnly, Category="Audio")
-	USoundBase* DeathSFX = nullptr;  // noise to be played when dead
-
-	UPROPERTY(ReplicatedUsing=OnRep_IsDead) 
+	UPROPERTY(Replicated) 
 	bool bIsDead = false;
 
 	AHealthPickUp* pickUpHealth = nullptr;
-
-	UPROPERTY(Transient) bool bDeathUIShown = false;
 
 	UPROPERTY(Replicated, VisibleAnywhere, Category="Tags", meta=(AllowPrivateAccess="true"))
 	FGameplayTagContainer CharacterTags;
@@ -202,6 +192,8 @@ private:
 
 	// --- POD state ---
 	FRotator StartingAimRotation;
+	UPROPERTY(Replicated)
+	float ReplicatedAimYaw = 0.f;
 	float AO_Yaw = 0.f, AO_Pitch = 0.f, InterpAO_Yaw = 0.f;
 	ETurningInPlace TurningInPlace = ETurningInPlace::ETIP_NotTurning;
 	FTimerHandle DestructionTimer;
