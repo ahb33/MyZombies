@@ -90,17 +90,7 @@ void AMyAIController::OnPossess(APawn* InPawn)
 				OutBB->SetValueAsBool(KEY_CanHearPlayer, false);
 				OutBB->SetValueAsBool(KEY_PlayerWithinRange, false);
 				OutBB->SetValueAsVector(KEY_LastKnownPosition, FVector::ZeroVector);
-
-				// Resolve player once at start; will also be ensured on perception updates.
-				if (ACharacter* PC = UGameplayStatics::GetPlayerCharacter(GetWorld(), 0))
-				{
-					if (AMainCharacter* MC = Cast<AMainCharacter>(PC))
-					{
-						MainCharacter = MC;
-						OutBB->SetValueAsObject(KEY_Player, MC);
-					}
-				}
-
+				OutBB->SetValueAsObject(KEY_Player, nullptr);
 				RunBehaviorTree(BT);
 			}
 		}
@@ -110,71 +100,52 @@ void AMyAIController::OnPossess(APawn* InPawn)
 
 void AMyAIController::OnTargetPerceptionUpdate(AActor* Actor, FAIStimulus Stimulus)
 {
-	UBlackboardComponent* BB = GetBlackboardComponent();
-	if (!BB || !MyPerceptionComponent) return;
+    UBlackboardComponent* BB = GetBlackboardComponent();
+    AEnemyCharacter* Enemy = Cast<AEnemyCharacter>(GetPawn());
+    if (!BB || !Enemy) return;
 
-	// Ensure we have a valid pointer to the player.
-	if (!MainCharacter.IsValid())
-	{
-		if (AMainCharacter* MCFromEvent = Cast<AMainCharacter>(Actor))
-		{
-			MainCharacter = MCFromEvent;
-		}
-		else if (ACharacter* PlayerChar = UGameplayStatics::GetPlayerCharacter(GetWorld(), 0))
-		{
-			MainCharacter = Cast<AMainCharacter>(PlayerChar);
-		}
-		if (MainCharacter.IsValid())
-		{
-			BB->SetValueAsObject(KEY_Player, MainCharacter.Get());
-		}
-	}
+    AMainCharacter* SeenPlayer = Cast<AMainCharacter>(Actor);
+    if (!SeenPlayer) return;
 
-	AEnemyCharacter* Enemy = Cast<AEnemyCharacter>(GetPawn());
-	if (!Enemy || !MainCharacter.IsValid()) return;
+    static const FAISenseID SightID = UAISense_Sight::StaticClass()->GetDefaultObject<UAISense>()->GetSenseID();
+    static const FAISenseID HearID = UAISense_Hearing::StaticClass()->GetDefaultObject<UAISense>()->GetSenseID();
 
-	// Ask perception about THIS actor only
-	FActorPerceptionBlueprintInfo Info;
-	MyPerceptionComponent->GetActorsPerception(MainCharacter.Get(), Info);
+    bool bSee  = BB->GetValueAsBool(KEY_CanSeePlayer);
+    bool bHear = BB->GetValueAsBool(KEY_CanHearPlayer);
 
-	bool bSee = false, bHear = false;
-	FVector SightLoc = BB->GetValueAsVector(KEY_LastKnownPosition);
+    const bool bSensed = Stimulus.WasSuccessfullySensed();
 
-	const FAISenseID SightID  = UAISense_Sight::StaticClass()->GetDefaultObject<UAISense>()->GetSenseID();
-	const FAISenseID HearID   = UAISense_Hearing::StaticClass()->GetDefaultObject<UAISense>()->GetSenseID();
+    if (Stimulus.Type == SightID)
+    {
+        bSee = bSensed;
+        if (bSensed)
+        {
+            BB->SetValueAsObject(KEY_Player, SeenPlayer);
+            BB->SetValueAsVector(KEY_LastKnownPosition, Stimulus.StimulusLocation);
+        }
+    }
+    else if (Stimulus.Type == HearID)
+    {
+        bHear = bSensed;
+        if (bSensed)
+        {
+            BB->SetValueAsObject(KEY_Player, SeenPlayer);
+            // Optional: if you want hearing to update LKP too:
+            BB->SetValueAsVector(KEY_LastKnownPosition, Stimulus.StimulusLocation);
+        }
+    }
 
-	for (const FAIStimulus& S : Info.LastSensedStimuli)
-	{
-		if (!S.WasSuccessfullySensed()) continue;
-		if (S.Type == SightID)  { bSee  = true; SightLoc = S.StimulusLocation; }
-		if (S.Type == HearID)   { bHear = true; /* optional: keep S.StimulusLocation for heard */ }
-	}
+    BB->SetValueAsBool(KEY_CanSeePlayer, bSee);
+    BB->SetValueAsBool(KEY_CanHearPlayer, bHear);
 
-	BB->SetValueAsBool(KEY_CanSeePlayer,  bSee);
-	BB->SetValueAsBool(KEY_CanHearPlayer, bHear);
+    if (UCharacterMovementComponent* Move = Enemy->GetCharacterMovement())
+    {
+        const float Desired = (bSee || bHear) ? Enemy->GetChaseSpeed() : DefaultWalkSpeed;
+        SetWalkSpeedIfChanged(Move, Desired);
+    }
 
-	// Update LKP from sight if we have it (hearing could use a separate key if you want)
-	if (bSee)
-	{
-		BB->SetValueAsVector(KEY_LastKnownPosition, SightLoc);
-	}
-
-	// Speed policy
-	if (UCharacterMovementComponent* Move = Enemy->GetCharacterMovement())
-	{
-		const float Desired = (bSee || bHear) ? Enemy->GetChaseSpeed() : DefaultWalkSpeed;
-		SetWalkSpeedIfChanged(Move, Desired);
-	}
-
-	// In-range check
-	const bool bInRange = IsPlayerWithinRange(MainCharacter.Get(), Enemy);
-	const bool prev = BB->GetValueAsBool(KEY_PlayerWithinRange);
-
-	
-	if (prev != bInRange)
-	{
-		BB->SetValueAsBool(KEY_PlayerWithinRange, bInRange);
-	}
+    const bool bInRange = IsPlayerWithinRange(SeenPlayer, Enemy);
+    BB->SetValueAsBool(KEY_PlayerWithinRange, bInRange);
 
 }
 

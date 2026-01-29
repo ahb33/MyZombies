@@ -10,6 +10,7 @@
 #include "Weapon.h"
 #include "HealthPickUp.h"
 #include "Animation/AnimInstance.h"
+#include "ZombiesGameMode.h"
 #include "Kismet/KismetMathLibrary.h"
 #include "DamageHelpers.h"
 #include "MyPlayerController.h"
@@ -572,6 +573,7 @@ void AMainCharacter::Die()
 	}
 
     if (bIsDead) return;
+    if (AZombiesGameMode* GM = GetWorld()->GetAuthGameMode<AZombiesGameMode>()) GM->HandlePlayerDeath(Controller, nullptr);
 
     CCDBG(this, TEXT("Die start  HasAuth=%d  bIsDead=%d"), HasAuthority()?1:0, bIsDead?1:0);
     bIsDead = true;  
@@ -579,9 +581,7 @@ void AMainCharacter::Die()
 
     SetNetDormancy(DORM_Awake); // ensure awake for this burst
 
-    OnMainCharacterDeath.Broadcast(); 
-
-    GetEquippedWeapon()->SetWeaponState(EWeaponState::Dropped);
+    // GetEquippedWeapon()->SetWeaponState(EWeaponState::Dropped);
     SetLifeSpan(0.3f);
 }
 

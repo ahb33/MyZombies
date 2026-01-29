@@ -2,11 +2,9 @@
 
 
 #include "ZombiesGameMode.h"
-#include "EnemyCharacter.h"
 #include "AI_EnemySpawner.h"
 #include "BaseGameState.h"
 #include "ZombiesGameState.h"
-#include "MyPlayerController.h"
 #include "Kismet/GameplayStatics.h"
 
 AZombiesGameMode::AZombiesGameMode()
@@ -20,16 +18,23 @@ void AZombiesGameMode::BeginPlay()
 {
     Super::BeginPlay();
 
-    if(AZombiesGameState* ZGS = GetGameState<AZombiesGameState>())
-    {
-        ZGS->SetInputProfile(EInputProfile::Gameplay);
-        ZGS->SetMatchMode(EMatchMode::Zombies);
-    }
+	if (ABaseGameState* GS = GetGameState<ABaseGameState>())
+	{
+		GS->SetInputProfile(EInputProfile::Gameplay);
+		GS->SetMatchMode(EMatchMode::Zombies);
+	}
     
     ApplyLevelModifiers();
     StartNextWave();
 
 }
+
+void AZombiesGameMode::HandlePlayerDeath(AController* Victim, AController* Killer)
+{
+	SetMatchPhase(EMatchPhase::GameOver);
+}
+
+
 void AZombiesGameMode::OnZombieSpawned()
 {
     ++ZombiesSpawnedThisWave;
@@ -44,8 +49,9 @@ void AZombiesGameMode::OnZombieKilled()
 
 void AZombiesGameMode::TryAdvanceWave()
 {
-    if (ZombiesSpawnedThisWave >= ZombiesToSpawnThisWave && RemainingEnemies <= 0)
+    if (ZombiesSpawnedThisWave >= ZombiesToSpawnThisWave && RemainingEnemies <= 0) // all zombies dead = round over
     {
+        SetMatchPhase(EMatchPhase::RoundOver);
         ++CurrentLevel;
         ApplyLevelModifiers();
         StartNextWave();
@@ -88,21 +94,23 @@ void AZombiesGameMode::StartNextWave()
     ZombiesToSpawnThisWave = NumberOfZombiesForCurrentLevel;
     ZombiesSpawnedThisWave = 0;
     RemainingEnemies = 0;
-    UE_LOG(LogTemp, Warning, TEXT("Starting next wave"));
 
     if (AZombiesGameState* ZGS = GetGameState<AZombiesGameState>())
     {
-        ZGS->ServerSetRoundState(CurrentLevel, ERoundPhase::Intro);
+        ZGS->SetRoundNumber(CurrentLevel); // ✅ advance replicated round number
     }
 
+    SetMatchPhase(EMatchPhase::Intro);    
+    
     // delay actual spawning
-    GetWorldTimerManager().SetTimer(WaveIntroTimer, this, &AZombiesGameMode::BeginWaveActive,RoundIntroDelay, false);
+    GetWorldTimerManager().SetTimer(WaveIntroTimer, this, &AZombiesGameMode::BeginWaveActive, WaveIntroDelay, false);
 }
 
 void AZombiesGameMode::BeginWaveActive()
 {
     if(!HasAuthority()) return;
-    if (AZombiesGameState* ZGS = GetGameState<AZombiesGameState>()) ZGS->ServerSetRoundState(ZGS->GetRoundNumber(), ERoundPhase::Active);
+
+    SetMatchPhase(EMatchPhase::Active);
 
     // Retrieve all spawners in the game
     TArray<AActor*> Spawners;
@@ -126,13 +134,15 @@ void AZombiesGameMode::BeginWaveActive()
             // Calculate zombies for this spawner
             int32 SpawnCount = FMath::Min(FMath::RandRange(1, ZombiesToSpawn), ZombiesToSpawn);
 
-            // Initialize and spawn zombies
-            EnemySpawner->InitZombieArray(SpawnCount);
-            EnemySpawner->SpawnZombies(SpawnCount);
+            
+            EnemySpawner->InitZombieArray(SpawnCount); // intialize array and reset spawn count
+            EnemySpawner->SpawnZombies(SpawnCount); 
 
             // Deduct from remaining zombies
             ZombiesToSpawn -= SpawnCount;
         }
-    }       
+    }
+
     UE_LOG(LogTemp, Warning, TEXT("Wave %d started with %d zombies."), CurrentLevel, NumberOfZombiesForCurrentLevel);
 }
+

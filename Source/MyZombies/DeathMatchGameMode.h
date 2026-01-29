@@ -25,23 +25,16 @@ public:
 
 	virtual void BeginPlay() override;
 
-	void OnMatchStart();
-	void OnMatchEnd();
-	void OnPlayerKilled(AController* Attacker, AController* Victim);
-	void RequestSpawn(AController* Victim);
+	virtual void HandlePlayerDeath(AController* Victim, AController* Killer) override;
 	
 
-private: 
+protected:
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Rounds")
+	int32 MaxRounds = 5;
 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Game Start Cue ", meta=(AllowPrivateAccess="true")) 
-	USoundBase* MatchStartCue = nullptr;
+private:
+	int32 CurrentRound = 1;
 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Game Start Cue ", meta=(AllowPrivateAccess="true")) 
-	USoundBase* MatchOverCue = nullptr;
-
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Game Score Target ", meta=(AllowPrivateAccess="true"))
-	int32 ScoreToWin; 
-
-
-
+	void EndRound();
+	void StartNextRoundOrEndMatch();
 };

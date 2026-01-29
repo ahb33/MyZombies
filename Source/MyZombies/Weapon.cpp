@@ -309,42 +309,59 @@ void AWeapon::OnRep_Owner()
     }
 }
 
+void AWeapon::ApplyWeaponState()
+{
+        if (!WeaponMesh || !AreaSphere) return;
+
+    switch (WeaponState)
+    {
+        case EWeaponState::Equipped:
+        case EWeaponState::EquippedSecondary:
+        {
+            AreaSphere->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+
+            WeaponMesh->SetSimulatePhysics(false);
+            WeaponMesh->SetEnableGravity(false);
+            WeaponMesh->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+            break;
+        }
+
+        case EWeaponState::Dropped:
+        {
+            AreaSphere->SetCollisionEnabled(ECollisionEnabled::QueryOnly);
+
+            WeaponMesh->SetSimulatePhysics(true);
+            WeaponMesh->SetEnableGravity(true);
+            WeaponMesh->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
+
+            WeaponMesh->SetCollisionResponseToAllChannels(ECollisionResponse::ECR_Block);
+            WeaponMesh->SetCollisionResponseToChannel(ECC_Pawn,   ECollisionResponse::ECR_Ignore);
+            WeaponMesh->SetCollisionResponseToChannel(ECC_Camera, ECollisionResponse::ECR_Ignore);
+            break;
+        }
+
+        default:
+            break;
+    }
+}
+
 void AWeapon::SetWeaponState(EWeaponState State)
 {
 	WeaponState = State;
+
+    // Important: OnRep only runs on clients, so the server must apply effects too.
+    ApplyWeaponState();
+
+    if (HasAuthority())
+    {
+        ForceNetUpdate(); // optional, helps push the change ASAP
+    }
 }
+
 void AWeapon::OnRep_WeaponState()
 {
 
-	switch(WeaponState)
-	{
-		case EWeaponState::Equipped:
-			AreaSphere->SetCollisionEnabled(ECollisionEnabled::NoCollision);
-			WeaponMesh->SetCollisionEnabled(ECollisionEnabled::NoCollision);
-			WeaponMesh->SetSimulatePhysics(false);
-			WeaponMesh->SetEnableGravity(false);
-			// Perform additional actions when the weapon is equipped
-			break;
-
-		case EWeaponState::EquippedSecondary:
-			// could refactor block of code below and above into one function -
-			AreaSphere->SetCollisionEnabled(ECollisionEnabled::NoCollision);
-			WeaponMesh->SetCollisionEnabled(ECollisionEnabled::NoCollision);
-			WeaponMesh->SetSimulatePhysics(false);
-			WeaponMesh->SetEnableGravity(false);
-            break;
-
-		case EWeaponState::Dropped:
-			AreaSphere->SetCollisionEnabled(ECollisionEnabled::QueryOnly);
-			WeaponMesh->SetSimulatePhysics(true);
-			WeaponMesh->SetEnableGravity(true);
-			WeaponMesh->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
-			WeaponMesh->SetCollisionResponseToAllChannels(ECollisionResponse::ECR_Block);
-			WeaponMesh->SetCollisionResponseToChannel(ECollisionChannel::ECC_Pawn, ECollisionResponse::ECR_Ignore);
-			WeaponMesh->SetCollisionResponseToChannel(ECollisionChannel::ECC_Camera, ECollisionResponse::ECR_Ignore);
-			// Perform additional actions when the weapon is unequipped
-			break;
-	}
+    ApplyWeaponState();
 }
 
 void AWeapon::UpdateTracer(const FVector& SourceWS, const FVector& TargetWS)
@@ -396,7 +413,3 @@ void AWeapon::PlayFireEffects(const FHitResult& Hit, const FVector& Start, const
     // add tracer beam
 }
 
-void AWeapon::Multicast_PlayFireFX_Implementation(const FVector& TraceStart, const FVector& TraceEnd)
-{
-    
-}

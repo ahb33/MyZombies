@@ -7,30 +7,23 @@
 void AZombiesGameState::GetLifetimeReplicatedProps(TArray<FLifetimeProperty> &OutLifetimeProps) const
 {
     Super::GetLifetimeReplicatedProps(OutLifetimeProps);
-    DOREPLIFETIME(AZombiesGameState, RoundState);
+    DOREPLIFETIME(AZombiesGameState, RoundNumber);
 
 }
 
-void AZombiesGameState::ServerSetRoundState(int32 NewRoundNumber, ERoundPhase NewPhase)
+void AZombiesGameState::SetRoundNumber(int32 NewRoundNumber)
 {
-    if(!HasAuthority()) return;
-
-    RoundState.RoundNumber = NewRoundNumber;
-    RoundState.Phase = NewPhase;
-
-    BroadcastRoundState();
-
-    ForceNetUpdate();
+	if (!HasAuthority() || RoundNumber == NewRoundNumber) return;
+	RoundNumber = FMath::Max(1, NewRoundNumber);
+	BroadcastRoundNumber();
 }
 
-void AZombiesGameState::BroadcastRoundState()
+void AZombiesGameState::OnRep_RoundNumber()
 {
-    UE_LOG(LogTemp, Warning, TEXT("Broadcasting Round State"));
-
-    OnRoundStateChanged.Broadcast(RoundState.RoundNumber, RoundState.Phase);
+	BroadcastRoundNumber();
 }
 
-void AZombiesGameState::OnRep_RoundState()
+void AZombiesGameState::BroadcastRoundNumber()
 {
-    BroadcastRoundState();
+	OnRoundNumberChanged.Broadcast(RoundNumber);
 }

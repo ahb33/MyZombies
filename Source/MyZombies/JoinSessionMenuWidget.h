@@ -10,6 +10,11 @@
 /**
  * 
  */
+
+class UButton;
+class UTextBlock;
+
+
 UCLASS()
 class MYZOMBIES_API UJoinSessionMenuWidget : public UUserWidget
 {
@@ -29,16 +34,16 @@ protected:
     void OnJoinSessionClicked();
 
     UPROPERTY(meta = (BindWidget))
-    class UButton* JoinButton;
+    UButton* JoinButton;
 
     UPROPERTY(meta = (BindWidget), BlueprintReadOnly)
-    class UTextBlock* ServerNameLabel;
+    UTextBlock* ServerNameLabel;
 
     UPROPERTY(meta = (BindWidget), BlueprintReadOnly)
-    class UTextBlock* NumOfPlayersLabel;
+    UTextBlock* NumOfPlayersLabel;
 
     UPROPERTY(meta = (BindWidget), BlueprintReadOnly)
-    class UTextBlock* JoinSessionLabel;
+    UTextBlock* JoinSessionLabel;
 
 private:
     int32 SessionIndex;

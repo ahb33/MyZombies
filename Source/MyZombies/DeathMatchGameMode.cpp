@@ -6,65 +6,47 @@
 #include "DeathMatchGameState.h"
 #include "MyPlayerController.h"
 
-ADeathMatchGameMode::ADeathMatchGameMode()
-{
-    PlayerStateClass = ADeathMatchPlayerState::StaticClass();  // per-player stats
-    GameStateClass   = ADeathMatchGameState::StaticClass();    // shared match state
-}
+ADeathMatchGameMode::ADeathMatchGameMode() {}
 
 void ADeathMatchGameMode::BeginPlay()
 {
-    Super::BeginPlay();
-    if (ADeathMatchGameState* DMGS = GetGameState<ADeathMatchGameState>()) 
-    {
-        DMGS->SetInputProfile(EInputProfile::Gameplay);
-        DMGS->SetMatchMode(EMatchMode::Deathmatch);
-    }
+	Super::BeginPlay();
+
+	if (ABaseGameState* GS = GetGameState<ABaseGameState>())
+	{
+		GS->SetInputProfile(EInputProfile::Gameplay);
+		GS->SetMatchMode(EMatchMode::Deathmatch);
+		GS->SetMatchPhase(EMatchPhase::Intro);
+	}
+
+	// Start first round.
+	if (ABaseGameState* GS = GetGameState<ABaseGameState>())
+	{
+		GS->SetMatchPhase(EMatchPhase::Active);
+	}
 }
 
-void ADeathMatchGameMode::OnMatchStart()
+void ADeathMatchGameMode::HandlePlayerDeath(AController* Victim, AController* Killer)
 {
-    UE_LOG(LogTemp, Warning, TEXT("Match Started!"));
+	EndRound();
+	StartNextRoundOrEndMatch();
 }
 
-void ADeathMatchGameMode::OnMatchEnd()
+void ADeathMatchGameMode::EndRound()
 {
-    UE_LOG(LogTemp, Warning, TEXT("Match Ended!"));
+	SetMatchPhase(EMatchPhase::RoundOver);
+	// Optional: freeze input, stop scoring, etc. (server-side only).
 }
 
-void ADeathMatchGameMode::OnPlayerKilled(AController *Attacker, AController *Victim)
+void ADeathMatchGameMode::StartNextRoundOrEndMatch()
 {
-    if (Attacker && Attacker->PlayerState)
-    {
-        if (ADeathMatchPlayerState* AttackerPS = Cast<ADeathMatchPlayerState>(Attacker->PlayerState))
-        {
-            AttackerPS->AddKill();
+	if (CurrentRound >= MaxRounds)
+	{
+		SetMatchPhase(EMatchPhase::GameOver);
+		return;
+	}
 
-            /*
-                •	If AttackerPS->GetKills() >= ScoreToWin:
-                o	Set GameState->MatchPhase = EMatchPhase::EMP_PostMatch;
-                o	Call OnMatchEnd().
-
-            */
-            if(AttackerPS->GetPlayerKills() >= ScoreToWin)
-            {
-                if(ADeathMatchGameState* DMGameState = GetGameState<ADeathMatchGameState>())
-                DMGameState->MatchPhase = EMatchPhase::PostMatch;
-                OnMatchEnd();
-            }
-        }
-    }
-    
-    if (Victim && Victim->PlayerState)
-    {
-        if (ADeathMatchPlayerState* VictimPS = Cast<ADeathMatchPlayerState>(Victim->PlayerState))
-        {
-            VictimPS->AddDeath();
-        }
-    }
-}
-
-void ADeathMatchGameMode::RequestSpawn(AController *Victim)
-{
-    UE_LOG(LogTemp, Warning, TEXT("Requesting Spawn!"));
+	++CurrentRound;
+	SetMatchPhase(EMatchPhase::Intro);
+	SetMatchPhase(EMatchPhase::Active);
 }

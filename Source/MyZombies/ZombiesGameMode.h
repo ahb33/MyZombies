@@ -21,29 +21,35 @@ public:
 
 	UFUNCTION()
 	void OnZombieKilled();
-	void BeginWaveActive();
 	void OnZombieSpawned();
+	virtual void HandlePlayerDeath(AController* Victim, AController* Killer) override;
 
-protected:
+private:
+
+	void BeginWaveActive();
 	virtual void BeginPlay() override;
-
     void StartNextWave();
     void ApplyLevelModifiers();
 
 	void TryAdvanceWave();
 
 	UPROPERTY(EditAnywhere, Category="AI Stats")
-	UDataTable* AIDifficultyTable;
+	UDataTable* AIDifficultyTable = nullptr;
 
-private:
-	int32 CurrentLevel;
-	int32 RemainingEnemies;
+
+	int32 CurrentLevel = 1;
+	int32 RemainingEnemies = 0;
 
 	int32 NumberOfZombiesForCurrentLevel;
 
 	FTimerHandle WaveIntroTimer;
-	float RoundIntroDelay = 2.0f; // tweak
+
+	UPROPERTY(EditAnywhere, Category="Waves")
+	float WaveIntroDelay = 2.0f;
+
 	int32 ZombiesToSpawnThisWave = 0;
 	int32 ZombiesSpawnedThisWave = 0;
+
+
 	
 };

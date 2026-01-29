@@ -10,12 +10,6 @@
 /**
  * 
  */
-UENUM(BlueprintType)
-enum class EMatchPhase : uint8 {
-    Waiting     UMETA(DisplayName="Waiting"),
-    InProgress  UMETA(DisplayName="In Progress"),
-    PostMatch   UMETA(DisplayName="Post Match")
-};
 
 UCLASS()
 class MYZOMBIES_API ADeathMatchGameState : public ABaseGameState
@@ -25,11 +19,11 @@ class MYZOMBIES_API ADeathMatchGameState : public ABaseGameState
 public:
     ADeathMatchGameState();
 
-    UPROPERTY(ReplicatedUsing=OnRep_MatchPhase, BlueprintReadOnly, Category="Match")
-    EMatchPhase MatchPhase = EMatchPhase::Waiting;
+    // UPROPERTY(ReplicatedUsing=OnRep_MatchPhase, BlueprintReadOnly, Category="Match")
+    // EMatchPhase MatchPhase = EMatchPhase::Waiting;
 
-    UFUNCTION()
-    void OnRep_MatchPhase();
+    // UFUNCTION()
+    // void OnRep_MatchPhase();
 
     virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
 };

@@ -19,8 +19,6 @@ public:
 protected:
 	// Called when the game starts or when spawned
 	virtual void BeginPlay() override;
-
-
 public:	
 
 	void InitZombieArray(int32 ); // this function will be used to initialze ZombieSpawnArray based on level we are in

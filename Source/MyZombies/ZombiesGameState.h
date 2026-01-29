@@ -4,28 +4,14 @@
 
 #include "CoreMinimal.h"
 #include "BaseGameState.h"
-#include "ZombiesTypes.h"
 #include "ZombiesGameState.generated.h"
 
 /**
  * 
  */
 
-USTRUCT(BlueprintType)
-struct FRoundState
-{
-	GENERATED_BODY()
 
-    UPROPERTY(BlueprintReadOnly)
-    int32 RoundNumber = 1;
-
-    UPROPERTY(BlueprintReadOnly)
-    ERoundPhase Phase = ERoundPhase::Intro;
-
-};
-
-
-DECLARE_MULTICAST_DELEGATE_TwoParams(FOnRoundStateChanged, int32, ERoundPhase);
+DECLARE_MULTICAST_DELEGATE_OneParam(FOnRoundNumberChanged, int32);
 
 
 UCLASS()
@@ -36,24 +22,24 @@ class MYZOMBIES_API AZombiesGameState : public ABaseGameState
 
 public: 
 
-	FOnRoundStateChanged OnRoundStateChanged;
+	FOnRoundNumberChanged OnRoundNumberChanged;
 
-	FORCEINLINE int32 GetRoundNumber() const {return RoundState.RoundNumber;}
-	FORCEINLINE ERoundPhase GetRoundPhase() const {return RoundState.Phase;}
+	UFUNCTION(BlueprintPure, Category="Zombies|Round")
+	int32 GetRoundNumber() const { return RoundNumber; }
 
-    void ServerSetRoundState(int32 NewRoundNumber, ERoundPhase NewPhase);
+	/** Server-only: GameMode calls when starting next wave/round. */
+	UFUNCTION(BlueprintCallable, Category="Zombies|Round")
+	void SetRoundNumber(int32 NewRoundNumber);
 
 protected:
-
 	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
 
-    UPROPERTY(ReplicatedUsing=OnRep_RoundState)
-    FRoundState RoundState;
+	UPROPERTY(ReplicatedUsing=OnRep_RoundNumber, BlueprintReadOnly, Category="Zombies|Round")
+	int32 RoundNumber = 1;
 
 	UFUNCTION()
-    void OnRep_RoundState();
+	void OnRep_RoundNumber();
 
 private:
-    void BroadcastRoundState();
-
+	void BroadcastRoundNumber();
 };

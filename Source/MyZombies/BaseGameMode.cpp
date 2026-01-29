@@ -13,17 +13,23 @@
 
 ABaseGameMode::ABaseGameMode() {bUseSeamlessTravel = true;}
 
-// 
+
 void ABaseGameMode::BeginPlay()
 {
-    Super::BeginPlay();
+	Super::BeginPlay();
 
-    UGameplayStatics::GetAllActorsOfClass(GetWorld(), APlayerStart::StaticClass(), AvailableSpawnPoints); // GetAllActorsOfClass Finds all actors of a class in the world and stores them in OutArray.
+	TArray<AActor*> Found;
+	UGameplayStatics::GetAllActorsOfClass(GetWorld(), APlayerStart::StaticClass(), Found);
 
-
-    
+	SpawnPoints.Reserve(Found.Num());
+	for (AActor* Actor : Found)
+	{
+		if (APlayerStart* PS = Cast<APlayerStart>(Actor))
+		{
+			SpawnPoints.Add(PS);
+		}
+	}
 }
-
 /*
 
 Runs on the server after a player logs in.  
@@ -32,83 +38,83 @@ Provides the player's Controller so you can spawn/possess their pawn and handle 
 */
 void ABaseGameMode::PostLogin(APlayerController* NewPlayer)
 {
+	Super::PostLogin(NewPlayer);
 
-    Super::PostLogin(NewPlayer);
-
-    if (AMyPlayerController* PC = Cast<AMyPlayerController>(NewPlayer))
-    {
-        // Spawn and possess the default pawn for this player
-        RestartPlayer(PC);
-    
-    }
+	if (NewPlayer)
+	{
+		RestartPlayer(NewPlayer);
+	}
 }
+
 
 // Selects a random spawn point from the available list, marks it as used, and returns it.
-AActor* ABaseGameMode::ChoosePlayerStart(AController* Player)
+AActor* ABaseGameMode::ChoosePlayerStart_Implementation(AController* Player)
 {
-    
-    if (AvailableSpawnPoints.Num() > 0)
-    {
-
-        int32 Index = FMath::RandRange(0, AvailableSpawnPoints.Num() - 1);
-        AActor* Chosen = AvailableSpawnPoints[Index];
-        
-        UsedSpawnPoints.Add(Chosen);
-        AvailableSpawnPoints.RemoveAt(Index);
-
-        return Chosen;
-    }
-
-    return Super::ChoosePlayerStart(Player); // fallback if none left
+	if (SpawnPoints.Num() > 0)
+	{
+		const int32 Index = FMath::RandRange(0, SpawnPoints.Num() - 1);
+		if (SpawnPoints[Index])
+		{
+			return SpawnPoints[Index];
+		}
+	}
+	return Super::ChoosePlayerStart_Implementation(Player);
 }
 
+ABaseGameState* ABaseGameMode::GetBaseGameState() const
+{
+	return GetGameState<ABaseGameState>();
+}
+
+void ABaseGameMode::SetMatchPhase(EMatchPhase NewPhase)
+{
+	if (ABaseGameState* GS = GetBaseGameState())
+	{
+		GS->SetMatchPhase(NewPhase);
+	}
+}
+
+void ABaseGameMode::DestroyCurrentPawn(AController* Controller)
+{
+	if (!Controller) return;
+
+	if (APawn* Pawn = Controller->GetPawn())
+	{
+		Pawn->Destroy();
+	}
+}
 
  
-void ABaseGameMode::EndGame(bool bPlayerWon)
+void ABaseGameMode::RestartPlayerSafe(AController* Controller)
 {
-    AMyPlayerController* PlayerController = Cast<AMyPlayerController>(UGameplayStatics::GetPlayerController(this, 0));
-
-    if (PlayerController)
-    {
-        PlayerController->SetPause(true);
-
-        if (bPlayerWon && YouWonWidgetClass)
-        {
-            UUserWidget* YouWonWidget = CreateWidget<UUserWidget>(GetWorld(), YouWonWidgetClass);
-            if (YouWonWidget)
-            {
-                YouWonWidget->AddToViewport();
-                PlayerController->SetInputMode(FInputModeUIOnly());
-                PlayerController->bShowMouseCursor = true;
-            }
-        }
-    }
-    else if (PlayerController)
-    {
-        PlayerController->SetPause(true);
-    }
-}
-
-void ABaseGameMode::CheckEnemiesAlive()
-{
-    // Abstract method to be customized in derived classes
-    UE_LOG(LogTemp, Warning, TEXT("Base CheckEnemiesAlive called."));
+	if (!Controller) return;
+	RestartPlayer(Controller);
 }
 
 void ABaseGameMode::RequestSpawn(AController* Controller)
 {
-    if (!Controller) return;
+	if (!Controller) return;
 
-    AMyPlayerController* PC = Cast<AMyPlayerController>(Controller);
-    if (!PC) return;
+	DestroyCurrentPawn(Controller);
 
-    APawn* OldPawn = PC->GetPawn();
-    if (OldPawn)
-    {
-        // TODO: Track which PlayerStart this pawn used if you want recycling
-        OldPawn->Destroy();
-    }
+	if (RespawnDelay <= 0.f)
+	{
+		RestartPlayerSafe(Controller);
+		return;
+	}
 
-    RestartPlayer(PC);
+	FTimerHandle Handle;
+	TWeakObjectPtr<AController> WeakController = Controller;
+	GetWorldTimerManager().SetTimer(
+		Handle,
+		FTimerDelegate::CreateLambda([this, WeakController]()
+		{
+			if (WeakController.IsValid())
+			{
+				RestartPlayerSafe(WeakController.Get());
+			}
+		}),
+		RespawnDelay,
+		false
+	);
 }
-

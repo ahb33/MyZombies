@@ -22,7 +22,6 @@ class UInputComponent;
 class UMyGameInstance;
 
 
-DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnMainCharacterDeath);
 
 UCLASS()
 class MYZOMBIES_API AMainCharacter : public ACharacter, public IGameplayTagAssetInterface
@@ -125,10 +124,6 @@ public:
 	// --- Anim montages ---
 	void PlayFireMontage(bool bAiming);
 	void PlayReloadMontage();
-
-	// --- Events ---
-	UPROPERTY(BlueprintAssignable)  
-	FOnMainCharacterDeath OnMainCharacterDeath;
 
 protected:
 	// --- Lifecycle ---

@@ -54,10 +54,6 @@ public:
     virtual void PlayFireEffects(const FHitResult& Hit, const FVector& Start, const FVector& End);
     void UpdateTracer(const FVector& SourceWS, const FVector& TargetWS);
 
-
-    UFUNCTION(NetMulticast, Unreliable)
-    void Multicast_PlayFireFX(const FVector& TraceStart, const FVector& TraceEnd);
-
     // Ammo / Damage
     void SetAmmoInMag();
     void SetAmmoOnHand();
@@ -78,7 +74,8 @@ public:
     // Utilities
     bool WeaponIsEmpty() const;
     FORCEINLINE USkeletalMeshComponent* GetWeaponMesh() const { return WeaponMesh; }
-    void         SetWeaponState(EWeaponState NewState);
+    void SetWeaponState(EWeaponState NewState);
+    void ApplyWeaponState();
     EWeaponType  GetWeaponType()  const { return WeaponType; }
     EWeaponState GetWeaponState() const { return WeaponState; }
     virtual void SetOwner(AActor* NewOwner) override;

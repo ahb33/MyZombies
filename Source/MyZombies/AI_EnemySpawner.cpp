@@ -15,6 +15,7 @@ AAI_EnemySpawner::AAI_EnemySpawner()
 	PrimaryActorTick.bCanEverTick = false;
 
 	SpawnArea = CreateDefaultSubobject<UBoxComponent>(TEXT("SpawnArea"));
+    RootComponent = SpawnArea;
 	SpawnArea->SetupAttachment(RootComponent);
 
 }
@@ -35,7 +36,7 @@ void AAI_EnemySpawner::InitZombieArray(int32 NumberOfZombies)
     UE_LOG(LogTemp, Warning, TEXT("Number of Zombies is %d"), NumberOfZombies);
     UE_LOG(LogTemp, Warning, TEXT("InitZombiesArray Called"));
 
-    ZombieSpawnArray.Empty();
+    ZombieSpawnArray.Empty(); // emptires array
 
     if (BP_EnemyCharacterClass)
     {
@@ -49,7 +50,7 @@ void AAI_EnemySpawner::SpawnZombies(int32 NumberOfZombies)
 {
 	// if array is empty return
 	// if actor does not have authority to spawn return
-    if (ZombieSpawnArray.IsEmpty() || GetLocalRole() != ROLE_Authority) return;
+    if (ZombieSpawnArray.IsEmpty() || !HasAuthority()) return;
     
     // Spawning zombies with a cooldown interval
     GetWorld()->GetTimerManager().SetTimer(SpawnTimerHandle, this, &AAI_EnemySpawner::Spawn, SpawnCooldown, true);

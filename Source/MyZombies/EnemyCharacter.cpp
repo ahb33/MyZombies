@@ -144,7 +144,6 @@ float AEnemyCharacter::TakeDamage(float DamageAmount, const FDamageEvent& Damage
 
 
 
-
 void AEnemyCharacter::Die()
 {
     if (HasAuthority()) 

@@ -10,13 +10,23 @@
  * 
  */
 
+
+UENUM(BlueprintType)
+enum class EMatchPhase : uint8
+{
+    Intro,
+    Active,
+    RoundOver,
+    GameOver
+};
+
+
 UENUM(BlueprintType)
 enum class EInputProfile : uint8
 {
   Lobby,
   Gameplay
 };
-
 
 
 UENUM(BlueprintType) 
@@ -27,8 +37,10 @@ enum class EMatchMode : uint8
 };
 
 
+
+DECLARE_MULTICAST_DELEGATE_OneParam(FOnMatchPhaseChanged, EMatchPhase);
 DECLARE_MULTICAST_DELEGATE_OneParam(FOnInputProfileChanged, EInputProfile);
-DECLARE_MULTICAST_DELEGATE_OneParam(FOnInputProfileChanged, EInputProfile);
+DECLARE_MULTICAST_DELEGATE_OneParam(FOnMatchModeChanged, EMatchMode);
 
 UCLASS()
 class MYZOMBIES_API ABaseGameState : public AGameStateBase
@@ -36,35 +48,54 @@ class MYZOMBIES_API ABaseGameState : public AGameStateBase
 	GENERATED_BODY()
 
 public:
+	FOnMatchPhaseChanged OnMatchPhaseChanged;
+	FOnInputProfileChanged OnInputProfileChanged;
+	FOnMatchModeChanged OnMatchModeChanged;
 
-  FOnInputProfileChanged OnInputProfileChanged; 
+	UFUNCTION(BlueprintPure, Category="Match")
+	EMatchPhase GetMatchPhase() const { return MatchPhase; }
 
-  UFUNCTION() 
-  EMatchMode GetMatchMode() const { return MatchMode; }
+	UFUNCTION(BlueprintPure, Category="Match")
+	EMatchMode GetMatchMode() const { return MatchMode; }
 
-  UFUNCTION()
-  EInputProfile GetInputProfile() const { return InputProfile;}
+	UFUNCTION(BlueprintPure, Category="Input")
+	EInputProfile GetInputProfile() const { return InputProfile; }
 
-  UFUNCTION()
-  void SetMatchMode(EMatchMode InMode) { if (HasAuthority()) { MatchMode = InMode; } }
+	/** Server-only setters (GameMode should call these). */
+	UFUNCTION(BlueprintCallable, Category="Match")
+	void SetMatchPhase(EMatchPhase NewPhase);
 
-  UFUNCTION()
-  void SetInputProfile(EInputProfile InputProfile);
+	UFUNCTION(BlueprintCallable, Category="Match")
+	void SetMatchMode(EMatchMode NewMode);
+
+	UFUNCTION(BlueprintCallable, Category="Input")
+	void SetInputProfile(EInputProfile NewProfile);
 
 
 protected:
   virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
 
-  UPROPERTY(Replicated, BlueprintReadOnly, Category="Match")
+  UPROPERTY(ReplicatedUsing=OnRep_MatchMode)
   EMatchMode MatchMode = EMatchMode::Zombies; // set default
 
-  UPROPERTY(ReplicatedUsing=OnRep_InputProfile, BlueprintReadOnly, Category="Input")
+  UPROPERTY(ReplicatedUsing=OnRep_InputProfile)
   EInputProfile InputProfile = EInputProfile::Lobby; // set default
 
-  UFUNCTION() void OnRep_InputProfile();
+  UPROPERTY(ReplicatedUsing=OnRep_MatchPhase)
+  EMatchPhase MatchPhase = EMatchPhase::Intro; // set default
+
+	UFUNCTION()
+	void OnRep_MatchPhase();
+
+	UFUNCTION()
+	void OnRep_MatchMode();
+
+	UFUNCTION()
+	void OnRep_InputProfile();
 
 private:
-
-  void BroadcastInputProfile();
+	void BroadcastMatchPhase();
+	void BroadcastMatchMode();
+	void BroadcastInputProfile();
 	
 };

@@ -47,6 +47,10 @@ public:
         OutTags.AppendTags(CharacterTags);
     }
 
+
+	UFUNCTION(Server, Reliable)
+	void Server_TakeDamage();
+	
 	virtual float TakeDamage(float DamageAmount, struct FDamageEvent const& DamageEvent,
     class AController* EventInstigator, AActor* DamageCauser) override;
 

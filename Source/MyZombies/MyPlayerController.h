@@ -35,12 +35,9 @@ public:
 	AMyPlayerController();
 
 protected:
-	// Lifecycle
 	virtual void BeginPlay() override;
 	virtual void SetupInputComponent() override;
-	virtual void OnPossess(APawn* InPawn) override;
-	virtual void OnUnPossess() override;
-
+	virtual void EndPlay(const EEndPlayReason::Type EndPlayReason) override;
 
 public:
 	// -------------------- Common Menu (used by any mode) --------------------
@@ -53,11 +50,8 @@ public:
 	// add pause menu
 	// pause should have 2 options : exi
 
-	// Server calls this on the owning client when Zombies + killed by zombie.
-	UFUNCTION(Client, Reliable)
-	void Client_ShowDeathScreen();
-
-	UFUNCTION(BlueprintCallable) void ShowDeathScreenLocal(); // local-only UI creator (used by Client RPC + OnRep fallback)
+	UFUNCTION(BlueprintCallable) 
+	void ShowDeathScreenLocal(); // local-only UI creator (used by Client RPC + OnRep fallback)
 
 	// HUD Helpers
 	void SetHUDHealth(float CurrentHealth, float MaxHealth);
@@ -74,30 +68,50 @@ public:
 	UFUNCTION(Server, Reliable)
 	void Server_SetPlayerReady();
 	
-	virtual void EndPlay(const EEndPlayReason::Type EndPlayReason) override;
-
 private:
+	// Binding / state sync
+	void TryBindToGameState();
+	void UnbindFromGameState();
+	void SyncFromCachedState();
 
-	class AMyHUD* GetMyHUD();
+	void HandleInputProfileChanged(EInputProfile Profile);
+	void HandleMatchPhaseChanged(EMatchPhase Phase);
+	void HandleMatchModeChanged(EMatchMode Mode);
 
-    void HandleRoundStateChanged(int32 RoundNumber, ERoundPhase Phase);
-	void BindRoundDelegate(); // your delegate binding helper
+	void HandleRoundNumberChanged(int32 RoundNumber);
+
+	// Input application
 	void ApplyInputProfile(EInputProfile Profile);
-	void InitRoundUI(); // Create (if needed) and keep the persistent corner “Round X” widget on-screen
-    void ShowRoundIntroSplashWidget(int32 RoundNumber);
-	void PlayRoundIntroSound(int32 Round); // Play BOOM + “Round X” VO locally as part of the intro
-	void HideRoundIntroSplashWidget();
 
-	UFUNCTION()
-	void HandlePlayerDeath(); // needed for dynamic multicast
+	// Zombies UI
+	void EnsureRoundHUDWidget();
+	void EnsureRoundSplashWidget();
+	void HideRoundIntroSplashWidget();
+	void ShowRoundIntroSplashWidget(int32 RoundNumber);
+
+	// Audio
+	void PlayRoundIntroSound(int32 RoundNumber);
+	void PlayRoundVoiceSound(USoundBase* VoiceSound);
+
+	AMyHUD* GetMyHUD();
 	
 private:
+	// Cached references
+	UPROPERTY(Transient)
+	TObjectPtr<AMyHUD> MyPlayerHUD = nullptr;
 
 	UPROPERTY(Transient)
-	AMyHUD* MyPlayerHUD = nullptr;
+	TObjectPtr<ABaseGameState> CachedBGS = nullptr;
 
 	UPROPERTY(Transient)
-	bool bDeathVisible = false;
+	TObjectPtr<AZombiesGameState> CachedZGS = nullptr;
+
+	// Delegate handles (avoid RemoveAll noise)
+	FDelegateHandle InputProfileChangedHandle;
+	FDelegateHandle MatchPhaseChangedHandle;
+	FDelegateHandle MatchModeChangedHandle;
+	FDelegateHandle RoundNumberChangedHandle;
+
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="UI|Lobby", meta=(AllowPrivateAccess="true"))
 	TSubclassOf<UUserWidget> ReadyButtonWidgetClass;
@@ -112,7 +126,7 @@ private:
 	UPROPERTY(EditDefaultsOnly, Category="UI|Round Info")
 	TSubclassOf<UUserWidget> RoundHUDWidgetClass;
 	UPROPERTY(Transient)
-	UZombiesRoundWidget* RoundHUDWidgetInstance  = nullptr; // ZombiesRoundWidgetInstance
+	UZombiesRoundWidget* RoundHUDWidgetInstance  = nullptr; 
 
 	UPROPERTY(EditDefaultsOnly, Category="UI|Round Info")
 	TSubclassOf<UUserWidget> RoundSplashWidgetClass;
@@ -132,16 +146,14 @@ private:
     UPROPERTY(Transient)
     TObjectPtr<UAudioComponent> RoundIntroVoiceComp = nullptr;
 
+	UPROPERTY(EditDefaultsOnly) 
+	float RoundIntroWidgetDuration = 2.0f;
+
 	FTimerHandle RoundVoiceTimerHandle;
 	FTimerHandle RoundIntroHideTimerHandle;
 
-	UPROPERTY(EditDefaultsOnly)
-	float RoundIntroWidgetDuration = 2.0f;
+	FTimerHandle BindRetryTimerHandle;
+	int32 BindRetryCount = 0;
 
-	UPROPERTY()
-    TObjectPtr<AZombiesGameState> CachedZGS = nullptr;
-
-	UPROPERTY()
-	TObjectPtr<ABaseGameState> CachedBGS = nullptr;
-
+	int32 CachedRoundNumber = 1;
 };

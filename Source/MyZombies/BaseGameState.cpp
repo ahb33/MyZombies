@@ -4,31 +4,64 @@
 #include "BaseGameState.h"
 #include "Net/UnrealNetwork.h"
 
-void ABaseGameState::GetLifetimeReplicatedProps(TArray<FLifetimeProperty> &OutLifetimeProps) const
+void ABaseGameState::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
 {
-    Super::GetLifetimeReplicatedProps(OutLifetimeProps);
-    // DOREPLIFETIME(ABaseGameState, MatchMode);
-    DOREPLIFETIME(ABaseGameState, InputProfile);
+	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
+
+	DOREPLIFETIME(ABaseGameState, MatchPhase);
+	DOREPLIFETIME(ABaseGameState, MatchMode);
+	DOREPLIFETIME(ABaseGameState, InputProfile);
 }
 
-void ABaseGameState::SetInputProfile(EInputProfile InProfile)
+void ABaseGameState::SetMatchPhase(EMatchPhase NewPhase)
 {
-    if(!HasAuthority()) return;   
-
-    InputProfile = InProfile;
-    BroadcastInputProfile();
-
-    
+	if (!HasAuthority() || MatchPhase == NewPhase) return;
+	MatchPhase = NewPhase;
+	BroadcastMatchPhase();
 }
 
-void ABaseGameState::BroadcastInputProfile()
+void ABaseGameState::SetMatchMode(EMatchMode NewMode)
 {
-    OnInputProfileChanged.Broadcast(InputProfile);
+	if (!HasAuthority() || MatchMode == NewMode) return;
+	MatchMode = NewMode;
+	BroadcastMatchMode();
+}
+
+void ABaseGameState::SetInputProfile(EInputProfile NewProfile)
+{
+	if (!HasAuthority() || InputProfile == NewProfile) return;
+	InputProfile = NewProfile;
+	BroadcastInputProfile();
+}
+
+void ABaseGameState::OnRep_MatchPhase()
+{
+	BroadcastMatchPhase();
+}
+
+void ABaseGameState::OnRep_MatchMode()
+{
+	BroadcastMatchMode();
 }
 
 void ABaseGameState::OnRep_InputProfile()
 {
-    BroadcastInputProfile();
+	BroadcastInputProfile();
+}
+
+void ABaseGameState::BroadcastMatchPhase()
+{
+	OnMatchPhaseChanged.Broadcast(MatchPhase);
+}
+
+void ABaseGameState::BroadcastMatchMode()
+{
+	OnMatchModeChanged.Broadcast(MatchMode);
+}
+
+void ABaseGameState::BroadcastInputProfile()
+{
+	OnInputProfileChanged.Broadcast(InputProfile);
 }
 
 

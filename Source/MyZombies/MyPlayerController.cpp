@@ -5,7 +5,6 @@
 #include "MyHUD.h"
 #include "LobbyPlayerState.h"
 #include "MainCharacter.h"
-#include "Net/UnrealNetwork.h"
 #include "Blueprint/UserWidget.h"
 #include "ReadyButtonWidget.h"
 #include "YouDiedMenuWidget.h"
@@ -16,7 +15,6 @@
 #include "Components/AudioComponent.h"
 #include "ZombiesGameState.h"
 #include "Kismet/GameplayStatics.h"
-#include "Blueprint/UserWidget.h"
 
 AMyPlayerController::AMyPlayerController() {}
 
@@ -24,44 +22,211 @@ void AMyPlayerController::BeginPlay()
 {
     Super::BeginPlay();
 
-    if (!IsLocalController()) return;
+	if (!IsLocalController())
+	{
+		return;
+	}
 
-    const FString MapName = GetWorld()->GetMapName();
-    if (MapName.Contains("LobbyLevel") && ReadyButtonWidgetClass)
-    {
-        ReadyButtonWidgetInstance = CreateWidget<UReadyButtonWidget>(this, ReadyButtonWidgetClass);
-        if (ReadyButtonWidgetInstance)
-        {
-            ReadyButtonWidgetInstance->AddToViewport();
-        }
-    }
-    
-    BindRoundDelegate();
+	TryBindToGameState();
 
 }
 
 
-void AMyPlayerController::BindRoundDelegate()
+void AMyPlayerController::SetupInputComponent()
 {
-    // Bind base GS (always)
-    CachedBGS = GetWorld() ? GetWorld()->GetGameState<ABaseGameState>() : nullptr;
-    if (CachedBGS)
-    {
-        CachedBGS->OnInputProfileChanged.RemoveAll(this);
-        CachedBGS->OnInputProfileChanged.AddUObject(this, &AMyPlayerController::ApplyInputProfile);
+	Super::SetupInputComponent();
 
-        ApplyInputProfile(CachedBGS->GetInputProfile()); // initial sync (add getter)
-    }
+	if (InputComponent)
+	{
+		InputComponent->BindAction("StartGame", IE_Pressed, this, &AMyPlayerController::HandleReadyInput);
+	}
+}
 
-    // Bind zombies GS (only exists in Zombies mode)
-    CachedZGS = GetWorld() ? GetWorld()->GetGameState<AZombiesGameState>() : nullptr;
-    if (CachedZGS)
-    {
-        CachedZGS->OnRoundStateChanged.RemoveAll(this);
-        CachedZGS->OnRoundStateChanged.AddUObject(this, &AMyPlayerController::HandleRoundStateChanged);
+void AMyPlayerController::EndPlay(const EEndPlayReason::Type EndPlayReason)
+{
+	if (UWorld* World = GetWorld())
+	{
+		World->GetTimerManager().ClearTimer(BindRetryTimerHandle);
+		World->GetTimerManager().ClearTimer(RoundVoiceTimerHandle);
+		World->GetTimerManager().ClearTimer(RoundIntroHideTimerHandle);
+	}
 
-        HandleRoundStateChanged(CachedZGS->GetRoundNumber(), CachedZGS->GetRoundPhase()); // initial sync
-    }
+	if (RoundIntroThudComp && RoundIntroThudComp->IsPlaying()) RoundIntroThudComp->Stop();
+	if (RoundIntroVoiceComp && RoundIntroVoiceComp->IsPlaying()) RoundIntroVoiceComp->Stop();
+
+	UnbindFromGameState();
+
+	Super::EndPlay(EndPlayReason);
+}
+
+void AMyPlayerController::TryBindToGameState()
+{
+	UnbindFromGameState();
+
+	CachedBGS = GetWorld() ? GetWorld()->GetGameState<ABaseGameState>() : nullptr;
+	if (!CachedBGS)
+	{
+		// Retry a few times in case GameState isn't ready yet on client.
+		if (UWorld* World = GetWorld())
+		{
+			if (++BindRetryCount <= 20)
+			{
+				World->GetTimerManager().SetTimer(
+					BindRetryTimerHandle,
+					this,
+					&AMyPlayerController::TryBindToGameState,
+					0.2f,
+					false
+				);
+			}
+		}
+		return;
+	}
+
+	BindRetryCount = 0;
+
+	InputProfileChangedHandle =
+    CachedBGS->OnInputProfileChanged.AddUObject(this, &AMyPlayerController::HandleInputProfileChanged);
+
+	MatchPhaseChangedHandle =
+		CachedBGS->OnMatchPhaseChanged.AddUObject(this, &AMyPlayerController::HandleMatchPhaseChanged);
+
+	MatchModeChangedHandle =
+		CachedBGS->OnMatchModeChanged.AddUObject(this, &AMyPlayerController::HandleMatchModeChanged);
+
+	// Zombies-only GameState
+	CachedZGS = GetWorld() ? GetWorld()->GetGameState<AZombiesGameState>() : nullptr;
+	if (CachedZGS)
+	{
+		RoundNumberChangedHandle =
+			CachedZGS->OnRoundNumberChanged.AddUObject(this, &AMyPlayerController::HandleRoundNumberChanged);
+	}
+
+	SyncFromCachedState();
+}
+
+void AMyPlayerController::UnbindFromGameState()
+{
+	if (CachedBGS)
+	{
+		if (InputProfileChangedHandle.IsValid()) CachedBGS->OnInputProfileChanged.Remove(InputProfileChangedHandle);
+		if (MatchPhaseChangedHandle.IsValid()) CachedBGS->OnMatchPhaseChanged.Remove(MatchPhaseChangedHandle);
+		if (MatchModeChangedHandle.IsValid()) CachedBGS->OnMatchModeChanged.Remove(MatchModeChangedHandle);
+	}
+
+	if (CachedZGS)
+	{
+		if (RoundNumberChangedHandle.IsValid()) CachedZGS->OnRoundNumberChanged.Remove(RoundNumberChangedHandle);
+	}
+
+	InputProfileChangedHandle.Reset();
+	MatchPhaseChangedHandle.Reset();
+	MatchModeChangedHandle.Reset();
+	RoundNumberChangedHandle.Reset();
+
+	CachedBGS = nullptr;
+	CachedZGS = nullptr;
+}
+
+void AMyPlayerController::SyncFromCachedState()
+{
+	if (!CachedBGS) return;
+
+	HandleMatchModeChanged(CachedBGS->GetMatchMode());
+	HandleInputProfileChanged(CachedBGS->GetInputProfile());
+	HandleMatchPhaseChanged(CachedBGS->GetMatchPhase());
+
+	if (CachedZGS)
+	{
+		HandleRoundNumberChanged(CachedZGS->GetRoundNumber());
+	}
+}
+
+void AMyPlayerController::HandleInputProfileChanged(EInputProfile Profile)
+{
+	ApplyInputProfile(Profile);
+
+	// Lobby widget visibility is driven by InputProfile (not by map name).
+	if (Profile == EInputProfile::Lobby)
+	{
+		if (ReadyButtonWidgetClass && !ReadyButtonWidgetInstance)
+		{
+			ReadyButtonWidgetInstance = CreateWidget<UReadyButtonWidget>(this, ReadyButtonWidgetClass);
+		}
+		if (ReadyButtonWidgetInstance && !ReadyButtonWidgetInstance->IsInViewport())
+		{
+			ReadyButtonWidgetInstance->AddToViewport();
+		}
+	}
+	else
+	{
+		if (ReadyButtonWidgetInstance && ReadyButtonWidgetInstance->IsInViewport())
+		{
+			ReadyButtonWidgetInstance->RemoveFromParent();
+		}
+	}
+}
+
+void AMyPlayerController::HandleMatchModeChanged(EMatchMode Mode)
+{
+	// Zombies-only UI; hide if leaving Zombies.
+	if (Mode != EMatchMode::Zombies)
+	{
+		if (RoundHUDWidgetInstance && RoundHUDWidgetInstance->IsInViewport())
+		{
+			RoundHUDWidgetInstance->RemoveFromParent();
+		}
+		if (RoundSplashWidgetInstance)
+		{
+			RoundSplashWidgetInstance->SetVisibility(ESlateVisibility::Hidden);
+		}
+	}
+}
+
+void AMyPlayerController::HandleMatchPhaseChanged(EMatchPhase Phase)
+{
+	switch (Phase)
+	{
+	case EMatchPhase::GameOver:
+		ShowDeathScreenLocal();
+		break;
+
+	case EMatchPhase::Intro:
+		// Splash only makes sense for Zombies.
+		if (CachedBGS && CachedBGS->GetMatchMode() == EMatchMode::Zombies)
+		{
+			ShowRoundIntroSplashWidget(CachedRoundNumber);
+		}
+		break;
+
+	default:
+		// Leaving intro hides splash.
+		HideRoundIntroSplashWidget();
+		break;
+	}
+}
+
+void AMyPlayerController::HandleRoundNumberChanged(int32 RoundNumber)
+{
+	CachedRoundNumber = FMath::Max(1, RoundNumber);
+
+	if (!CachedBGS || CachedBGS->GetMatchMode() != EMatchMode::Zombies)
+	{
+		return;
+	}
+
+	EnsureRoundHUDWidget();
+	if (RoundHUDWidgetInstance)
+	{
+		RoundHUDWidgetInstance->SetVisibility(ESlateVisibility::Visible);
+		RoundHUDWidgetInstance->SetRound(CachedRoundNumber);
+	}
+
+	// If the game is currently in Intro phase, show splash for the new round.
+	if (CachedBGS->GetMatchPhase() == EMatchPhase::Intro)
+	{
+		ShowRoundIntroSplashWidget(CachedRoundNumber);
+	}
 }
 
 void AMyPlayerController::ApplyInputProfile(EInputProfile Profile)
@@ -83,7 +248,7 @@ void AMyPlayerController::ApplyInputProfile(EInputProfile Profile)
 
         case EInputProfile::Lobby:
         {
-            UE_LOG(LogTemp, Warning, TEXT("Lobby input profile set"))
+            UE_LOG(LogTemp, Warning, TEXT("Lobby input profile set"));
             FInputModeGameAndUI Mode;
             Mode.SetLockMouseToViewportBehavior(EMouseLockMode::DoNotLock);
             SetInputMode(Mode);
@@ -97,58 +262,21 @@ void AMyPlayerController::ApplyInputProfile(EInputProfile Profile)
     }
 }
 
-void AMyPlayerController::EndPlay(const EEndPlayReason::Type EndPlayReason)
-{
-    if (CachedZGS) CachedZGS->OnRoundStateChanged.RemoveAll(this);
-    if (CachedBGS) CachedBGS->OnInputProfileChanged.RemoveAll(this);
-
-
-    Super::EndPlay(EndPlayReason);
-}
-
-
-void AMyPlayerController::OnPossess(APawn* InPawn)
-{
-    Super::OnPossess(InPawn);
-    if(HasAuthority())
-    {
-        if(auto* MC = Cast<AMainCharacter>(InPawn))
-        {
-            MC->OnMainCharacterDeath.RemoveAll(this); // avoid dup binds on re-possess
-            MC->OnMainCharacterDeath.AddUniqueDynamic(this, &AMyPlayerController::HandlePlayerDeath);
-        }
-    }
-}
-
-void AMyPlayerController::OnUnPossess()
-{
-    if (HasAuthority())
-        if (auto* MC = Cast<AMainCharacter>(GetPawn()))
-            MC->OnMainCharacterDeath.RemoveDynamic(this, &AMyPlayerController::HandlePlayerDeath);
-    Super::OnUnPossess();
-}
-
-void AMyPlayerController::HandlePlayerDeath()
-{
-    Client_ShowDeathScreen(); // server → owning client
-}
-
-void AMyPlayerController::SetupInputComponent()
-{
-    Super::SetupInputComponent();
-
-    InputComponent->BindAction("StartGame", IE_Pressed, this, &AMyPlayerController::HandleReadyInput);
-}
-
 void AMyPlayerController::HandleReadyInput()
 {
-    Server_SetPlayerReady();
+	Server_SetPlayerReady();
 }
+
+
 
 
 void AMyPlayerController::TravelToLobby_Implementation()
 {
-    GetWorld()->ServerTravel(TEXT("/Game/GameAssets/Levels/LobbyLevel?listen"));
+    if(UWorld* World = GetWorld())
+    {
+        World->ServerTravel(TEXT("/Game/GameAssets/Levels/LobbyLevel?listen"));
+
+    }
 }
 
 void AMyPlayerController::Server_SetPlayerReady_Implementation()
@@ -161,44 +289,27 @@ void AMyPlayerController::Server_SetPlayerReady_Implementation()
 
 void AMyPlayerController::SetHUDHealth(float CurrentHealth, float MaxHealth)
 {
-    if (!MyPlayerHUD)
-    {
+	AMyHUD* HUD = GetMyHUD();
+	if (!HUD || !HUD->CharacterStats || !HUD->CharacterStats->HealthBar) return;
 
-        MyPlayerHUD = Cast<AMyHUD>(GetHUD());
-        if (!MyPlayerHUD) 
-        {
-            UE_LOG(LogTemp, Warning, TEXT("MyPlayerHUD is not valid "));
-            return;
-        }
-    }
-
-    if (MyPlayerHUD->CharacterStats && MyPlayerHUD->CharacterStats->HealthBar)
-    {
-        const float HealthPercent = CurrentHealth / MaxHealth;
-        MyPlayerHUD->CharacterStats->HealthBar->SetPercent(HealthPercent);
-    }
+	const float HealthPercent = (MaxHealth > 0.f) ? (CurrentHealth / MaxHealth) : 0.f;
+	HUD->CharacterStats->HealthBar->SetPercent(HealthPercent);
 }
 
 void AMyPlayerController::SetHUDAmmo(int32 Ammo)
 {
-    if (AMyHUD* HUD = GetMyHUD())
-    {
-        if (HUD->CharacterStats && HUD->CharacterStats->AmmoOnDisplay)
-        {
-            HUD->CharacterStats->AmmoOnDisplay->SetText(FText::AsNumber(Ammo));
-        }
-    }
+	AMyHUD* HUD = GetMyHUD();
+	if (!HUD || !HUD->CharacterStats || !HUD->CharacterStats->AmmoOnDisplay) return;
+
+	HUD->CharacterStats->AmmoOnDisplay->SetText(FText::AsNumber(Ammo));
 }
 
 void AMyPlayerController::SetHUDMagAmmo(int32 AmmoInMag)
 {
-    if (AMyHUD* HUD = GetMyHUD())
-    {
-        if (HUD->CharacterStats && HUD->CharacterStats->AmmoInMag)
-        {
-            HUD->CharacterStats->AmmoInMag->SetText(FText::AsNumber(AmmoInMag));
-        }
-    }
+	AMyHUD* HUD = GetMyHUD();
+	if (!HUD || !HUD->CharacterStats || !HUD->CharacterStats->AmmoInMag) return;
+
+	HUD->CharacterStats->AmmoInMag->SetText(FText::AsNumber(AmmoInMag));
 }
 
 void AMyPlayerController::UpdateHUDKillDeath(int32 Kills, int32 Deaths)
@@ -222,11 +333,7 @@ AMyHUD* AMyPlayerController::GetMyHUD()
     return MyPlayerHUD;
 }
 
-void AMyPlayerController::Client_ShowDeathScreen_Implementation()
-{
-    if (!IsLocalController()) return;
-    ShowDeathScreenLocal(); 
-}
+
 
 void AMyPlayerController::ShowDeathScreenLocal()
 {
@@ -236,16 +343,119 @@ void AMyPlayerController::ShowDeathScreenLocal()
     {
         DeathScreenInstance = CreateWidget<UYouDiedMenuWidget>(this, DeathScreenClass);
     }
+
     if (DeathScreenInstance && !DeathScreenInstance->IsInViewport())
     {
-        DeathScreenInstance->AddToViewport(1000);
-        FInputModeUIOnly Mode; Mode.SetWidgetToFocus(DeathScreenInstance->TakeWidget());
-        SetInputMode(Mode);
-        bShowMouseCursor = true;
+		DeathScreenInstance->AddToViewport(1000);
+
+		FInputModeUIOnly Mode;
+		Mode.SetWidgetToFocus(DeathScreenInstance->TakeWidget());
+		SetInputMode(Mode);
+
+		bShowMouseCursor = true;
+		bEnableClickEvents = true;
+		bEnableMouseOverEvents = true;
     }
 }
 
+void AMyPlayerController::EnsureRoundHUDWidget()
+{
+	if (!RoundHUDWidgetClass) return;
 
+	if (!RoundHUDWidgetInstance)
+	{
+		RoundHUDWidgetInstance = CreateWidget<UZombiesRoundWidget>(this, RoundHUDWidgetClass);
+	}
+	if (RoundHUDWidgetInstance && !RoundHUDWidgetInstance->IsInViewport())
+	{
+		RoundHUDWidgetInstance->AddToViewport(1000);
+	}
+}
+
+void AMyPlayerController::ShowRoundIntroSplashWidget(int32 RoundNumber)
+{
+	EnsureRoundSplashWidget();
+	if (!RoundSplashWidgetInstance) return;
+
+	if (!RoundSplashWidgetInstance->IsInViewport())
+	{
+		RoundSplashWidgetInstance->AddToViewport(1000);
+	}
+
+	RoundSplashWidgetInstance->SetVisibility(ESlateVisibility::Visible);
+	RoundSplashWidgetInstance->SetRound(RoundNumber);
+
+	PlayRoundIntroSound(RoundNumber);
+
+    RoundIntroWidgetDuration;
+	if (UWorld* World = GetWorld())
+	{
+		World->GetTimerManager().ClearTimer(RoundIntroHideTimerHandle);
+		World->GetTimerManager().SetTimer(
+			RoundIntroHideTimerHandle,
+			this,
+			&AMyPlayerController::HideRoundIntroSplashWidget,
+			RoundIntroWidgetDuration,
+			false
+		);
+	}
+}
+
+void AMyPlayerController::EnsureRoundSplashWidget()
+{
+	if (!RoundSplashWidgetClass) return;
+
+	if (!RoundSplashWidgetInstance)
+	{
+		RoundSplashWidgetInstance = CreateWidget<UZombiesRoundWidget>(this, RoundSplashWidgetClass);
+	}
+}
+
+
+
+void AMyPlayerController::HideRoundIntroSplashWidget()
+{
+	if (RoundSplashWidgetInstance)
+	{
+		RoundSplashWidgetInstance->SetVisibility(ESlateVisibility::Hidden);
+	}
+}
+
+void AMyPlayerController::PlayRoundIntroSound(int32 RoundNumber)
+{
+	if (!GetWorld()) return;
+
+	// Stop previous intro audio if still playing
+	if (RoundIntroThudComp && RoundIntroThudComp->IsPlaying()) RoundIntroThudComp->Stop();
+	if (RoundIntroVoiceComp && RoundIntroVoiceComp->IsPlaying()) RoundIntroVoiceComp->Stop();
+	GetWorldTimerManager().ClearTimer(RoundVoiceTimerHandle);
+
+	float VoiceDelay = 0.15f;
+
+	if (RoundThudSound)
+	{
+		RoundIntroThudComp = UGameplayStatics::SpawnSound2D(this, RoundThudSound);
+		VoiceDelay = FMath::Clamp(RoundThudSound->GetDuration(), 0.10f, 1.00f);
+	}
+
+	const int32 Index = RoundNumber - 1;
+	if (RoundVoiceSounds.IsValidIndex(Index) && RoundVoiceSounds[Index])
+	{
+		USoundBase* VoiceSound = RoundVoiceSounds[Index];
+		GetWorldTimerManager().SetTimer(
+			RoundVoiceTimerHandle,
+			FTimerDelegate::CreateUObject(this, &AMyPlayerController::PlayRoundVoiceSound, VoiceSound),
+			VoiceDelay,
+			false
+		);
+	}
+}
+
+void AMyPlayerController::PlayRoundVoiceSound(USoundBase* VoiceSound)
+{
+	if (!VoiceSound) return;
+	RoundIntroVoiceComp = UGameplayStatics::SpawnSound2D(this, VoiceSound);
+}
 
 void AMyPlayerController::RequestRestartLevel()
 {
@@ -259,96 +469,4 @@ void AMyPlayerController::GoToMainMenu()
 	// UGameplayStatics::OpenLevel(this, MainMenuLevel);
 }
 
-
-void AMyPlayerController::ShowRoundIntroSplashWidget(int32 Round)
-{
-    if(!RoundSplashWidgetClass) return;
-
-    if(!RoundSplashWidgetInstance)
-    {
-        RoundSplashWidgetInstance = CreateWidget<UZombiesRoundWidget>(this, RoundSplashWidgetClass);
-        if(!RoundSplashWidgetInstance) return;
-    }
-
-    if(RoundSplashWidgetInstance && !RoundSplashWidgetInstance->IsInViewport())
-    {
-        RoundSplashWidgetInstance->AddToViewport(1000);
-    }
-    
-    RoundSplashWidgetInstance->SetVisibility(ESlateVisibility::Visible); 
-    RoundSplashWidgetInstance->SetRound(Round);
-    PlayRoundIntroSound(Round);
-
-    if (UWorld* World = GetWorld())
-    {
-        World->GetTimerManager().ClearTimer(RoundIntroHideTimerHandle);
-        World->GetTimerManager().SetTimer(RoundIntroHideTimerHandle, this, &AMyPlayerController::HideRoundIntroSplashWidget, RoundIntroWidgetDuration, false);
-    }
-}
-
-void AMyPlayerController::HideRoundIntroSplashWidget()
-{
-    if (!RoundSplashWidgetInstance) return;
-
-    // why: reuse the same instance next round (no re-create, no duplicate widgets)
-    RoundSplashWidgetInstance->SetVisibility(ESlateVisibility::Hidden);
-}
-
-
-void AMyPlayerController::PlayRoundIntroSound(int32 Round)
-{
-    UWorld* World = GetWorld();
-
-    if(!World) return;
-
-    if(RoundIntroThudComp && RoundIntroThudComp->IsPlaying()) RoundIntroThudComp->Stop();
-    if(RoundIntroVoiceComp && RoundIntroVoiceComp->IsPlaying()) RoundIntroVoiceComp->Stop();
-
-    float VoiceDelay = 0.15f;
-
-    if(RoundThudSound)    
-    {
-        RoundIntroThudComp = UGameplayStatics::SpawnSound2D(this, RoundThudSound);
-        const float Dur = RoundThudSound->GetDuration();
-        VoiceDelay = FMath::Clamp(Dur, 0.10f, 1.00f);
-    }
-}
-
-void AMyPlayerController::InitRoundUI()
-{
-    if(!RoundHUDWidgetClass) return;
-
-    if(!RoundHUDWidgetInstance)
-    {
-        RoundHUDWidgetInstance = CreateWidget<UZombiesRoundWidget>(this, RoundHUDWidgetClass);
-        if(!RoundHUDWidgetInstance) return;
-    }
-
-    if(RoundHUDWidgetInstance && !RoundHUDWidgetInstance->IsInViewport())
-    {
-        RoundHUDWidgetInstance->AddToViewport(1000);
-    }
-    // This function should never change the round text; it only guarantees the widget exists.
-
-}
-
-
-void AMyPlayerController::HandleRoundStateChanged(int32 RoundNumber, ERoundPhase Phase)
-{
-    InitRoundUI();
-
-    UE_LOG(LogTemp, Warning, TEXT("RoundNumber %d RoundPhase %d"), RoundNumber,(int32)Phase);
-
-    if (!RoundHUDWidgetInstance) return;
-
-    RoundHUDWidgetInstance->SetVisibility(ESlateVisibility::Visible);
-    RoundHUDWidgetInstance->SetRound(RoundNumber);
-
-    if (Phase == ERoundPhase::Intro) ShowRoundIntroSplashWidget(RoundNumber);
-    /*   
-        Then call a method on the widget like SetRound(Round) (or set the TextBlock) to update the displayed “Round X”.
-        This is what keeps the bottom corner always correct.      
-    */
-    
-}
 
