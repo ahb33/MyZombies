@@ -135,10 +135,9 @@ float AEnemyCharacter::TakeDamage(float DamageAmount, const FDamageEvent& Damage
     BaseHealth = FMath::Clamp(BaseHealth - DamageAmount, 0.f, MaxHealth);
     if (BaseHealth <= 0.f && !bIsDead)
     {
-        bIsDead = true; OnRep_IsDead();
+        bIsDead = true;
         GetWorld()->GetTimerManager().SetTimer(DestructionTimer, this, &AEnemyCharacter::Die, 1.0f, false);
     }
-    OnRep_Health();
     return DamageAmount;
 }
 
@@ -156,13 +155,10 @@ void AEnemyCharacter::Die()
     }
 }
 
-void AEnemyCharacter::OnRep_Health()
-{
-
-}
 
 void AEnemyCharacter::OnRep_IsDead()
 {
+    UE_LOG(LogTemp, Warning, TEXT("OnRep is dead"));
     if (UAI_AnimInstance* AI = Cast<UAI_AnimInstance>(GetMesh()->GetAnimInstance()))
     {
         AI->SetIsDead(true); // ensures death anim plays on all clients

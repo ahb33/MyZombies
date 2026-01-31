@@ -4,8 +4,7 @@
 
 #include "CoreMinimal.h"
 #include "Blueprint/UserWidget.h"
-#include "MainMenuWidget.h"
-#include "MyPlayerController.h"
+#include "BaseMenuWidget.h"
 #include "SoloMenuWidget.generated.h"
 
 
@@ -15,8 +14,11 @@
  * 
 
 */
+
+class UButton;
+
 UCLASS()
-class MYZOMBIES_API USoloMenuWidget : public UMainMenuWidget
+class MYZOMBIES_API USoloMenuWidget : public UBaseMenuWidget
 {
 	GENERATED_BODY()
 
@@ -26,39 +28,23 @@ class MYZOMBIES_API USoloMenuWidget : public UMainMenuWidget
 	access gamemode class that does so
 */
 protected:
-    virtual void NativeConstruct() override;
-
-public:
-
-    virtual void MenuSetup();
-  
-    void BindButtonEvents();
-
-    UFUNCTION()
-    void OnHardButtonClicked();
-
-    UFUNCTION()
-    void OnMediumButtonClicked();
-
-    UFUNCTION()
-    void OnEasyButtonClicked();
-
-    UFUNCTION()
-    void OnBackButtonClicked();
-
+	virtual void NativeOnInitialized() override;
 
 private:
+	UFUNCTION() void OnEasyButtonClicked();
+	UFUNCTION() void OnMediumButtonClicked();
+	UFUNCTION() void OnHardButtonClicked();
+	UFUNCTION() void OnBackButtonClicked();
 
-    UPROPERTY(meta = (BindWidget))
-	class UButton* EasyButton;
+	UPROPERTY(meta=(BindWidgetOptional)) 
+	TObjectPtr<UButton> EasyButton = nullptr;
 
-    UPROPERTY(meta = (BindWidget))
-	class UButton* MediumButton;
+	UPROPERTY(meta=(BindWidgetOptional)) 
+	TObjectPtr<UButton> MediumButton = nullptr;
 
-	UPROPERTY(meta = (BindWidget))
-	class UButton* HardButton;
+	UPROPERTY(meta=(BindWidgetOptional)) 
+	TObjectPtr<UButton> HardButton = nullptr;
 
-    UPROPERTY(meta = (BindWidget))
-	class UButton* BackButton;
-	
+	UPROPERTY(meta=(BindWidgetOptional)) 
+	TObjectPtr<UButton> BackButton = nullptr;
 };

@@ -4,71 +4,34 @@
 #include "MyPlayerController.h"
 #include "MultiplayerMenuWidget.h"
 
-void UMainMenuWidget::NativeConstruct()
+
+void UMainMenuWidget::NativeOnInitialized()
 {
-    Super::NativeConstruct();
+	Super::NativeOnInitialized();
 
-    // Only create the widget instance if it's not already in the array
-    MenuSetup();
+	if (SoloButton)
+	{
+		SoloButton->OnClicked.RemoveAll(this);
+		SoloButton->OnClicked.AddDynamic(this, &UMainMenuWidget::OnSoloClicked);
+	}
 
-    
-}
-
-
-void UMainMenuWidget::MenuSetup()
-{
-    Super::MenuSetup();
-
-    UE_LOG(LogTemp, Warning, TEXT("MainMenu constructor called"));
-    
-    
-    BindButtonEvents();
-}
-
-
-// Ensure that buttons are valid and not already bound to prevent multiple bindings.
-void UMainMenuWidget::BindButtonEvents()
-{
-    if (SoloButton && !SoloButton->OnClicked.IsAlreadyBound(this, &UMainMenuWidget::OnSoloClicked))
-    {
-        SoloButton->OnClicked.AddDynamic(this, &UMainMenuWidget::OnSoloClicked);
-    }
-
-    if (MultiplayerButton && !MultiplayerButton->OnClicked.IsAlreadyBound(this, &UMainMenuWidget::OnMultiplayerClicked))
-    {
-        MultiplayerButton->OnClicked.AddDynamic(this, &UMainMenuWidget::OnMultiplayerClicked);
-    }
+	if (MultiplayerButton)
+	{
+		MultiplayerButton->OnClicked.RemoveAll(this);
+		MultiplayerButton->OnClicked.AddDynamic(this, &UMainMenuWidget::OnMultiplayerClicked);
+	}
 }
 
 void UMainMenuWidget::OnSoloClicked()
 {
-    // Ensure widget creation before attempting transition
-    FName SoloMenu = "SoloMenu";
-
-    auto soloMenuWidgetRef = GetSoloMenuWidgetClass();
-
-    if (!menuWidgetMap.Contains(SoloMenu))
-    {
-        Super::CreateAndStoreWidget(SoloMenu, soloMenuWidgetRef);
-    }
-
-    TransitionToMenu(SoloMenu);
+	// Push so Solo menu can Pop() back to Main
+	RequestPushMenu(TEXT("SoloMenu"));
 }
 
 void UMainMenuWidget::OnMultiplayerClicked()
 {
-    // Ensure widget creation before attempting transition
-    FName GameModeSelectionMenu = "GameModeSelectionMenu";
-
-    auto gameModeSelectionMenuWidgetRef = GetGameModeSelectionMenuWidgetClass();
-
-    if (!menuWidgetMap.Contains(GameModeSelectionMenu))
-    {
-        Super::CreateAndStoreWidget(GameModeSelectionMenu, gameModeSelectionMenuWidgetRef);
-    }
-
-    TransitionToMenu(GameModeSelectionMenu);
+	// Push so selection menu can Pop() back to Main
+	RequestPushMenu(TEXT("GameModeSelectionMenu"));
 }
-
 
 

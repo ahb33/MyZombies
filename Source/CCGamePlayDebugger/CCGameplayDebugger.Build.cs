@@ -9,7 +9,9 @@ public class CCGameplayDebugger : ModuleRules
 
         PublicDependencyModuleNames.AddRange(new string[] 
         { 
-            "Core", "CoreUObject", "Engine" 
+            "Core", 
+            "CoreUObject", 
+            "Engine" 
         }); 
 
         PrivateDependencyModuleNames.AddRange(new string[]     

@@ -16,8 +16,6 @@ AAI_EnemySpawner::AAI_EnemySpawner()
 
 	SpawnArea = CreateDefaultSubobject<UBoxComponent>(TEXT("SpawnArea"));
     RootComponent = SpawnArea;
-	SpawnArea->SetupAttachment(RootComponent);
-
 }
 
 // Called when the game starts or when spawned

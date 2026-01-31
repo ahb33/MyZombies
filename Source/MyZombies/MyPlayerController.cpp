@@ -4,13 +4,13 @@
 #include "MyPlayerController.h"
 #include "MyHUD.h"
 #include "LobbyPlayerState.h"
-#include "MainCharacter.h"
 #include "Blueprint/UserWidget.h"
 #include "ReadyButtonWidget.h"
 #include "YouDiedMenuWidget.h"
 #include "ZombiesRoundWidget.h"
 #include "CharacterStats.h"
-#include "TimerManager.h"
+#include "BaseGameState.h"
+#include "MenuUIManager.h"
 #include "KillDeathStats.h"
 #include "Components/AudioComponent.h"
 #include "ZombiesGameState.h"
@@ -29,6 +29,29 @@ void AMyPlayerController::BeginPlay()
 
 	TryBindToGameState();
 
+    const FString Map = UGameplayStatics::GetCurrentLevelName(this, true);
+
+    // Only build/show menu UI on the menu map
+    if (Map == TEXT("MainMenu_Level")) // <-- use your actual menu level name
+    {
+        MenuUI = NewObject<UMenuUIManager>(this);
+        MenuUI->Init(this);
+
+        MenuUI->RegisterMenu("MainMenu", MainMenuClass, 0);
+        MenuUI->RegisterMenu("SoloMenu", SoloMenuClass, 0);
+        MenuUI->RegisterMenu("GameModeSelectionMenu", GameModeSelectionMenuClass, 0);
+        MenuUI->RegisterMenu("MultiplayerMenu", MultiplayerMenuClass, 0); // <-- you were missing this
+        MenuUI->RegisterMenu("CreateSessionMenu", CreateSessionMenuClass, 0);
+        MenuUI->RegisterMenu("JoinSessionMenu", JoinSessionMenuClass, 0);
+
+        ApplyInputProfile(EInputProfile::Lobby);
+        MenuUI->ShowMenu("MainMenu");
+    }
+    else
+    {
+        ApplyInputProfile(EInputProfile::Gameplay);
+        // optional: if MenuUI exists, hide/clear it here
+    }
 }
 
 
@@ -44,11 +67,12 @@ void AMyPlayerController::SetupInputComponent()
 
 void AMyPlayerController::EndPlay(const EEndPlayReason::Type EndPlayReason)
 {
-	if (UWorld* World = GetWorld())
-	{
-		World->GetTimerManager().ClearTimer(BindRetryTimerHandle);
-		World->GetTimerManager().ClearTimer(RoundVoiceTimerHandle);
-		World->GetTimerManager().ClearTimer(RoundIntroHideTimerHandle);
+    if (UWorld* World = GetWorld())
+    {
+        auto& TM = World->GetTimerManager();
+        TM.ClearTimer(BindRetryTimerHandle);
+        TM.ClearTimer(RoundVoiceTimerHandle);
+        TM.ClearTimer(RoundIntroHideTimerHandle);
 	}
 
 	if (RoundIntroThudComp && RoundIntroThudComp->IsPlaying()) RoundIntroThudComp->Stop();
@@ -63,25 +87,23 @@ void AMyPlayerController::TryBindToGameState()
 {
 	UnbindFromGameState();
 
-	CachedBGS = GetWorld() ? GetWorld()->GetGameState<ABaseGameState>() : nullptr;
-	if (!CachedBGS)
-	{
-		// Retry a few times in case GameState isn't ready yet on client.
-		if (UWorld* World = GetWorld())
-		{
-			if (++BindRetryCount <= 20)
-			{
-				World->GetTimerManager().SetTimer(
-					BindRetryTimerHandle,
-					this,
-					&AMyPlayerController::TryBindToGameState,
-					0.2f,
-					false
-				);
-			}
-		}
-		return;
-	}
+	UWorld* World = GetWorld();
+
+	CachedBGS = World->GetGameState<ABaseGameState>();
+    if (!CachedBGS)
+    {
+        if (++BindRetryCount <= 20)
+        {
+            World->GetTimerManager().SetTimer(
+                BindRetryTimerHandle,
+                this,
+                &AMyPlayerController::TryBindToGameState,
+                0.2f,
+                false
+            );
+        }
+        return;
+    }
 
 	BindRetryCount = 0;
 
@@ -89,17 +111,17 @@ void AMyPlayerController::TryBindToGameState()
     CachedBGS->OnInputProfileChanged.AddUObject(this, &AMyPlayerController::HandleInputProfileChanged);
 
 	MatchPhaseChangedHandle =
-		CachedBGS->OnMatchPhaseChanged.AddUObject(this, &AMyPlayerController::HandleMatchPhaseChanged);
+	CachedBGS->OnMatchPhaseChanged.AddUObject(this, &AMyPlayerController::HandleMatchPhaseChanged);
 
 	MatchModeChangedHandle =
-		CachedBGS->OnMatchModeChanged.AddUObject(this, &AMyPlayerController::HandleMatchModeChanged);
+	CachedBGS->OnMatchModeChanged.AddUObject(this, &AMyPlayerController::HandleMatchModeChanged);
 
 	// Zombies-only GameState
 	CachedZGS = GetWorld() ? GetWorld()->GetGameState<AZombiesGameState>() : nullptr;
 	if (CachedZGS)
 	{
 		RoundNumberChangedHandle =
-			CachedZGS->OnRoundNumberChanged.AddUObject(this, &AMyPlayerController::HandleRoundNumberChanged);
+		CachedZGS->OnRoundNumberChanged.AddUObject(this, &AMyPlayerController::HandleRoundNumberChanged);
 	}
 
 	SyncFromCachedState();
@@ -191,7 +213,7 @@ void AMyPlayerController::HandleMatchPhaseChanged(EMatchPhase Phase)
 		ShowDeathScreenLocal();
 		break;
 
-	case EMatchPhase::Intro:
+	case EMatchPhase::Active:
 		// Splash only makes sense for Zombies.
 		if (CachedBGS && CachedBGS->GetMatchMode() == EMatchMode::Zombies)
 		{
@@ -272,9 +294,9 @@ void AMyPlayerController::HandleReadyInput()
 
 void AMyPlayerController::TravelToLobby_Implementation()
 {
-    if(UWorld* World = GetWorld())
+    if(GetWorld())
     {
-        World->ServerTravel(TEXT("/Game/GameAssets/Levels/LobbyLevel?listen"));
+        GetWorld()->ServerTravel(TEXT("/Game/GameAssets/Levels/LobbyLevel?listen"));
 
     }
 }
@@ -387,18 +409,18 @@ void AMyPlayerController::ShowRoundIntroSplashWidget(int32 RoundNumber)
 
 	PlayRoundIntroSound(RoundNumber);
 
-    RoundIntroWidgetDuration;
-	if (UWorld* World = GetWorld())
-	{
-		World->GetTimerManager().ClearTimer(RoundIntroHideTimerHandle);
-		World->GetTimerManager().SetTimer(
-			RoundIntroHideTimerHandle,
-			this,
-			&AMyPlayerController::HideRoundIntroSplashWidget,
-			RoundIntroWidgetDuration,
-			false
-		);
-	}
+    if (UWorld* World = GetWorld())
+    {
+        auto& TM = World->GetTimerManager();
+        TM.ClearTimer(RoundIntroHideTimerHandle);
+        TM.SetTimer(
+            RoundIntroHideTimerHandle,
+            this,
+            &AMyPlayerController::HideRoundIntroSplashWidget,
+            RoundIntroWidgetDuration,
+            false
+        );
+    }
 }
 
 void AMyPlayerController::EnsureRoundSplashWidget()

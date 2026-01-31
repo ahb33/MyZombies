@@ -5,7 +5,6 @@
 #include "CoreMinimal.h"
 #include "GameModeSelectionMenuWidget.h"
 #include "MultiplayerSessions.h"
-#include "OnlineSessionSettings.h"
 #include "MultiplayerMenuWidget.generated.h"
 
 /**
@@ -13,25 +12,21 @@
  */
 
 
+class UButton;
+
 // this class should be child of gamemode selection and gamemode selection shou
 UCLASS()
-class MYZOMBIES_API UMultiplayerMenuWidget : public UGameModeSelectionMenuWidget
+class MYZOMBIES_API UMultiplayerMenuWidget : public UBaseMenuWidget
 {
 	GENERATED_BODY()
 
-public:
+protected:
+	virtual void NativeOnInitialized() override;
 
-    virtual void NativeConstruct() override;
-
-    virtual void MenuSetup();
-
-    void BindButtonEvents();
-  
-    UFUNCTION()
-    void OnBackButtonClicked();
-
-	
 private:
-    UPROPERTY(meta = (BindWidget))
-    UButton* MultiplayerBackButton;
+	UFUNCTION()
+	void OnBackButtonClicked();
+
+	UPROPERTY(meta=(BindWidgetOptional))
+	TObjectPtr<UButton> MultiplayerBackButton = nullptr;
 };

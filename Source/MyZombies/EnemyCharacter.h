@@ -48,9 +48,6 @@ public:
     }
 
 
-	UFUNCTION(Server, Reliable)
-	void Server_TakeDamage();
-	
 	virtual float TakeDamage(float DamageAmount, struct FDamageEvent const& DamageEvent,
     class AController* EventInstigator, AActor* DamageCauser) override;
 
@@ -58,9 +55,6 @@ public:
 	virtual void SetupPlayerInputComponent(class UInputComponent* PlayerInputComponent) override;
 
 	void Die();
-
-	UFUNCTION()
-	void OnRep_Health();
 
 	UFUNCTION()
 	void OnRep_IsDead();
@@ -88,13 +82,13 @@ private:
 	// overlap
 	class USphereComponent* CollisionSphere; 
 	
-    UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = Health, meta = (AllowPrivateAccess = "true"), ReplicatedUsing = OnRep_Health)
+    UPROPERTY(Replicated, BlueprintReadWrite, EditAnywhere, Category = Health, meta = (AllowPrivateAccess = "true"))
     float BaseHealth;
 
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = Health, meta = (AllowPrivateAccess = "true"))
     float MaxHealth;
 	
-	UPROPERTY(ReplicatedUsing = OnRep_IsDead)
+	UPROPERTY(Replicated)
 	bool bIsDead = false;
 	
 	FTimerHandle DestructionTimer; // Timer handle for delayed destruction

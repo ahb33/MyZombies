@@ -10,7 +10,9 @@
  * 
  */
 
- class AMyPlayerController; 
+class AMyPlayerController;
+class UMenuUIManager;
+
  
 UCLASS()
 class MYZOMBIES_API UBaseMenuWidget : public UUserWidget
@@ -18,72 +20,26 @@ class MYZOMBIES_API UBaseMenuWidget : public UUserWidget
 	GENERATED_BODY()
 
 protected:
-    virtual void NativeConstruct() override;
+	virtual void NativeConstruct() override;
+	virtual void NativeDestruct() override;
 
-    // Create and store the widget
-    void CreateAndStoreWidget(FName MenuName, TSubclassOf<UUserWidget> WidgetClass);
-    AMyPlayerController* playerController;
+	AMyPlayerController* GetMyPC() const;
+	UMenuUIManager* GetMenuUI() const;
 
-public:
+	// Optional hooks for child widgets
+	virtual void OnMenuShown() {}
+	virtual void OnMenuHidden() {}
 
-    virtual void TransitionToMenu(FName MenuName);
-    virtual void MenuSetup();
+	// Call these from buttons instead of TransitionToMenu/CreateAndStoreWidget
+	UFUNCTION(BlueprintCallable, Category="UI|Navigation")
+	void RequestShowMenu(FName MenuId);
 
-    void SetupInputMode();
+	UFUNCTION(BlueprintCallable, Category="UI|Navigation")
+	void RequestPushMenu(FName MenuId);
 
-    // Const getter for child classes to access
-    const TSubclassOf<UUserWidget>& GetMultiplayerMenuWidgetClass() const
-    {
-        return multiplayerMenuWidgetClass;
-    }
-
-    // Const getter for child classes to access
-    const TSubclassOf<UUserWidget>& GetMainMenuWidgetClass() const
-    {
-        UE_LOG(LogTemp, Warning, TEXT("Get Main Menu Widget called"));
-        return mainMenuWidgetClass;
-    }
-
-    // Const getter for child classes to access
-    const TSubclassOf<UUserWidget>& GetSoloMenuWidgetClass() const
-    {
-        return SoloMenuWidgetClass;
-    }
-
-    // Const getter for child classes to access
-    const TSubclassOf<UUserWidget>& GetGameModeSelectionMenuWidgetClass() const
-    {
-        return gameModeSelectionMenuWidgetClass;
-    }
-
-    // // Const getter for child classes to access
-    // const TSubclassOf<UUserWidget>& GetLobbyMenuWidgetClass() const
-    // {
-    //     return lobbyMenuWidgetClass;
-    // }
-
-protected: 
-    UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Widgets")
-    TMap<FName, UUserWidget*> menuWidgetMap;  // A map that stores widget instances
-
-
+	UFUNCTION(BlueprintCallable, Category="UI|Navigation")
+	void RequestPopMenu();
 
 private:
-
-
-    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Widgets", meta = (AllowPrivateAccess = "true"))
-    TSubclassOf<UUserWidget> multiplayerMenuWidgetClass;
-
-    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Widgets", meta = (AllowPrivateAccess = "true"))
-    TSubclassOf<UUserWidget> SoloMenuWidgetClass;
-
-    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Widgets", meta = (AllowPrivateAccess = "true"))
-    TSubclassOf<UUserWidget> mainMenuWidgetClass;
-
-    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Widgets", meta = (AllowPrivateAccess = "true"))
-    TSubclassOf<UUserWidget> gameModeSelectionMenuWidgetClass;
-
-    
-
-
+	TWeakObjectPtr<AMyPlayerController> CachedPC;
 };

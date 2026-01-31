@@ -3,23 +3,22 @@
 
 #include "GameModeSelectionMenuWidget.h"
 #include "Kismet/GameplayStatics.h"
+#include "BaseMenuWidget.h"
 #include "MyGameInstance.h"
 
 
-void UGameModeSelectionMenuWidget::NativeConstruct()
+namespace
 {
-    Super::NativeConstruct();
-
-    MenuSetup();
-
+	static const FName MenuID_Multiplayer(TEXT("MultiplayerMenu"));
+	static const FName GameMode_Deathmatch(TEXT("Deathmatch"));
+	static const FName GameMode_Zombies(TEXT("Zombies_Level"));
 }
 
-void UGameModeSelectionMenuWidget::MenuSetup()
+void UGameModeSelectionMenuWidget::NativeOnInitialized()
 {
-    Super::MenuSetup();
-    BindButtonEvents(); 
+	Super::NativeOnInitialized();
 
-
+    BindButtonEvents();
 }
 
 void UGameModeSelectionMenuWidget::BindButtonEvents()
@@ -34,9 +33,9 @@ void UGameModeSelectionMenuWidget::BindButtonEvents()
         ZombiesButton->OnClicked.AddDynamic(this, &UGameModeSelectionMenuWidget::OnSelectZombiesButtonClicked);
     }
 
-    if (BackButton && !BackButton->OnClicked.IsAlreadyBound(this, &UGameModeSelectionMenuWidget::OnBackToMainMenuButtonClicked))
+    if (BackButton && !BackButton->OnClicked.IsAlreadyBound(this, &UGameModeSelectionMenuWidget::OnBackButtonClicked))
     {
-        BackButton->OnClicked.AddDynamic(this, &UGameModeSelectionMenuWidget::OnBackToMainMenuButtonClicked);
+        BackButton->OnClicked.AddDynamic(this, &UGameModeSelectionMenuWidget::OnBackButtonClicked);
     }
 }
 
@@ -64,36 +63,13 @@ void UGameModeSelectionMenuWidget::HandleGameModeSelection(FName GameModeName)
     {
         UE_LOG(LogTemp, Warning, TEXT("Failed to cast GameInstance"));
     }
-
-    FName MultiplayerMenu = "MultiplayerMenu";
-    auto MultiplayerMenuWidgetRef = GetMultiplayerMenuWidgetClass();
-
-    if (!menuWidgetMap.Contains(MultiplayerMenu))
-    {
-        UE_LOG(LogTemp, Log, TEXT("Creating MultiplayerMenuWidget widget."));
-        Super::CreateAndStoreWidget(MultiplayerMenu, MultiplayerMenuWidgetRef);
-    }
-
-    TransitionToMenu(MultiplayerMenu);
+	RequestPushMenu(MenuID_Multiplayer);
 }
 
 
-void UGameModeSelectionMenuWidget::OnBackToMainMenuButtonClicked()
+void UGameModeSelectionMenuWidget::OnBackButtonClicked()
 {
-    UE_LOG(LogTemp, Warning, TEXT("BackButtonClicked"));
-
-
-    FName MainMenu = "MainMenu";
-
-    auto mainMenuWidgetRef = GetMainMenuWidgetClass();
-
-    if (!menuWidgetMap.Contains(MainMenu))
-    {
-        UE_LOG(LogTemp, Log, TEXT("Creating MainMenu widget."));
-        Super::CreateAndStoreWidget(MainMenu, mainMenuWidgetRef);
-    }
-
-    TransitionToMenu(MainMenu);
+	RequestPopMenu();
 }
 
 

@@ -4,49 +4,43 @@
 
 #include "CoreMinimal.h"
 #include "MainMenuWidget.h"
+#include "BaseMenuWidget.h"
 #include "GameModeSelectionMenuWidget.generated.h"
 
 /**
  * 
  */
 UCLASS()
-class MYZOMBIES_API UGameModeSelectionMenuWidget : public UMainMenuWidget
+class MYZOMBIES_API UGameModeSelectionMenuWidget : public UBaseMenuWidget
 {
 	GENERATED_BODY()
 
-public:
-    virtual void NativeConstruct() override;
-
-    virtual void MenuSetup();
-
-    void BindButtonEvents();
-
 protected:
-    UFUNCTION()
-    void OnSelectDeathmatchButtonClicked();
 
-    UFUNCTION()
-    void OnSelectZombiesButtonClicked();
-
-    UFUNCTION()
-    void HandleGameModeSelection(FName GameModeName);
-
-    UFUNCTION()
-    void OnBackToMainMenuButtonClicked();
+	virtual void NativeOnInitialized() override; // called once per widget instance
 
 
 private:
-    void LoadLobby(FString SelectedGameMode);
+	UFUNCTION()
+	void OnSelectDeathmatchButtonClicked();
 
-protected:
-    UPROPERTY(meta = (BindWidgetOptional))
-    class UButton* DeathmatchButton;
+	UFUNCTION()
+	void OnSelectZombiesButtonClicked();
 
-    UPROPERTY(meta = (BindWidgetOptional))
-    class UButton* ZombiesButton;
- 
-    UPROPERTY(meta = (BindWidgetOptional))
-	class UButton* BackButton;
+    void BindButtonEvents();
 
+	UFUNCTION()
+	void OnBackButtonClicked();
 
+	void HandleGameModeSelection(FName GameModeName);
+
+private:
+	UPROPERTY(meta=(BindWidgetOptional))
+	TObjectPtr<UButton> DeathmatchButton = nullptr;
+
+	UPROPERTY(meta=(BindWidgetOptional))
+	TObjectPtr<UButton> ZombiesButton = nullptr;
+
+	UPROPERTY(meta=(BindWidgetOptional))
+	TObjectPtr<UButton> BackButton = nullptr;
 };

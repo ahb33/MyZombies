@@ -5,8 +5,8 @@
 #include "CoreMinimal.h"
 #include "GameFramework/PlayerController.h"
 #include "TimerManager.h"
-#include "ZombiesTypes.h"
 #include "BaseGameState.h"
+#include "ZombiesTypes.h"
 #include "MyPlayerController.generated.h"
 
 
@@ -24,6 +24,7 @@ class UYouDiedMenuWidget;
 class UZombiesRoundWidget;
 class UAudioComponent;
 class AZombiesGameState;
+class UMenuUIManager;
 
 
 UCLASS()
@@ -34,12 +35,15 @@ class MYZOMBIES_API AMyPlayerController : public APlayerController
 public:
 	AMyPlayerController();
 
-protected:
+public:
 	virtual void BeginPlay() override;
+
+	UFUNCTION(BlueprintCallable)
+	UMenuUIManager* GetMenuUI() const { return MenuUI; }
+
 	virtual void SetupInputComponent() override;
 	virtual void EndPlay(const EEndPlayReason::Type EndPlayReason) override;
 
-public:
 	// -------------------- Common Menu (used by any mode) --------------------
 	UFUNCTION(BlueprintCallable, Category="UI|Navigation")
 	void RequestRestartLevel();
@@ -96,6 +100,29 @@ private:
 	AMyHUD* GetMyHUD();
 	
 private:
+
+	// Assign these in BP
+	UPROPERTY(EditDefaultsOnly, Category = "UI|Menus")
+	TSubclassOf<UUserWidget> MainMenuClass;
+
+	UPROPERTY(EditDefaultsOnly, Category = "UI|Menus")
+	TSubclassOf<UUserWidget> SoloMenuClass;
+
+	UPROPERTY(EditDefaultsOnly, Category = "UI|Menus")
+	TSubclassOf<UUserWidget> GameModeSelectionMenuClass;
+
+	UPROPERTY(EditDefaultsOnly, Category = "UI|Menus")
+	TSubclassOf<UUserWidget> CreateSessionMenuClass;
+
+	UPROPERTY(EditDefaultsOnly, Category = "UI|Menus")
+	TSubclassOf<UUserWidget> JoinSessionMenuClass;
+
+	UPROPERTY(EditDefaultsOnly, Category="UI|Menus")
+	TSubclassOf<UUserWidget> MultiplayerMenuClass;
+
+	UPROPERTY(Transient)
+	TObjectPtr<UMenuUIManager> MenuUI;
+
 	// Cached references
 	UPROPERTY(Transient)
 	TObjectPtr<AMyHUD> MyPlayerHUD = nullptr;
@@ -111,7 +138,6 @@ private:
 	FDelegateHandle MatchPhaseChangedHandle;
 	FDelegateHandle MatchModeChangedHandle;
 	FDelegateHandle RoundNumberChangedHandle;
-
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="UI|Lobby", meta=(AllowPrivateAccess="true"))
 	TSubclassOf<UUserWidget> ReadyButtonWidgetClass;
@@ -156,4 +182,5 @@ private:
 	int32 BindRetryCount = 0;
 
 	int32 CachedRoundNumber = 1;
+	
 };
