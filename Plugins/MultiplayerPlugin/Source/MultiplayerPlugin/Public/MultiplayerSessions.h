@@ -42,6 +42,12 @@ struct FMySessionResult
     UPROPERTY(BlueprintReadOnly, Category = "Session")
     int32 MaxPlayers;
 
+    UPROPERTY(BlueprintReadOnly, Category="Session")
+	FString MatchType;
+
+    UPROPERTY(BlueprintReadOnly, Category="Session")
+	int32 SearchIndex = INDEX_NONE;
+    
     FOnlineSessionSearchResult RawResult;
 
     FMySessionResult()

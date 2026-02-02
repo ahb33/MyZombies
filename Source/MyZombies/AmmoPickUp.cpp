@@ -14,7 +14,7 @@ bool AAmmoPickUp::TryConsume(APawn* ByPawn)
 
 	if (AmmoAmount <= 0) AmmoAmount = GetAmmoAmountForWeaponType();
 
-	const bool bAdded = MC->AddAmmoFromPickup(WeaponType, AmmoAmount); // why: polymorphic sink; wire to component/weapon
+	const bool bAdded = MC->AddAmmoFromPickup(WeaponType, AmmoAmount); 
 	if (!bAdded) return false;
 
 	Destroy();

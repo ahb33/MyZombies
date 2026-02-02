@@ -21,10 +21,12 @@ class ULobbyMenuWidget;
 class UUserWidget;
 class UReadyButtonWidget;
 class UYouDiedMenuWidget;
+class UGameOverMenuWidget;
 class UZombiesRoundWidget;
 class UAudioComponent;
 class AZombiesGameState;
 class UMenuUIManager;
+class UPauseMenuWidget;
 
 
 UCLASS()
@@ -71,6 +73,8 @@ public:
 
 	UFUNCTION(Server, Reliable)
 	void Server_SetPlayerReady();
+
+
 	
 private:
 	// Binding / state sync
@@ -93,6 +97,11 @@ private:
 	void HideRoundIntroSplashWidget();
 	void ShowRoundIntroSplashWidget(int32 RoundNumber);
 
+	void TogglePauseMenu();
+	void ResumeFromPause();
+	void StartOverFromPause();
+	void QuitToMainMenuFromPause();
+
 	// Audio
 	void PlayRoundIntroSound(int32 RoundNumber);
 	void PlayRoundVoiceSound(USoundBase* VoiceSound);
@@ -103,22 +112,25 @@ private:
 
 	// Assign these in BP
 	UPROPERTY(EditDefaultsOnly, Category = "UI|Menus")
-	TSubclassOf<UUserWidget> MainMenuClass;
+	TSubclassOf<UUserWidget> MainMenuWidgetClass;
 
 	UPROPERTY(EditDefaultsOnly, Category = "UI|Menus")
-	TSubclassOf<UUserWidget> SoloMenuClass;
+	TSubclassOf<UUserWidget> SoloMenuWidgetClass;
 
 	UPROPERTY(EditDefaultsOnly, Category = "UI|Menus")
-	TSubclassOf<UUserWidget> GameModeSelectionMenuClass;
+	TSubclassOf<UUserWidget> GameModeSelectionMenuWidgetClass;
 
 	UPROPERTY(EditDefaultsOnly, Category = "UI|Menus")
-	TSubclassOf<UUserWidget> CreateSessionMenuClass;
+	TSubclassOf<UUserWidget> CreateSessionMenuWidgetClass;
 
 	UPROPERTY(EditDefaultsOnly, Category = "UI|Menus")
-	TSubclassOf<UUserWidget> JoinSessionMenuClass;
+	TSubclassOf<UUserWidget> JoinSessionMenuWidgetClass;
 
 	UPROPERTY(EditDefaultsOnly, Category="UI|Menus")
-	TSubclassOf<UUserWidget> MultiplayerMenuClass;
+	TSubclassOf<UUserWidget> MultiplayerMenuWidgetClass;
+
+	UPROPERTY(EditDefaultsOnly, Category="UI|Menus")
+	TSubclassOf<UUserWidget> PauseMenuWidgetClass;
 
 	UPROPERTY(Transient)
 	TObjectPtr<UMenuUIManager> MenuUI;
@@ -147,7 +159,11 @@ private:
 	UPROPERTY(EditDefaultsOnly, Category="UI|Death")
 	TSubclassOf<UUserWidget> DeathScreenClass;
 	UPROPERTY(Transient)
-	UYouDiedMenuWidget* DeathScreenInstance = nullptr;
+	UGameOverMenuWidget* DeathScreenInstance = nullptr;
+
+	UPROPERTY(Transient)
+	UPauseMenuWidget* PauseMenuInstance = nullptr;
+
 
 	UPROPERTY(EditDefaultsOnly, Category="UI|Round Info")
 	TSubclassOf<UUserWidget> RoundHUDWidgetClass;
@@ -161,6 +177,8 @@ private:
 
     UPROPERTY(EditDefaultsOnly, Category="Audio")
     TObjectPtr<USoundBase> RoundThudSound = nullptr;
+
+
 
     // Index = Round-1
     UPROPERTY(EditDefaultsOnly, Category="Audio")
@@ -178,9 +196,13 @@ private:
 	FTimerHandle RoundVoiceTimerHandle;
 	FTimerHandle RoundIntroHideTimerHandle;
 
+	bool bReadyRequestInFlight = false;
+
 	FTimerHandle BindRetryTimerHandle;
 	int32 BindRetryCount = 0;
 
 	int32 CachedRoundNumber = 1;
+
+	bool bPauseMenuOpen = false;
 	
 };

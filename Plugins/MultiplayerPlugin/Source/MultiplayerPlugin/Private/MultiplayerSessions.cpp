@@ -384,15 +384,20 @@ void UMultiplayerSessions::JoinSessionByIndex(int32 SessionIndex)
 TArray<FMySessionResult> UMultiplayerSessions::GetBlueprintSearchResults() const
 {
     TArray<FMySessionResult> Results;
+    Results.Reserve(LastSearchResults.Num());
 
-    for (const auto& Raw : LastSearchResults)
-    {
+	for (int32 i = 0; i < LastSearchResults.Num(); ++i)
+	{
+		const FOnlineSessionSearchResult& Raw = LastSearchResults[i];
+
         FMySessionResult Entry;
+        Entry.SearchIndex   = i;
         Entry.OwningUserName = Raw.Session.OwningUserName;
         Entry.PingInMs       = Raw.PingInMs;
         Entry.MaxPlayers     = Raw.Session.SessionSettings.NumPublicConnections;
         Entry.CurrentPlayers = Entry.MaxPlayers - Raw.Session.NumOpenPublicConnections;
-        Entry.RawResult      = Raw; // ✅ crucial for Join
+    
+        Raw.Session.SessionSettings.Get(FName("MatchType"), Entry.MatchType);
         Results.Add(Entry);
     }
 

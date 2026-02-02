@@ -21,35 +21,38 @@ class MYZOMBIES_API UFindSessionMenuWidget : public UUserWidget
 
 public:
 
+	virtual void NativeOnInitialized() override;
+	virtual void NativeDestruct() override;
+
     UFUNCTION(BlueprintCallable)
-    void SetupMultiplayerBinding();
+    bool SetupMultiplayerBinding();
 
     UFUNCTION(BlueprintCallable)
     void AttemptFindSessions();
 
-    FString GetCurrentMatchType() const;
+    UFUNCTION(BlueprintPure, Category="GameMode")
+    FName GetSelectedGameModeCached() const;
 
-    virtual void NativeDestruct() override;
 
     UFUNCTION(BlueprintPure)
-    AMyPlayerController* GetMyPlayerController();
+    AMyPlayerController* GetMyPlayerController() {return CachedMyPlayerController;}
 
-    UPROPERTY(BlueprintReadWrite)
-    TArray<FMySessionResult> CachedSessionResults;
 
 protected:
 
-    UPROPERTY(BlueprintReadOnly, meta = (BindWidget))
+	UPROPERTY(BlueprintReadOnly, meta=(BindWidgetOptional))
+	TObjectPtr<UScrollBox> SessionsScrollBox = nullptr;
 
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Multiplayer")
+	TSubclassOf<UUserWidget> SessionItemClass;
+
+	UPROPERTY(BlueprintReadOnly, meta=(BindWidgetOptional))
+	TObjectPtr<UTextBlock> SessionsMessage = nullptr;
     
-    UScrollBox* SessionsScrollBox;
+private:
 
-    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Multiplayer")
-    TSubclassOf<UUserWidget> SessionItemClass;
+    bool EnsureCachedRefs();
 
-	UPROPERTY(BlueprintReadWrite, meta = (BindWidget))
-	UTextBlock* SessionsMessage;
-    
 private:
     
     UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Multiplayer", meta = (AllowPrivateAccess = "true"))
@@ -58,7 +61,10 @@ private:
     UPROPERTY()
     UMyGameInstance* CachedGameInstance = nullptr;
 
-    UPROPERTY()
-    AMyPlayerController* CachedMyPlayerController;
+    UPROPERTY(Transient, BlueprintReadWrite, Category="Multiplayer", meta=(AllowPrivateAccess="true"))
+	TArray<FMySessionResult> CachedSessionResults;
+
+	UPROPERTY(Transient)
+	TObjectPtr<AMyPlayerController> CachedMyPlayerController = nullptr;
 
 };

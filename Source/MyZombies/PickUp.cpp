@@ -70,26 +70,19 @@ void APickUp::BeginPlay()
 void APickUp::OnSphereBeginOverlap(UPrimitiveComponent*, AActor* OtherActor, UPrimitiveComponent*, int32, bool, const FHitResult&)
 {
 	AMainCharacter* MC = Cast<AMainCharacter>(OtherActor);
-	if (!MC) return;
+	if (!MC || !MC->IsLocallyControlled()) return;
 
-	if(AMainCharacter* LocalMainCharacter = Cast<AMainCharacter>(OtherActor))
-	{
-		LocalMainCharacter->SetOverlappingItem(this);
-		ShowPickUpWidget(true);
-		UE_LOG(LogTemp, Warning, TEXT("Overlapping with pickup item"));
-	}
+    MC->SetOverlappingItem(this);
+
 
 }
 
 void APickUp::OnSphereEndOverlap(UPrimitiveComponent*, AActor* OtherActor, UPrimitiveComponent*, int32)
 {
 	AMainCharacter* MC = Cast<AMainCharacter>(OtherActor);
-	if (!MC) return;
-	if (!HasAuthority() && MC->IsLocallyControlled())
-	{
-		ShowPickUpWidget(false);
-		MC->SetOverlappingItem(nullptr);
-	}
+	if (!MC && !MC->IsLocallyControlled()) return;
+
+	MC->SetOverlappingItem(nullptr);
 }
 void APickUp::SetPickUpWidget(UUserWidget* Widget)
 {

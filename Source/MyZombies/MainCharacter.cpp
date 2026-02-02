@@ -276,7 +276,7 @@ void AMainCharacter::SetOverlappingItem(APickUp* PickUp)
 
 bool AMainCharacter::AddAmmoFromPickup_Implementation(EWeaponType WeaponType, int32 Amount)
 {
-    return false;
+    return (WeaponType != EWeaponType::None) && (Amount > 0);
 }
 
 void AMainCharacter::PickUpButtonPressed()
@@ -581,7 +581,8 @@ void AMainCharacter::Die()
 
     SetNetDormancy(DORM_Awake); // ensure awake for this burst
 
-    // GetEquippedWeapon()->SetWeaponState(EWeaponState::Dropped);
+    if(GetEquippedWeapon()) GetEquippedWeapon()->SetWeaponState(EWeaponState::Dropped);
+
     SetLifeSpan(0.3f);
 }
 

@@ -9,28 +9,9 @@
 /**
  * 
  */
-
-class UButton;
-
 UCLASS()
 class MYZOMBIES_API UYouDiedMenuWidget : public UUserWidget
 {
 	GENERATED_BODY()
-
-protected:
-    virtual void NativeConstruct() override;
-
-    UPROPERTY(meta = (BindWidget),  BlueprintReadOnly)
-    UButton* PlayAgainButton;
-
-	UPROPERTY(meta = (BindWidget),  BlueprintReadOnly)
-    UButton* QuitButton;
-  
-	UFUNCTION()
-	void OnPlayAgainClicked();
-
-	UFUNCTION()
-	void OnExitToMainMenuClicked();
-	
 	
 };

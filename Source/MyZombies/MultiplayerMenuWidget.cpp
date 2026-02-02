@@ -3,7 +3,9 @@
 
 #include "MultiplayerMenuWidget.h"
 #include "Components/Button.h"
-#include "Kismet/GameplayStatics.h"
+#include "Components/PanelWidget.h"
+#include "Components/Border.h"
+#include "Components/TextBlock.h"
 
 
 void UMultiplayerMenuWidget::NativeOnInitialized()
@@ -15,12 +17,32 @@ void UMultiplayerMenuWidget::NativeOnInitialized()
 		MultiplayerBackButton->OnClicked.RemoveAll(this);
 		MultiplayerBackButton->OnClicked.AddDynamic(this, &UMultiplayerMenuWidget::OnBackButtonClicked);
 	}
+
+	SetBusy(false);
 }
 
 void UMultiplayerMenuWidget::OnBackButtonClicked()
 {
-	// Returns to GameModeSelection if you arrived here via RequestPushMenu(...)
+	if (bIsBusy) return;
 	RequestPopMenu();
 }
+
+void UMultiplayerMenuWidget::SetBusy(bool bBusy)
+{
+	bIsBusy = bBusy;
+	if (ContentRoot)
+	{
+		ContentRoot->SetIsEnabled(!bBusy);
+	}
+	if (BusyBlocker)
+	{
+		BusyBlocker->SetVisibility(bBusy ? ESlateVisibility::Visible : ESlateVisibility::Collapsed);
+	}
+
+}
+
+
+
+
 
 

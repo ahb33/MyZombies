@@ -29,6 +29,7 @@ public:
 
 	/** Server-only; return true if consumed and should be destroyed. */
 	virtual bool TryConsume(APawn* ByPawn);
+	virtual bool ConsumeImpl(class AMainCharacter*) {return false;}
 
 protected:
 	virtual void BeginPlay() override;

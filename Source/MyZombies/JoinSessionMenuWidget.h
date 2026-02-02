@@ -13,7 +13,10 @@
 
 class UButton;
 class UTextBlock;
+class UMultiplayerSessions;
 
+
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnBusyChangedBP, bool, bBusy);
 
 UCLASS()
 class MYZOMBIES_API UJoinSessionMenuWidget : public UUserWidget
@@ -27,23 +30,34 @@ public:
 
     void DisableJoinSessionButton();
 
+	UPROPERTY(BlueprintAssignable, Category="UI")
+	FOnBusyChangedBP OnBusyChanged;
+
 protected:
     virtual void NativeConstruct() override;
 
     UFUNCTION()
     void OnJoinSessionClicked();
 
-    UPROPERTY(meta = (BindWidget))
-    UButton* JoinButton;
+	void HandleJoinFinished(bool bSuccess);
 
-    UPROPERTY(meta = (BindWidget), BlueprintReadOnly)
-    UTextBlock* ServerNameLabel;
+	UPROPERTY(meta=(BindWidget))
+	TObjectPtr<UButton> JoinButton = nullptr;
 
-    UPROPERTY(meta = (BindWidget), BlueprintReadOnly)
-    UTextBlock* NumOfPlayersLabel;
+	UPROPERTY(meta=(BindWidget), BlueprintReadOnly, meta=(AllowPrivateAccess="true"))
+	TObjectPtr<UTextBlock> ServerNameLabel = nullptr;
 
-    UPROPERTY(meta = (BindWidget), BlueprintReadOnly)
-    UTextBlock* JoinSessionLabel;
+	UPROPERTY(meta=(BindWidget), BlueprintReadOnly, meta=(AllowPrivateAccess="true"))
+	TObjectPtr<UTextBlock> Ping = nullptr;
+
+	UPROPERTY(meta=(BindWidget), BlueprintReadOnly, meta=(AllowPrivateAccess="true"))
+	TObjectPtr<UTextBlock> ModeLabel = nullptr;
+
+	UPROPERTY(meta=(BindWidget), BlueprintReadOnly, meta=(AllowPrivateAccess="true"))
+	TObjectPtr<UTextBlock> NumOfPlayersLabel = nullptr;
+
+	UPROPERTY(meta=(BindWidget), BlueprintReadOnly, meta=(AllowPrivateAccess="true"))
+	TObjectPtr<UTextBlock> JoinSessionLabel = nullptr;
 
 private:
     int32 SessionIndex;

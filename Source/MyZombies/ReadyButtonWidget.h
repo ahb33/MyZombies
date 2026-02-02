@@ -16,12 +16,20 @@ UCLASS()
 class MYZOMBIES_API UReadyButtonWidget : public UUserWidget
 {
 	GENERATED_BODY()
+public:
+
+    UFUNCTION(BlueprintCallable)
+    void SetReadyPending(bool bPending);
+
 
 protected:
     virtual void NativeConstruct() override;
 
     UPROPERTY(meta = (BindWidget),  BlueprintReadOnly)
-    UButton* ReadyButton;
+    TObjectPtr<UButton> ReadyButton = nullptr;
+
+    UPROPERTY(meta=(BindWidgetOptional), BlueprintReadOnly)
+    class UTextBlock* ButtonPrompt = nullptr;
 
     UFUNCTION()
     void OnClicked();

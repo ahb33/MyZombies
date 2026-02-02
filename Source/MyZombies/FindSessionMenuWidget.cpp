@@ -5,22 +5,40 @@
 #include "Components/TextBlock.h"
 #include "Components/ScrollBox.h"
 
-void UFindSessionMenuWidget::SetupMultiplayerBinding()
 
+void UFindSessionMenuWidget::NativeOnInitialized()
 {
-    CachedGameInstance = Cast<UMyGameInstance>(GetGameInstance());
-    if (!CachedGameInstance)
-    {
-        UE_LOG(LogTemp, Error, TEXT("Failed to cast GameInstance to UMyGameInstance."));
-        return;
-    }
+	Super::NativeOnInitialized();
+	EnsureCachedRefs();
+}
 
-    MultiplayerSessionRef = CachedGameInstance->GetMultiplayerSessions();
-    if (!MultiplayerSessionRef)
-    {
-        UE_LOG(LogTemp, Error, TEXT("MultiplayerSessionRef is null — cannot proceed."));
-        return;
-    }
+
+bool UFindSessionMenuWidget::SetupMultiplayerBinding()
+{
+	return EnsureCachedRefs();
+}
+
+bool UFindSessionMenuWidget::EnsureCachedRefs()
+{
+	if (!CachedGameInstance)
+	{
+		CachedGameInstance = Cast<UMyGameInstance>(GetGameInstance());
+		if (!CachedGameInstance) return false;
+	}
+
+	if (!MultiplayerSessionRef)
+	{
+		MultiplayerSessionRef = CachedGameInstance->GetMultiplayerSessions();
+		if (!MultiplayerSessionRef) return false;
+	}
+
+	if (!CachedMyPlayerController)
+	{
+		CachedMyPlayerController = Cast<AMyPlayerController>(GetOwningPlayer());
+		if (!CachedMyPlayerController) return false;
+	}
+
+	return true;
 }
 
 void UFindSessionMenuWidget::NativeDestruct()
@@ -30,38 +48,17 @@ void UFindSessionMenuWidget::NativeDestruct()
 
 void UFindSessionMenuWidget::AttemptFindSessions()
 {
-    if (!MultiplayerSessionRef)
-    {
-        UE_LOG(LogTemp, Error, TEXT("MultiplayerSessionRef is null — did you forget to call InitializeFindSessionFlow()?"));
-        return;
-    }
+	if (!EnsureCachedRefs()) return;
 
-    AMyPlayerController* MyPC = GetMyPlayerController();
-    if (!MyPC)
-    {
-        UE_LOG(LogTemp, Error, TEXT("No valid player controller found."));
-        return;
-    }
-
-    const FString MatchType = GetCurrentMatchType();
-    UE_LOG(LogTemp, Warning, TEXT("Attempting FindSessions with MatchType: %s"), *MatchType);
-    MultiplayerSessionRef->FindSessions(MyPC, 10, MatchType);
+	MultiplayerSessionRef->FindSessions(
+		CachedMyPlayerController,
+		10,
+		GetSelectedGameModeCached().ToString()
+	);
 }
 
-FString UFindSessionMenuWidget::GetCurrentMatchType() const
+FName UFindSessionMenuWidget::GetSelectedGameModeCached() const
 {
-    return CachedGameInstance ? CachedGameInstance->GetSelectedGameMode().ToString() : TEXT("None");
+	return CachedGameInstance ? CachedGameInstance->GetSelectedGameMode() : NAME_None;
 }
 
-AMyPlayerController* UFindSessionMenuWidget::GetMyPlayerController()
-{
-    if (!CachedMyPlayerController)
-    {
-        CachedMyPlayerController = Cast<AMyPlayerController>(GetOwningPlayer());
-        if (!CachedMyPlayerController)
-        {
-            UE_LOG(LogTemp, Error, TEXT("Failed to cast PlayerController to AMyPlayerController"));
-        }
-    }
-    return CachedMyPlayerController;
-}

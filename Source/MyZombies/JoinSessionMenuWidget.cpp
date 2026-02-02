@@ -16,25 +16,40 @@ void UJoinSessionMenuWidget::NativeConstruct()
 void UJoinSessionMenuWidget::Setup(int32 InIndex, const FMySessionResult& InSession)
 {
     SessionIndex = InIndex;
-    ServerName = InSession.OwningUserName;
-    PlayerCountText = FString::Printf(TEXT("%d/%d"), InSession.CurrentPlayers, InSession.MaxPlayers);
+
 
     if (ServerNameLabel)
     {
-        UE_LOG(LogTemp, Warning, TEXT("ServerNameLabel is valid"));
-        ServerNameLabel->SetText(FText::FromString(ServerName));
+        ServerNameLabel->SetText(FText::FromString(InSession.OwningUserName));
     }
     
     if (NumOfPlayersLabel)
     {
-        UE_LOG(LogTemp, Warning, TEXT("NumOfPlayersLabel is valid"));
-        NumOfPlayersLabel->SetText(FText::FromString(PlayerCountText));
+        NumOfPlayersLabel->SetText(FText::FromString(FString::Printf(TEXT("%d/%d"), 
+        InSession.CurrentPlayers, InSession.MaxPlayers)));
     }
+
+	if (Ping)
+	{
+		Ping->SetText(FText::FromString(FString::Printf(TEXT("%d ms"), InSession.PingInMs)));
+	}
+
+	if (ModeLabel)
+	{
+		ModeLabel->SetText(FText::FromString(InSession.MatchType));
+	}
 }
 
 
+void UJoinSessionMenuWidget::HandleJoinFinished(bool bSuccess)
+{
+	OnBusyChanged.Broadcast(false);
+}
+
 void UJoinSessionMenuWidget::OnJoinSessionClicked()
 {
+    OnBusyChanged.Broadcast(true);
+
     if (const UMyGameInstance* GI = Cast<UMyGameInstance>(GetGameInstance()))
     {
         if (UMultiplayerSessions* Sessions = GI->GetMultiplayerSessions())

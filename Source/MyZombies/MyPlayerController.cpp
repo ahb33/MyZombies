@@ -5,9 +5,11 @@
 #include "MyHUD.h"
 #include "LobbyPlayerState.h"
 #include "Blueprint/UserWidget.h"
+#include "Blueprint/WidgetBlueprintLibrary.h"
 #include "ReadyButtonWidget.h"
-#include "YouDiedMenuWidget.h"
+#include "GameOverMenuWidget.h"
 #include "ZombiesRoundWidget.h"
+#include "PauseMenuWidget.h"
 #include "CharacterStats.h"
 #include "BaseGameState.h"
 #include "MenuUIManager.h"
@@ -32,17 +34,17 @@ void AMyPlayerController::BeginPlay()
     const FString Map = UGameplayStatics::GetCurrentLevelName(this, true);
 
     // Only build/show menu UI on the menu map
-    if (Map == TEXT("MainMenu_Level")) // <-- use your actual menu level name
+    if (Map == TEXT("MainMenu_Level")) 
     {
         MenuUI = NewObject<UMenuUIManager>(this);
         MenuUI->Init(this);
 
-        MenuUI->RegisterMenu("MainMenu", MainMenuClass, 0);
-        MenuUI->RegisterMenu("SoloMenu", SoloMenuClass, 0);
-        MenuUI->RegisterMenu("GameModeSelectionMenu", GameModeSelectionMenuClass, 0);
-        MenuUI->RegisterMenu("MultiplayerMenu", MultiplayerMenuClass, 0); // <-- you were missing this
-        MenuUI->RegisterMenu("CreateSessionMenu", CreateSessionMenuClass, 0);
-        MenuUI->RegisterMenu("JoinSessionMenu", JoinSessionMenuClass, 0);
+        MenuUI->RegisterMenu("MainMenu", MainMenuWidgetClass, 0);
+        MenuUI->RegisterMenu("SoloMenu", SoloMenuWidgetClass, 0);
+        MenuUI->RegisterMenu("GameModeSelectionMenu", GameModeSelectionMenuWidgetClass, 0);
+        MenuUI->RegisterMenu("MultiplayerMenu", MultiplayerMenuWidgetClass, 0); // <-- you were missing this
+        MenuUI->RegisterMenu("CreateSessionMenu", CreateSessionMenuWidgetClass, 0);
+        MenuUI->RegisterMenu("JoinSessionMenu", JoinSessionMenuWidgetClass, 0);
 
         ApplyInputProfile(EInputProfile::Lobby);
         MenuUI->ShowMenu("MainMenu");
@@ -54,7 +56,6 @@ void AMyPlayerController::BeginPlay()
     }
 }
 
-
 void AMyPlayerController::SetupInputComponent()
 {
 	Super::SetupInputComponent();
@@ -62,6 +63,9 @@ void AMyPlayerController::SetupInputComponent()
 	if (InputComponent)
 	{
 		InputComponent->BindAction("StartGame", IE_Pressed, this, &AMyPlayerController::HandleReadyInput);
+		auto& PauseBinding = InputComponent->BindAction("Pause", IE_Pressed, this, &AMyPlayerController::TogglePauseMenu);
+		PauseBinding.bExecuteWhenPaused = true;
+		PauseBinding.bConsumeInput = true;
 	}
 }
 
@@ -269,23 +273,30 @@ void AMyPlayerController::ApplyInputProfile(EInputProfile Profile)
         }
 
         case EInputProfile::Lobby:
-        {
-            UE_LOG(LogTemp, Warning, TEXT("Lobby input profile set"));
-            FInputModeGameAndUI Mode;
-            Mode.SetLockMouseToViewportBehavior(EMouseLockMode::DoNotLock);
-            SetInputMode(Mode);
+		{
+			FInputModeGameAndUI Mode;
+			Mode.SetLockMouseToViewportBehavior(EMouseLockMode::DoNotLock);
+			Mode.SetHideCursorDuringCapture(false);
+			SetInputMode(Mode);
 
-            bShowMouseCursor = true;
-            bEnableClickEvents = true;
-            bEnableMouseOverEvents = true;
-            break;
-
-        }
+			bShowMouseCursor = true;
+			bEnableClickEvents = true;
+			bEnableMouseOverEvents = true;
+			break;
+		}
     }
 }
 
 void AMyPlayerController::HandleReadyInput()
 {
+	if(bReadyRequestInFlight) return;
+	bReadyRequestInFlight = true;
+
+	if (ReadyButtonWidgetInstance)
+    {
+        ReadyButtonWidgetInstance->SetReadyPending(true);
+    }
+
 	Server_SetPlayerReady();
 }
 
@@ -363,7 +374,7 @@ void AMyPlayerController::ShowDeathScreenLocal()
 
     if (!DeathScreenInstance)
     {
-        DeathScreenInstance = CreateWidget<UYouDiedMenuWidget>(this, DeathScreenClass);
+        DeathScreenInstance = CreateWidget<UGameOverMenuWidget>(this, DeathScreenClass);
     }
 
     if (DeathScreenInstance && !DeathScreenInstance->IsInViewport())
@@ -479,16 +490,97 @@ void AMyPlayerController::PlayRoundVoiceSound(USoundBase* VoiceSound)
 	RoundIntroVoiceComp = UGameplayStatics::SpawnSound2D(this, VoiceSound);
 }
 
+
+void AMyPlayerController::TogglePauseMenu()
+{
+	if(!IsLocalController()) return;
+
+	if(bPauseMenuOpen)
+	{
+		ResumeFromPause();
+		return;
+	}
+
+	if (!PauseMenuWidgetClass) return;
+
+	if (!PauseMenuInstance)
+	{
+		PauseMenuInstance = CreateWidget<UPauseMenuWidget>(this, PauseMenuWidgetClass);
+	}
+	if (!PauseMenuInstance) return;
+
+	if(!PauseMenuInstance->IsInViewport()) // if not in viewport add it to viewport
+		PauseMenuInstance->AddToViewport(1000);
+	
+	bPauseMenuOpen = true;
+
+	// only truly pause in solo game mode
+	if (GetNetMode() == NM_Standalone)
+	{
+		UGameplayStatics::SetGamePaused(this, true);
+	}
+
+	FInputModeGameAndUI Mode;
+	Mode.SetWidgetToFocus(PauseMenuInstance->TakeWidget());
+	Mode.SetLockMouseToViewportBehavior(EMouseLockMode::DoNotLock);
+	SetInputMode(Mode);
+
+	bShowMouseCursor = true;
+	bEnableClickEvents = true;
+	bEnableMouseOverEvents = true;
+
+}
+
+void AMyPlayerController::ResumeFromPause()
+{
+	if(!IsLocalController()) return;
+
+	if (GetNetMode() == NM_Standalone)
+	{
+		UGameplayStatics::SetGamePaused(this, false);
+	}
+
+	if (PauseMenuInstance && PauseMenuInstance->IsInViewport())
+	{
+		PauseMenuInstance->RemoveFromParent();
+	}
+
+	bPauseMenuOpen = false;
+
+	FInputModeGameOnly Mode;
+	SetInputMode(Mode);
+
+	bShowMouseCursor = false;
+	bEnableClickEvents = false;
+	bEnableMouseOverEvents = false;
+}
+
+void AMyPlayerController::StartOverFromPause()
+{
+	ResumeFromPause();
+	const FName LevelName(*UGameplayStatics::GetCurrentLevelName(this, true));
+	UGameplayStatics::OpenLevel(this, LevelName);
+}
+
+void AMyPlayerController::QuitToMainMenuFromPause()
+{
+	ResumeFromPause();
+	UGameplayStatics::OpenLevel(this, FName("MainMenu_Level"));
+	// or: UKismetSystemLibrary::QuitGame(this, this, EQuitPreference::Quit, false);
+}
+
 void AMyPlayerController::RequestRestartLevel()
 {
-	// const FName LevelName(*UGameplayStatics::GetCurrentLevelName(this, true));
-	// UGameplayStatics::OpenLevel(this, ZombieLevel);
+	// adjust for multiplayer- only server should request restart
+	static const FName ZombiesLevel(*UGameplayStatics::GetCurrentLevelName(this, true));
+	UGameplayStatics::OpenLevel(this, ZombiesLevel);
 }
 
 void AMyPlayerController::GoToMainMenu()
 {
-	// static const FName MainMenuLevel(TEXT("MainMenu_Level"));
-	// UGameplayStatics::OpenLevel(this, MainMenuLevel);
+	// adjust for multiplayer
+	static const FName MainMenuLevel(TEXT("MainMenu_Level"));
+	UGameplayStatics::OpenLevel(this, MainMenuLevel);
 }
 
 

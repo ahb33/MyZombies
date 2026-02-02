@@ -73,6 +73,7 @@ void UMenuUIManager::ShowMenu(FName MenuID)
     if (!ActiveMenu->IsInViewport())
     {
         ActiveMenu->AddToViewport(ZOrder);
+		ActiveMenu->SetUserFocus(OwnerPC);
     }
 
 }
