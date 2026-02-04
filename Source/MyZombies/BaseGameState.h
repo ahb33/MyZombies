@@ -25,7 +25,8 @@ UENUM(BlueprintType)
 enum class EInputProfile : uint8
 {
   Lobby,
-  Gameplay
+  Gameplay,
+  PauseMenu
 };
 
 

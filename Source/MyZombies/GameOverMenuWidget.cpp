@@ -25,7 +25,7 @@ void UGameOverMenuWidget::OnPlayAgainClicked()
 {
 	if (AMyPlayerController* PC = GetOwningPlayer<AMyPlayerController>())
 	{
-		// PC->RequestRestartLevel(); // minimal: PC owns restart logic
+		PC->RequestRestartLevel();
 	}
 }
 
@@ -33,6 +33,6 @@ void UGameOverMenuWidget::OnExitToMainMenuClicked()
 {
 	if (AMyPlayerController* PC = GetOwningPlayer<AMyPlayerController>())
 	{
-		// PC->GoToMainMenu(); // minimal: PC owns main menu travel
+		PC->GoToMainMenu(); // minimal: PC owns main menu travel
 	}
 }

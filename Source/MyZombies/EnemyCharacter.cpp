@@ -147,11 +147,12 @@ void AEnemyCharacter::Die()
 {
     if (HasAuthority()) 
     {
-        Destroy();
         if (OnZombieDeath.IsBound())
         {
             OnZombieDeath.Broadcast();
         }
+
+        Destroy();
     }
 }
 

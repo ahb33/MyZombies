@@ -48,7 +48,7 @@ protected:
 	TObjectPtr<UTextBlock> ServerNameLabel = nullptr;
 
 	UPROPERTY(meta=(BindWidget), BlueprintReadOnly, meta=(AllowPrivateAccess="true"))
-	TObjectPtr<UTextBlock> Ping = nullptr;
+	TObjectPtr<UTextBlock> PingLabel = nullptr;
 
 	UPROPERTY(meta=(BindWidget), BlueprintReadOnly, meta=(AllowPrivateAccess="true"))
 	TObjectPtr<UTextBlock> ModeLabel = nullptr;

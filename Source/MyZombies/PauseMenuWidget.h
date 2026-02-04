@@ -11,21 +11,44 @@
  */
 
 class UButton;
+class AMyPlayerController;
+
+
 UCLASS()
 class MYZOMBIES_API UPauseMenuWidget : public UUserWidget
 {
 	GENERATED_BODY()
-	
 
+	
 public:
 
-	UPROPERTY(meta = (BindWidget),  BlueprintReadOnly)
-	TObjectPtr<UButton> StartOver = nullptr;
+    virtual void NativeOnInitialized() override;
+
+	UFUNCTION()
+	void ConfigureForMultiplayer(bool bIsMultiplayer);
+		
+
+protected:
 
 	UPROPERTY(meta = (BindWidget),  BlueprintReadOnly)
-	TObjectPtr<UButton> Quit = nullptr;
+	TObjectPtr<UButton> StartOverButton = nullptr;
 
 	UPROPERTY(meta = (BindWidget),  BlueprintReadOnly)
-	TObjectPtr<UButton> Resume = nullptr;
+	TObjectPtr<UButton> QuitButton = nullptr;
+
+	UPROPERTY(meta = (BindWidget),  BlueprintReadOnly)
+	TObjectPtr<UButton> ResumeButton = nullptr;
+
+	UFUNCTION()
+    void OnStartOverButtonClicked();
+
+	UFUNCTION()
+    void OnResumeButtonClicked();
+
+	UFUNCTION()
+    void OnQuitButtonClicked();
+
+	AMyPlayerController* GetMyPC() const;
 };
+
 

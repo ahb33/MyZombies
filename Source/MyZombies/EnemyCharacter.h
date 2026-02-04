@@ -86,9 +86,9 @@ private:
     float BaseHealth;
 
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = Health, meta = (AllowPrivateAccess = "true"))
-    float MaxHealth;
+    float MaxHealth = 100;
 	
-	UPROPERTY(Replicated)
+	UPROPERTY(ReplicatedUsing=OnRep_IsDead)
 	bool bIsDead = false;
 	
 	FTimerHandle DestructionTimer; // Timer handle for delayed destruction

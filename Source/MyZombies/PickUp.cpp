@@ -69,8 +69,8 @@ void APickUp::BeginPlay()
 
 void APickUp::OnSphereBeginOverlap(UPrimitiveComponent*, AActor* OtherActor, UPrimitiveComponent*, int32, bool, const FHitResult&)
 {
-	AMainCharacter* MC = Cast<AMainCharacter>(OtherActor);
-	if (!MC || !MC->IsLocallyControlled()) return;
+    AMainCharacter* MC = Cast<AMainCharacter>(OtherActor);
+    if (!MC) return;
 
     MC->SetOverlappingItem(this);
 
@@ -79,8 +79,11 @@ void APickUp::OnSphereBeginOverlap(UPrimitiveComponent*, AActor* OtherActor, UPr
 
 void APickUp::OnSphereEndOverlap(UPrimitiveComponent*, AActor* OtherActor, UPrimitiveComponent*, int32)
 {
+	
+	if (!IsValid(this)) return;
+    if (!IsValid(OtherActor)) return;
 	AMainCharacter* MC = Cast<AMainCharacter>(OtherActor);
-	if (!MC && !MC->IsLocallyControlled()) return;
+	if (!MC) return;
 
 	MC->SetOverlappingItem(nullptr);
 }

@@ -53,11 +53,15 @@ public:
 	UFUNCTION(BlueprintCallable, Category="UI|Navigation")
 	void GoToMainMenu();
 
-	// add pause menu
-	// pause should have 2 options : exi
+
+	// pause should have 2 options
+	void HidePauseMenu();
+
 
 	UFUNCTION(BlueprintCallable) 
 	void ShowDeathScreenLocal(); // local-only UI creator (used by Client RPC + OnRep fallback)
+
+
 
 	// HUD Helpers
 	void SetHUDHealth(float CurrentHealth, float MaxHealth);
@@ -98,8 +102,7 @@ private:
 	void ShowRoundIntroSplashWidget(int32 RoundNumber);
 
 	void TogglePauseMenu();
-	void ResumeFromPause();
-	void StartOverFromPause();
+	void ShowPauseMenu();
 	void QuitToMainMenuFromPause();
 
 	// Audio
@@ -162,8 +165,7 @@ private:
 	UGameOverMenuWidget* DeathScreenInstance = nullptr;
 
 	UPROPERTY(Transient)
-	UPauseMenuWidget* PauseMenuInstance = nullptr;
-
+	UPauseMenuWidget* PauseMenuWidgetInstance = nullptr;
 
 	UPROPERTY(EditDefaultsOnly, Category="UI|Round Info")
 	TSubclassOf<UUserWidget> RoundHUDWidgetClass;
@@ -175,10 +177,10 @@ private:
 	UPROPERTY(Transient)
 	UZombiesRoundWidget* RoundSplashWidgetInstance = nullptr;
 
+
+	int32 LastIntroSoundRoundPlayed = INDEX_NONE;
     UPROPERTY(EditDefaultsOnly, Category="Audio")
     TObjectPtr<USoundBase> RoundThudSound = nullptr;
-
-
 
     // Index = Round-1
     UPROPERTY(EditDefaultsOnly, Category="Audio")

@@ -42,7 +42,7 @@ void AMyPlayerController::BeginPlay()
         MenuUI->RegisterMenu("MainMenu", MainMenuWidgetClass, 0);
         MenuUI->RegisterMenu("SoloMenu", SoloMenuWidgetClass, 0);
         MenuUI->RegisterMenu("GameModeSelectionMenu", GameModeSelectionMenuWidgetClass, 0);
-        MenuUI->RegisterMenu("MultiplayerMenu", MultiplayerMenuWidgetClass, 0); // <-- you were missing this
+        MenuUI->RegisterMenu("MultiplayerMenu", MultiplayerMenuWidgetClass, 0); 
         MenuUI->RegisterMenu("CreateSessionMenu", CreateSessionMenuWidgetClass, 0);
         MenuUI->RegisterMenu("JoinSessionMenu", JoinSessionMenuWidgetClass, 0);
 
@@ -63,9 +63,8 @@ void AMyPlayerController::SetupInputComponent()
 	if (InputComponent)
 	{
 		InputComponent->BindAction("StartGame", IE_Pressed, this, &AMyPlayerController::HandleReadyInput);
-		auto& PauseBinding = InputComponent->BindAction("Pause", IE_Pressed, this, &AMyPlayerController::TogglePauseMenu);
-		PauseBinding.bExecuteWhenPaused = true;
-		PauseBinding.bConsumeInput = true;
+		auto& Binding  = InputComponent->BindAction("Pause", IE_Pressed, this, &AMyPlayerController::TogglePauseMenu);
+		Binding.bExecuteWhenPaused = true;
 	}
 }
 
@@ -417,8 +416,13 @@ void AMyPlayerController::ShowRoundIntroSplashWidget(int32 RoundNumber)
 
 	RoundSplashWidgetInstance->SetVisibility(ESlateVisibility::Visible);
 	RoundSplashWidgetInstance->SetRound(RoundNumber);
+	
+    if (RoundNumber != LastIntroSoundRoundPlayed)
+    {
+        LastIntroSoundRoundPlayed = RoundNumber;
+        PlayRoundIntroSound(RoundNumber); // (this already does thud + delayed voice)
+    }
 
-	PlayRoundIntroSound(RoundNumber);
 
     if (UWorld* World = GetWorld())
     {
@@ -493,80 +497,76 @@ void AMyPlayerController::PlayRoundVoiceSound(USoundBase* VoiceSound)
 
 void AMyPlayerController::TogglePauseMenu()
 {
-	if(!IsLocalController()) return;
+    if (!IsLocalController())
+    {
+        return;
+    }
 
-	if(bPauseMenuOpen)
-	{
-		ResumeFromPause();
-		return;
-	}
-
-	if (!PauseMenuWidgetClass) return;
-
-	if (!PauseMenuInstance)
-	{
-		PauseMenuInstance = CreateWidget<UPauseMenuWidget>(this, PauseMenuWidgetClass);
-	}
-	if (!PauseMenuInstance) return;
-
-	if(!PauseMenuInstance->IsInViewport()) // if not in viewport add it to viewport
-		PauseMenuInstance->AddToViewport(1000);
-	
-	bPauseMenuOpen = true;
-
-	// only truly pause in solo game mode
-	if (GetNetMode() == NM_Standalone)
-	{
-		UGameplayStatics::SetGamePaused(this, true);
-	}
-
-	FInputModeGameAndUI Mode;
-	Mode.SetWidgetToFocus(PauseMenuInstance->TakeWidget());
-	Mode.SetLockMouseToViewportBehavior(EMouseLockMode::DoNotLock);
-	SetInputMode(Mode);
-
-	bShowMouseCursor = true;
-	bEnableClickEvents = true;
-	bEnableMouseOverEvents = true;
-
+    bPauseMenuOpen ? HidePauseMenu() : ShowPauseMenu();
 }
 
-void AMyPlayerController::ResumeFromPause()
+
+
+void AMyPlayerController::ShowPauseMenu()
 {
-	if(!IsLocalController()) return;
+    if (!PauseMenuWidgetClass) return;
 
-	if (GetNetMode() == NM_Standalone)
-	{
-		UGameplayStatics::SetGamePaused(this, false);
-	}
+	if(!PauseMenuWidgetInstance)
+    {
+        PauseMenuWidgetInstance = CreateWidget<UPauseMenuWidget>(this, PauseMenuWidgetClass);
+    }
+    if (!PauseMenuWidgetInstance)
+    {
+        return;
+    }
 
-	if (PauseMenuInstance && PauseMenuInstance->IsInViewport())
-	{
-		PauseMenuInstance->RemoveFromParent();
-	}
+    PauseMenuWidgetInstance->AddToViewport(1000);
+    bPauseMenuOpen = true;
 
-	bPauseMenuOpen = false;
+    // Only pause the world in standalone; in network, pause should be local UI only.
+	// PlayerController never runs on a dedicated server
+    const bool bIsStandalone = (GetNetMode() == NM_Standalone);
+    const bool bIsMultiplayer = !bIsStandalone;
 
-	FInputModeGameOnly Mode;
-	SetInputMode(Mode);
+	PauseMenuWidgetInstance->ConfigureForMultiplayer(bIsMultiplayer);
 
-	bShowMouseCursor = false;
-	bEnableClickEvents = false;
-	bEnableMouseOverEvents = false;
+
+    if (bIsStandalone)
+    {
+        UGameplayStatics::SetGamePaused(this, true);
+    }
+
+	ApplyInputProfile(EInputProfile::Lobby);
+
+	// move block to pause input profile
+    FInputModeGameAndUI Mode;
+    Mode.SetHideCursorDuringCapture(false);
+    Mode.SetWidgetToFocus(PauseMenuWidgetInstance->TakeWidget());
+    Mode.SetLockMouseToViewportBehavior(EMouseLockMode::DoNotLock);
+    SetInputMode(Mode);
 }
 
-void AMyPlayerController::StartOverFromPause()
+void AMyPlayerController::HidePauseMenu()
 {
-	ResumeFromPause();
-	const FName LevelName(*UGameplayStatics::GetCurrentLevelName(this, true));
-	UGameplayStatics::OpenLevel(this, LevelName);
+    if (GetNetMode() == NM_Standalone)
+    {
+        UGameplayStatics::SetGamePaused(this, false);
+    }
+
+    if (PauseMenuWidgetInstance && PauseMenuWidgetInstance->IsInViewport())
+    {
+        PauseMenuWidgetInstance->RemoveFromParent();
+    }
+
+    bPauseMenuOpen = false;
+
+	ApplyInputProfile(EInputProfile::Gameplay);
 }
 
 void AMyPlayerController::QuitToMainMenuFromPause()
 {
-	ResumeFromPause();
+
 	UGameplayStatics::OpenLevel(this, FName("MainMenu_Level"));
-	// or: UKismetSystemLibrary::QuitGame(this, this, EQuitPreference::Quit, false);
 }
 
 void AMyPlayerController::RequestRestartLevel()
@@ -579,8 +579,24 @@ void AMyPlayerController::RequestRestartLevel()
 void AMyPlayerController::GoToMainMenu()
 {
 	// adjust for multiplayer
-	static const FName MainMenuLevel(TEXT("MainMenu_Level"));
-	UGameplayStatics::OpenLevel(this, MainMenuLevel);
+    if (GetNetMode() == NM_Standalone)
+    {
+        UGameplayStatics::OpenLevel(this, FName("MainMenu_Level"));
+        return;
+    }
+
+	if(HasAuthority())
+	{
+		// Server: kill the whole game
+        UKismetSystemLibrary::QuitGame(this, this, EQuitPreference::Quit,true);
+	}
+
+	else
+    {
+        // Client: disconnect and return to menu
+        ClientReturnToMainMenuWithTextReason(FText::FromString("Server ended the game"));
+    }
+
 }
 
 

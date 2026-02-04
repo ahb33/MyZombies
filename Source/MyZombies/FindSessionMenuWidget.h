@@ -33,10 +33,8 @@ public:
     UFUNCTION(BlueprintPure, Category="GameMode")
     FName GetSelectedGameModeCached() const;
 
-
     UFUNCTION(BlueprintPure)
     AMyPlayerController* GetMyPlayerController() {return CachedMyPlayerController;}
-
 
 protected:
 

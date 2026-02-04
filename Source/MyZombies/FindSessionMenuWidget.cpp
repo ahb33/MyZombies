@@ -12,6 +12,21 @@ void UFindSessionMenuWidget::NativeOnInitialized()
 	EnsureCachedRefs();
 }
 
+void UFindSessionMenuWidget::NativeDestruct()
+{
+    CachedSessionResults.Reset();
+
+    if (SessionsScrollBox)
+    {
+        SessionsScrollBox->ClearChildren();
+    }
+    if (SessionsMessage)
+    {
+        SessionsMessage->SetText(FText::GetEmpty());
+    }
+
+    Super::NativeDestruct();
+}
 
 bool UFindSessionMenuWidget::SetupMultiplayerBinding()
 {
@@ -37,14 +52,10 @@ bool UFindSessionMenuWidget::EnsureCachedRefs()
 		CachedMyPlayerController = Cast<AMyPlayerController>(GetOwningPlayer());
 		if (!CachedMyPlayerController) return false;
 	}
-
+				
 	return true;
 }
 
-void UFindSessionMenuWidget::NativeDestruct()
-{
-    Super::NativeDestruct();
-}
 
 void UFindSessionMenuWidget::AttemptFindSessions()
 {

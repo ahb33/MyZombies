@@ -20,23 +20,27 @@ void UJoinSessionMenuWidget::Setup(int32 InIndex, const FMySessionResult& InSess
 
     if (ServerNameLabel)
     {
-        ServerNameLabel->SetText(FText::FromString(InSession.OwningUserName));
+        ServerNameLabel->SetText(FText::FromString(FString::Printf(TEXT("Server: %s"), *InSession.OwningUserName))
+        );
     }
     
     if (NumOfPlayersLabel)
     {
-        NumOfPlayersLabel->SetText(FText::FromString(FString::Printf(TEXT("%d/%d"), 
-        InSession.CurrentPlayers, InSession.MaxPlayers)));
+        NumOfPlayersLabel->SetText(
+            FText::FromString(FString::Printf(TEXT("%d/%d"), InSession.CurrentPlayers, InSession.MaxPlayers))
+        );
     }
 
-	if (Ping)
+
+	if (PingLabel)
 	{
-		Ping->SetText(FText::FromString(FString::Printf(TEXT("%d ms"), InSession.PingInMs)));
+		PingLabel->SetText(FText::FromString(FString::Printf(TEXT("Ping : %d ms"), InSession.PingInMs)));
 	}
 
 	if (ModeLabel)
 	{
-		ModeLabel->SetText(FText::FromString(InSession.MatchType));
+		const FString Mode = InSession.MatchType.IsEmpty() ? TEXT("Unknown") : InSession.MatchType;
+        ModeLabel->SetText(FText::FromString(Mode));
 	}
 }
 
