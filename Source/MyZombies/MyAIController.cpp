@@ -11,7 +11,6 @@
 #include "Perception/AISenseConfig_Hearing.h"
 #include "Perception/AISense_Sight.h"
 #include "Perception/AISense_Hearing.h"
-#include "Kismet/GameplayStatics.h"
 #include "GameFramework/CharacterMovementComponent.h"
 
 const FName AMyAIController::KEY_CanSeePlayer(TEXT("CanSeePlayer"));

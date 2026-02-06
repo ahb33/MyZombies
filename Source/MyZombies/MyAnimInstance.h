@@ -4,15 +4,18 @@
 
 #include "CoreMinimal.h"
 #include "Animation/AnimInstance.h"
-#include "MainCharacter.h"
 #include "TurnInPlace.h"
-#include "Weapon.h"
 #include "CombatState.h"
 #include "MyAnimInstance.generated.h"
 
 /**
  * 
  */
+
+class APawn;
+class AMainCharacter;
+class AWeapon;
+
 UCLASS()
 class MYZOMBIES_API UMyAnimInstance : public UAnimInstance
 {
@@ -33,13 +36,13 @@ public:
 private: 
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Animation, meta = (AllowPrivateAccess = "true"))
-	class AMainCharacter* MainCharacter;
+	TObjectPtr<AMainCharacter> MainCharacter = nullptr;
 
-	class AWeapon* playerWeapon;
+	TObjectPtr<AWeapon> playerWeapon = nullptr;
 
 	// class UCombatComponent* combatComp;
 
-	class APawn* Pawn; // This variable is a reference to the pawn currently using this AnimInstance
+	TObjectPtr<APawn> Pawn = nullptr ; // This variable is a reference to the pawn currently using this AnimInstance
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Animation, meta = (AllowPrivateAccess = "true"))
 	float MovementSpeed; // we only want C++ to alter this variable

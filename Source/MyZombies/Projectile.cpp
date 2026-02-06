@@ -4,6 +4,7 @@
 #include "Kismet/GameplayStatics.h" 
 #include "Net/UnrealNetwork.h"
 #include "Weapon.h"
+#include "GameFramework/ProjectileMovementComponent.h"
 #include "Components/SphereComponent.h"
 
 

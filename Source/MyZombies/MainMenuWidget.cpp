@@ -33,5 +33,3 @@ void UMainMenuWidget::OnMultiplayerClicked()
 	// Push so selection menu can Pop() back to Main
 	RequestPushMenu(TEXT("GameModeSelectionMenu"));
 }
-
-

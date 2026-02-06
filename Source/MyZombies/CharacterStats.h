@@ -4,14 +4,16 @@
 
 #include "CoreMinimal.h"
 #include "Blueprint/UserWidget.h"
-#include "Components/ProgressBar.h" 
-#include "Components/TextBlock.h" 
 #include "CharacterStats.generated.h"
 
 /*
 Need to add variables for progress bar and health text - you will access these variables in HUD class
 Unreal Engine has  class UProgressBar*
 */
+
+class UTextBlock;
+class UProgressBar;
+
 UCLASS()
 class MYZOMBIES_API UCharacterStats : public UUserWidget
 {
@@ -23,13 +25,13 @@ public:
 
 	//This will allow you to select the class you need in the HUD when you create the widget
 	UPROPERTY(meta = (BindWidget))
-	class UProgressBar* HealthBar;
+	TObjectPtr<UProgressBar> HealthBar = nullptr;
 
 	UPROPERTY(meta = (BindWidget))
-	UTextBlock* AmmoOnDisplay;
+	TObjectPtr<UTextBlock> AmmoOnDisplay = nullptr;
 
 	UPROPERTY(meta = (BindWidget))
-	UTextBlock* AmmoInMag;
+	TObjectPtr<UTextBlock> AmmoInMag = nullptr;
 
 	// add scores and kill count here for death match
 

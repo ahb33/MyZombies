@@ -36,6 +36,10 @@ public:
 	UFUNCTION(BlueprintCallable)
 	FName GetActiveMenuID() const {return ActiveMenuID; }
 
+	UFUNCTION(BlueprintPure, Category="UI|Navigation")
+    UUserWidget* GetActiveMenuWidget() const { return ActiveMenu; }
+
+
 private:
 	UUserWidget* GetOrCreateMenu(FName MenuID);
 private:

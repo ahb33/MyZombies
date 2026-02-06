@@ -6,7 +6,6 @@
 #include "Components/WidgetComponent.h"
 #include "Components/SkeletalMeshComponent.h"  
 #include "MainCharacter.h"        
-#include "GameFramework/Actor.h"             
 #include "MyPlayerController.h" 
 #include "Particles/ParticleSystemComponent.h"
 #include "Sound/SoundCue.h"

@@ -2,9 +2,10 @@
 
 
 #include "MyAnimInstance.h"
+#include "MainCharacter.h"
+#include "Weapon.h"
+#include "GameFramework/Pawn.h"  
 #include "GameFramework/CharacterMovementComponent.h" 
-#include "GameFramework/Character.h"
-#include "Misc/App.h"
 #include "Kismet/KismetMathLibrary.h"
 
 

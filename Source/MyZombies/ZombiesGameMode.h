@@ -34,7 +34,7 @@ private:
 	void TryAdvanceWave();
 
 	UPROPERTY(EditAnywhere, Category="AI Stats")
-	UDataTable* AIDifficultyTable = nullptr;
+	TObjectPtr<UDataTable> AIDifficultyTable = nullptr;
 
 
 	int32 CurrentLevel = 1;

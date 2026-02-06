@@ -145,16 +145,16 @@ private:
 
 	// --- Components & replicated refs ---
 	UPROPERTY(VisibleAnywhere, Category="Camera")
-	USpringArmComponent* CameraBoom = nullptr;
+	TObjectPtr<USpringArmComponent> CameraBoom = nullptr;
 
 	UPROPERTY(VisibleAnywhere, Category="Camera")
-	UCameraComponent* FollowCamera = nullptr;
+	TObjectPtr<UCameraComponent> FollowCamera = nullptr;
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, meta=(AllowPrivateAccess="true"))
-	UCombatComponent* combatComponent = nullptr;
+	TObjectPtr<UCombatComponent> combatComponent = nullptr;
 
 	UPROPERTY(ReplicatedUsing=OnRep_OverlappingWeapon)
-	AWeapon* OverlappingWeapon = nullptr;
+	TObjectPtr<AWeapon> OverlappingWeapon = nullptr;
 
     UPROPERTY(Transient) bool bLastKillerWasZombie = false;
 
@@ -166,15 +166,15 @@ private:
 
 	// --- Assets ---
 	UPROPERTY(EditAnywhere, Category="Combat")
-	UAnimMontage* FireMontage = nullptr;
+	TObjectPtr<UAnimMontage> FireMontage = nullptr;
 
 	UPROPERTY(EditAnywhere, Category="Combat")
-	UAnimMontage* ReloadMontage = nullptr;
+	TObjectPtr<UAnimMontage> ReloadMontage = nullptr;
 
 	UPROPERTY(Replicated) 
 	bool bIsDead = false;
 
-	AHealthPickUp* pickUpHealth = nullptr;
+	TObjectPtr<AHealthPickUp> pickUpHealth = nullptr;
 
 	UPROPERTY(Replicated, VisibleAnywhere, Category="Tags", meta=(AllowPrivateAccess="true"))
 	FGameplayTagContainer CharacterTags;
@@ -183,7 +183,7 @@ private:
 	APickUp* OverlappingItem = nullptr;
 	AMyPlayerController* MyPlayerController = nullptr;
 	AMyHUD* MyGameHUD = nullptr;
-	UMyGameInstance* MyGameInstanceRef = nullptr;
+	TObjectPtr<UMyGameInstance> MyGameInstanceRef = nullptr;
 
 	// --- POD state ---
 	FRotator StartingAimRotation;

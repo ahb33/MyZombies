@@ -2,6 +2,7 @@
 
 
 #include "MenuUIManager.h"
+#include "BaseMenuWidget.h"
 #include "MyPlayerController.h"
 #include "Blueprint/WidgetBlueprintLibrary.h"
 
@@ -16,7 +17,7 @@ void UMenuUIManager::Init(AMyPlayerController *InOwnerPC)
 
 void UMenuUIManager::RegisterMenu(FName MenuID, TSubclassOf<UUserWidget> WidgetClass, int32 ZOrder)
 {
-	if (!MenuID.IsNone() && *WidgetClass)
+	if (!MenuID.IsNone() && WidgetClass)
 	{
 		MenuClasses.Add(MenuID, WidgetClass);
 		MenuZOrder.Add(MenuID, ZOrder);
@@ -33,7 +34,12 @@ UUserWidget* UMenuUIManager::GetOrCreateMenu(FName MenuID)
 
     if(TObjectPtr<UUserWidget>* Found = MenuInstances.Find(MenuID))
     {
-        return Found->Get();
+        if(Found->Get())
+		{
+			return Found->Get();
+		}
+
+		MenuInstances.Remove(MenuID);
     }
 
     TSubclassOf<UUserWidget>* ClassPtr = MenuClasses.Find(MenuID);
@@ -73,10 +79,13 @@ void UMenuUIManager::ShowMenu(FName MenuID)
     if (!ActiveMenu->IsInViewport())
     {
         ActiveMenu->AddToViewport(ZOrder);
-		ActiveMenu->SetUserFocus(OwnerPC);
     }
+	
 
+    if (UBaseMenuWidget* Base = Cast<UBaseMenuWidget>(ActiveMenu)) Base->ApplyInitialFocus();
 }
+
+
 
 void UMenuUIManager::PushMenu(FName MenuID)
 {

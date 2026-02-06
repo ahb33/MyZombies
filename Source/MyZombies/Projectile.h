@@ -4,10 +4,13 @@
 
 #include "CoreMinimal.h"
 #include "GameFramework/Actor.h"
-#include "GameFramework/ProjectileMovementComponent.h"
 #include "Particles/ParticleSystem.h" 
-#include "Sound/SoundCue.h"
 #include "Projectile.generated.h"
+
+
+class USphereComponent;
+class UProjectileMovementComponent;
+class AWeapon;
 
 UCLASS()
 class MYZOMBIES_API AProjectile : public AActor
@@ -22,8 +25,6 @@ public:
 
     void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const;
 
-    UPROPERTY(VisibleAnywhere, Category = Projectile)
-    class USphereComponent* CollisionSphere;
 
 	/*We need to have some sort of hit event that will occur when projectile hits something
 	we'd like to have function called in response to a hit event*/
@@ -47,11 +48,13 @@ protected:
 
 private:	
 
-    class AWeapon* currentWeapon;
+    TObjectPtr<AWeapon> currentWeapon = nullptr;
 
+    UPROPERTY(VisibleAnywhere, Category = Projectile)
+    TObjectPtr<USphereComponent> CollisionSphere = nullptr;
 
 	UPROPERTY(EditAnywhere)
-	class UProjectileMovementComponent* ProjectileMovementComponent;
+	TObjectPtr<UProjectileMovementComponent> ProjectileMovementComponent = nullptr;
 
 	UPROPERTY(EditAnywhere, Category = "Projectile|Movement")
 	float ProjectileSpeed;

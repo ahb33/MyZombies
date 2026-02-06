@@ -37,13 +37,11 @@ private:
 	UFUNCTION()
 	void OnBackButtonClicked();
 
-
 	UPROPERTY(meta=(BindWidgetOptional))
 	TObjectPtr<UButton> MultiplayerBackButton = nullptr;
 
 	UPROPERTY(meta=(BindWidgetOptional))
 	TObjectPtr<UBorder> BusyBlocker = nullptr;
-
 
 	UPROPERTY(meta=(BindWidgetOptional))
 	TObjectPtr<UPanelWidget> ContentRoot = nullptr;

@@ -38,7 +38,7 @@ protected:
 private: 
 
 	UPROPERTY(EditAnywhere)
-	UStaticMeshComponent* CasingMesh;
+	TObjectPtr<UStaticMeshComponent> CasingMesh;
 
 	UPROPERTY(EditAnywhere)
 	float ShellEjectionImpulse;

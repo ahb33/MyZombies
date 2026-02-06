@@ -47,8 +47,8 @@ public:
 
 private: 
 
-	APawn* PawnInstance;
-	AEnemyCharacter* EnemyCharacterInstance;
+	TObjectPtr<APawn> PawnInstance = nullptr;
+	TObjectPtr<AEnemyCharacter> EnemyCharacterInstance = nullptr;
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Animation, meta = (AllowPrivateAccess = "true"))
 	float MovementSpeed; // we only want C++ to alter this variable

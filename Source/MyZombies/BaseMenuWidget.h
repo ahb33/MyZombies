@@ -19,9 +19,22 @@ class MYZOMBIES_API UBaseMenuWidget : public UUserWidget
 {
 	GENERATED_BODY()
 
+public:
+
+	UFUNCTION(BlueprintNativeEvent, BlueprintPure, Category="UI|Focus")
+	UWidget* GetDefaultFocusWidget() const;
+
+	virtual UWidget* GetDefaultFocusWidget_Implementation() const { return DefaultFocusWidget; }
+
+	UFUNCTION(BlueprintCallable, Category="UI|Focus")
+    void ApplyInitialFocus();
+
+
 protected:
-	virtual void NativeConstruct() override;
+	virtual void NativeOnInitialized() override;
 	virtual void NativeDestruct() override;
+
+
 
 	AMyPlayerController* GetMyPC() const;
 	UMenuUIManager* GetMenuUI() const;
@@ -40,6 +53,9 @@ protected:
 	UFUNCTION(BlueprintCallable, Category="UI|Navigation")
 	void RequestPopMenu();
 
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="UI|Focus") 
+	TObjectPtr<UWidget> DefaultFocusWidget = nullptr;
+
 private:
-	TWeakObjectPtr<AMyPlayerController> CachedPC;
+	mutable TWeakObjectPtr<AMyPlayerController> CachedPC;
 };

@@ -57,7 +57,7 @@ private:
     class UMultiplayerSessions* MultiplayerSessionRef = nullptr;
 
     UPROPERTY()
-    UMyGameInstance* CachedGameInstance = nullptr;
+    TObjectPtr<UMyGameInstance> CachedGameInstance = nullptr;
 
     UPROPERTY(Transient, BlueprintReadWrite, Category="Multiplayer", meta=(AllowPrivateAccess="true"))
 	TArray<FMySessionResult> CachedSessionResults;

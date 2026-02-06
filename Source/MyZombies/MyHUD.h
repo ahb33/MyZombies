@@ -19,11 +19,11 @@ struct FHUDPackage
 	GENERATED_BODY()
 
 public:
-	UTexture2D* CrosshairsCenter = nullptr;
-	UTexture2D* CrosshairsLeft   = nullptr;
-	UTexture2D* CrosshairsRight  = nullptr;
-	UTexture2D* CrosshairsTop    = nullptr;
-	UTexture2D* CrosshairsBottom = nullptr;
+	TObjectPtr<UTexture2D> CrosshairsCenter = nullptr;
+	TObjectPtr<UTexture2D> CrosshairsLeft   = nullptr;
+	TObjectPtr<UTexture2D> CrosshairsRight  = nullptr;
+	TObjectPtr<UTexture2D> CrosshairsTop    = nullptr;
+	TObjectPtr<UTexture2D> CrosshairsBottom = nullptr;
 
 	float CrosshairSpread = 0.f;
 	FLinearColor CrosshairsColor = FLinearColor::White;
@@ -51,10 +51,10 @@ public:
 
 	// --- Widget references (instances) ---
 	UPROPERTY()
-	UCharacterStats* CharacterStats = nullptr;
+	TObjectPtr<UCharacterStats> CharacterStats = nullptr;
 
 	UPROPERTY()
-	UKillDeathStats* KillDeathStats = nullptr;
+	TObjectPtr<UKillDeathStats> KillDeathStats = nullptr;
 
 	// --- Widget classes (set in editor/blueprints) ---
 	UPROPERTY(EditAnywhere, Category = "UI")

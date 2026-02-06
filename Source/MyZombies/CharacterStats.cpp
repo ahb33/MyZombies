@@ -2,6 +2,8 @@
 
 
 #include "CharacterStats.h"
+#include "Components/ProgressBar.h" 
+#include "Components/TextBlock.h" 
 
 /*need to add variables for progress bar and health text*/
 

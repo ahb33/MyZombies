@@ -134,29 +134,41 @@ protected:
 private:
     // Components
     UPROPERTY(VisibleAnywhere, Category=Weapon)
-    USphereComponent* AreaSphere = nullptr;
+    TObjectPtr<USphereComponent> AreaSphere = nullptr;
 
     UPROPERTY(VisibleAnywhere, Category=Weapon)
-    UWidgetComponent* PickupWidget = nullptr;
+    TObjectPtr<UWidgetComponent> PickupWidget = nullptr;
 
     UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category=Weapon, meta=(AllowPrivateAccess="true"))
-    USkeletalMeshComponent* WeaponMesh = nullptr;
+    TObjectPtr<USkeletalMeshComponent> WeaponMesh = nullptr;
 
     // FX
-    UPROPERTY(EditAnywhere, Category = Weapon) UParticleSystem* MuzzleFlash = nullptr;
-    UPROPERTY(EditAnywhere, Category = Weapon) UParticleSystem* ImpactParticles = nullptr;
-    UPROPERTY(EditAnywhere, Category = Weapon) USoundCue* ImpactSound = nullptr;
-    UPROPERTY(EditAnywhere, Category = Weapon) UParticleSystem* Tracer = nullptr;
-    UPROPERTY(EditAnywhere, Category = Weapon) UParticleSystemComponent* TracerSystem = nullptr;
-    UPROPERTY(EditAnywhere, Category = Weapon) int32 TracerEmitterIndex = 0;
+    UPROPERTY(EditAnywhere, Category = Weapon) 
+    TObjectPtr<UParticleSystem> MuzzleFlash = nullptr;
+
+    UPROPERTY(EditAnywhere, Category = Weapon) 
+    TObjectPtr<UParticleSystem> ImpactParticles = nullptr;
+
+    UPROPERTY(EditAnywhere, Category = Weapon) 
+    TObjectPtr<USoundCue> ImpactSound = nullptr;
+
+    UPROPERTY(EditAnywhere, Category = Weapon) 
+    TObjectPtr<UParticleSystem> Tracer = nullptr;
+
+    UPROPERTY(EditAnywhere, Category = Weapon) 
+    TObjectPtr<UParticleSystemComponent> TracerSystem = nullptr;
+
+    UPROPERTY(EditAnywhere, Category = Weapon) 
+    int32 TracerEmitterIndex = 0;
 
 
     // Animation
     UPROPERTY(EditAnywhere, Category=WeaponAnimation)
-    UAnimationAsset* FireAnim = nullptr;
+    TObjectPtr<UAnimationAsset> FireAnim = nullptr;
 
     // Owner refs
-    UPROPERTY() AMainCharacter* MainCharacter = nullptr;
+    UPROPERTY() 
+    TObjectPtr<AMainCharacter> MainCharacter = nullptr;
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Replicated, Category="Combat", meta=(AllowPrivateAccess="true"))
     EWeaponType WeaponType = EWeaponType::AssaultRifle;  // example default
@@ -166,8 +178,11 @@ private:
 
     // Other
     UPROPERTY(EditAnywhere, Category=Casing) TSubclassOf<ACasing> Casing;
-    UPROPERTY(EditAnywhere, Category="Combat") float ZoomedFOV = 35.f;
-    UPROPERTY(EditAnywhere, Category="Combat") float ZoomInterpSpeed = 15.f;
+    UPROPERTY(EditAnywhere, Category="Combat") 
+    float ZoomedFOV = 35.f;
+
+    UPROPERTY(EditAnywhere, Category="Combat") 
+    float ZoomInterpSpeed = 15.f;
 
 
 };

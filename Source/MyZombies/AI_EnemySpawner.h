@@ -37,7 +37,7 @@ private:
 	TArray<TSubclassOf<class AEnemyCharacter>> ZombieSpawnArray;
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Spawn Settings", meta = (AllowPrivateAccess = "true"))
-	TObjectPtr<class UBoxComponent> SpawnArea; 
+	TObjectPtr<class UBoxComponent> SpawnArea = nullptr; 
 
 	UPROPERTY()
 	FTimerHandle SpawnTimerHandle; // interval used to spawn enemies

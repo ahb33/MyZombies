@@ -15,4 +15,6 @@ Design Decisions
 •	Widgets are presentation-only, never owning game logic
 Scope Note
     A Deathmatch mode is planned but intentionally excluded from this slice. I chose to polish a complete Zombies gameplay loop and supporting tools rather than spread effort across unfinished modes.
+Keyboard/Focus-ready UI: 
+    MenuUIManager assigns default focus on menu open (post-AddToViewport) via each menu’s       GetDefaultFocusWidget(); focus is applied with SetUserFocus/SetKeyboardFocus and widgets are marked focusable for keyboard/controller navigation.
 

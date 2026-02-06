@@ -38,13 +38,13 @@ public:
 private:
 	// --- Components / Config
 	UPROPERTY(VisibleAnywhere, Category="AI|Perception", meta=(AllowPrivateAccess="true"))
-	UAIPerceptionComponent* MyPerceptionComponent = nullptr;
+	TObjectPtr<UAIPerceptionComponent> MyPerceptionComponent = nullptr;
 
 	UPROPERTY()
-	UAISenseConfig_Sight* SightConfig = nullptr;
+	TObjectPtr<UAISenseConfig_Sight> SightConfig = nullptr;
 
 	UPROPERTY()
-	UAISenseConfig_Hearing* HearingConfig = nullptr;
+	TObjectPtr<UAISenseConfig_Hearing> HearingConfig = nullptr;
 
 	// Prefer weak ptr to avoid dangling references if player is destroyed/respawned.
 	UPROPERTY()

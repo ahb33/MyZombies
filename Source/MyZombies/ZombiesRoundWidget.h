@@ -19,13 +19,11 @@ class MYZOMBIES_API UZombiesRoundWidget : public UUserWidget
 
 public:
 
-    virtual void NativeConstruct() override;
-
 	void SetRound(int32 Round);
 
 private:
 
 	UPROPERTY(meta=(BindWidget))
-	UTextBlock* RoundText = nullptr;
+	TObjectPtr<UTextBlock> RoundText = nullptr;
 
 };

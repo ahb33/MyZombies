@@ -45,6 +45,7 @@ public:
 
 	virtual void SetupInputComponent() override;
 	virtual void EndPlay(const EEndPlayReason::Type EndPlayReason) override;
+	virtual void BeginPlayingState();
 
 	// -------------------- Common Menu (used by any mode) --------------------
 	UFUNCTION(BlueprintCallable, Category="UI|Navigation")
@@ -74,6 +75,8 @@ public:
 
 	UFUNCTION(Server, Reliable)
 	void TravelToLobby();
+	void UpdateUIForCurrentMap();
+	void EnsureReadyButton();
 
 	UFUNCTION(Server, Reliable)
 	void Server_SetPlayerReady();
@@ -94,6 +97,8 @@ private:
 
 	// Input application
 	void ApplyInputProfile(EInputProfile Profile);
+	// UFUNCTION()
+	// void ApplyMenuInputAndFocus(UWidget* FocusTarget, bool bUIOnly);
 
 	// Zombies UI
 	void EnsureRoundHUDWidget();
@@ -157,25 +162,25 @@ private:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="UI|Lobby", meta=(AllowPrivateAccess="true"))
 	TSubclassOf<UUserWidget> ReadyButtonWidgetClass;
 	UPROPERTY(Transient)
-	UReadyButtonWidget* ReadyButtonWidgetInstance = nullptr;
+	TObjectPtr<UReadyButtonWidget> ReadyButtonWidgetInstance = nullptr;
 
 	UPROPERTY(EditDefaultsOnly, Category="UI|Death")
 	TSubclassOf<UUserWidget> DeathScreenClass;
 	UPROPERTY(Transient)
-	UGameOverMenuWidget* DeathScreenInstance = nullptr;
+	TObjectPtr<UGameOverMenuWidget> DeathScreenInstance = nullptr;
 
 	UPROPERTY(Transient)
-	UPauseMenuWidget* PauseMenuWidgetInstance = nullptr;
+	TObjectPtr<UPauseMenuWidget> PauseMenuWidgetInstance = nullptr;
 
 	UPROPERTY(EditDefaultsOnly, Category="UI|Round Info")
 	TSubclassOf<UUserWidget> RoundHUDWidgetClass;
 	UPROPERTY(Transient)
-	UZombiesRoundWidget* RoundHUDWidgetInstance  = nullptr; 
+	TObjectPtr<UZombiesRoundWidget> RoundHUDWidgetInstance  = nullptr; 
 
 	UPROPERTY(EditDefaultsOnly, Category="UI|Round Info")
 	TSubclassOf<UUserWidget> RoundSplashWidgetClass;
 	UPROPERTY(Transient)
-	UZombiesRoundWidget* RoundSplashWidgetInstance = nullptr;
+	TObjectPtr<UZombiesRoundWidget> RoundSplashWidgetInstance = nullptr;
 
 
 	int32 LastIntroSoundRoundPlayed = INDEX_NONE;

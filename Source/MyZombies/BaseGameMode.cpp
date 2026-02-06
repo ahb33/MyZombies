@@ -50,12 +50,17 @@ void ABaseGameMode::PostLogin(APlayerController* NewPlayer)
 // Selects a random spawn point from the available list, marks it as used, and returns it.
 AActor* ABaseGameMode::ChoosePlayerStart_Implementation(AController* Player)
 {
-	if (SpawnPoints.Num() > 0)
+	while(SpawnPoints.Num() > 0)
 	{
 		const int32 Index = FMath::RandRange(0, SpawnPoints.Num() - 1);
-		if (SpawnPoints[Index])
+		AActor* Chosen = SpawnPoints[Index];
+
+		// Mark as used so it can't be chosen again
+		SpawnPoints.RemoveAtSwap(Index, 1, false);
+
+		if(IsValid(Chosen))
 		{
-			return SpawnPoints[Index];
+			return Chosen;
 		}
 	}
 	return Super::ChoosePlayerStart_Implementation(Player);

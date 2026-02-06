@@ -5,6 +5,7 @@
 #include "GameFramework/Actor.h" 
 #include "GameFramework/PlayerController.h" 
 #include "GameplayTagAssetInterface.h" 
+#include "Components/CapsuleComponent.h"
 #include "Engine/ActorChannel.h" 
 #include "GameplayTagContainer.h" 
 #include "UObject/UnrealType.h" 
@@ -55,6 +56,33 @@ static bool TryReadFloat(const UObject* Obj, const FName PropName, float& OutVal
     return false;
 }
  
+namespace
+{
+	static const FName BB_CanSee(TEXT("CanSeePlayer"));
+	static const FName BB_CanHear(TEXT("CanHearPlayer"));
+	static const FName BB_Player(TEXT("Player"));
+	static const FName BB_InRange(TEXT("PlayerWithinRange"));
+	static const FName BB_LKP(TEXT("LastKnownPosition"));
+
+	static float GetCapsuleRadiusSafe(AActor* A)
+	{
+        if (!A) return 0.f;
+
+        if (UCapsuleComponent* Cap = A->FindComponentByClass<UCapsuleComponent>())
+        {
+            return Cap->GetScaledCapsuleRadius();
+        }
+		return 0.f;
+	}
+
+	static void AddBBLine(TArray<FString>& OutLines, const TCHAR* Label, bool bValue, bool bValid)
+	{
+		OutLines.Add(FString::Printf(TEXT("%s: %s%s"),
+			Label,
+			bValue ? TEXT("true") : TEXT("false"),
+			bValid ? TEXT("") : TEXT(" (missing key)")));
+	}
+}
 
 void FCCGameplayDebuggerCategory::CollectData(APlayerController* OwnerPC, AActor* DebugActor)
 {
@@ -110,7 +138,7 @@ void FCCGameplayDebuggerCategory::CollectData(APlayerController* OwnerPC, AActor
     Lines.Add(FString::Printf(TEXT("Location: (%.0f, %.0f, %.0f)  Speed: %.1f"),
         Loc.X, Loc.Y, Loc.Z, Vel.Size()));
 
-    // Gameplay Tags (if any)
+    // Gameplay Tags
     if (const IGameplayTagAssetInterface* TagsIf = Cast<IGameplayTagAssetInterface>(DebugActor))
     {
         FGameplayTagContainer Tags;

@@ -9,6 +9,7 @@
 #include "ReadyButtonWidget.h"
 #include "GameOverMenuWidget.h"
 #include "ZombiesRoundWidget.h"
+#include "Components/ProgressBar.h" 
 #include "PauseMenuWidget.h"
 #include "CharacterStats.h"
 #include "BaseGameState.h"
@@ -46,8 +47,8 @@ void AMyPlayerController::BeginPlay()
         MenuUI->RegisterMenu("CreateSessionMenu", CreateSessionMenuWidgetClass, 0);
         MenuUI->RegisterMenu("JoinSessionMenu", JoinSessionMenuWidgetClass, 0);
 
-        ApplyInputProfile(EInputProfile::Lobby);
         MenuUI->ShowMenu("MainMenu");
+        ApplyInputProfile(EInputProfile::Menu);
     }
     else
     {
@@ -84,6 +85,12 @@ void AMyPlayerController::EndPlay(const EEndPlayReason::Type EndPlayReason)
 	UnbindFromGameState();
 
 	Super::EndPlay(EndPlayReason);
+}
+
+void AMyPlayerController::BeginPlayingState()
+{
+    Super::BeginPlayingState();
+    UpdateUIForCurrentMap();
 }
 
 void AMyPlayerController::TryBindToGameState()
@@ -169,27 +176,21 @@ void AMyPlayerController::SyncFromCachedState()
 
 void AMyPlayerController::HandleInputProfileChanged(EInputProfile Profile)
 {
-	ApplyInputProfile(Profile);
+    const FString Map = UGameplayStatics::GetCurrentLevelName(this, true);
+    const bool bIsMainMenu = (Map == TEXT("MainMenu_Level"));
+    const bool bIsLobby    = (Map == TEXT("LobbyLevel"));
 
-	// Lobby widget visibility is driven by InputProfile (not by map name).
-	if (Profile == EInputProfile::Lobby)
-	{
-		if (ReadyButtonWidgetClass && !ReadyButtonWidgetInstance)
-		{
-			ReadyButtonWidgetInstance = CreateWidget<UReadyButtonWidget>(this, ReadyButtonWidgetClass);
-		}
-		if (ReadyButtonWidgetInstance && !ReadyButtonWidgetInstance->IsInViewport())
-		{
-			ReadyButtonWidgetInstance->AddToViewport();
-		}
-	}
-	else
-	{
-		if (ReadyButtonWidgetInstance && ReadyButtonWidgetInstance->IsInViewport())
-		{
-			ReadyButtonWidgetInstance->RemoveFromParent();
-		}
-	}
+    if (bIsMainMenu || bIsLobby)
+    {
+        ApplyInputProfile(EInputProfile::Menu);
+    }
+    else
+    {
+        ApplyInputProfile(Profile); // gameplay maps only
+    }
+
+    // ReadyButton is ONLY lobby-level UI (not input-profile UI)
+    EnsureReadyButton();
 }
 
 void AMyPlayerController::HandleMatchModeChanged(EMatchMode Mode)
@@ -216,8 +217,9 @@ void AMyPlayerController::HandleMatchPhaseChanged(EMatchPhase Phase)
 		ShowDeathScreenLocal();
 		break;
 
-	case EMatchPhase::Active:
+	case EMatchPhase::Intro:
 		// Splash only makes sense for Zombies.
+		// when gamemode switches from into to active
 		if (CachedBGS && CachedBGS->GetMatchMode() == EMatchMode::Zombies)
 		{
 			ShowRoundIntroSplashWidget(CachedRoundNumber);
@@ -247,7 +249,7 @@ void AMyPlayerController::HandleRoundNumberChanged(int32 RoundNumber)
 		RoundHUDWidgetInstance->SetRound(CachedRoundNumber);
 	}
 
-	// If the game is currently in Intro phase, show splash for the new round.
+	// // If the game is currently in Intro phase, show splash for the new round.
 	if (CachedBGS->GetMatchPhase() == EMatchPhase::Intro)
 	{
 		ShowRoundIntroSplashWidget(CachedRoundNumber);
@@ -259,32 +261,32 @@ void AMyPlayerController::ApplyInputProfile(EInputProfile Profile)
     switch(Profile)
 
     {
-        case EInputProfile::Gameplay:
-        {
-            FInputModeGameOnly Mode;
-            SetInputMode(Mode);
-
-            bShowMouseCursor = false;
-            bEnableClickEvents = false;
-            bEnableMouseOverEvents = false;
-            break;
-
-        }
-
-        case EInputProfile::Lobby:
+		case EInputProfile::Gameplay:
 		{
-			FInputModeGameAndUI Mode;
-			Mode.SetLockMouseToViewportBehavior(EMouseLockMode::DoNotLock);
-			Mode.SetHideCursorDuringCapture(false);
+			FInputModeGameOnly Mode;
 			SetInputMode(Mode);
-
-			bShowMouseCursor = true;
-			bEnableClickEvents = true;
-			bEnableMouseOverEvents = true;
+			bShowMouseCursor = false;
 			break;
 		}
+
+        case EInputProfile::Menu:
+		{
+            FInputModeGameAndUI Mode;
+            Mode.SetLockMouseToViewportBehavior(EMouseLockMode::DoNotLock);
+            Mode.SetHideCursorDuringCapture(false);
+
+            SetInputMode(Mode);
+
+            bShowMouseCursor = true;
+            bEnableClickEvents = true;
+            bEnableMouseOverEvents = true;
+            break;
+		}
+		default:
+			break;			
     }
 }
+
 
 void AMyPlayerController::HandleReadyInput()
 {
@@ -299,7 +301,31 @@ void AMyPlayerController::HandleReadyInput()
 	Server_SetPlayerReady();
 }
 
+void AMyPlayerController::UpdateUIForCurrentMap()
+{
+    const FString Map = UGameplayStatics::GetCurrentLevelName(this, true);
 
+    const bool bIsMainMenu = (Map == TEXT("MainMenu_Level"));
+    const bool bIsLobby    = (Map == TEXT("LobbyLevel"));
+
+    if (bIsMainMenu)
+    {
+        ApplyInputProfile(EInputProfile::Menu);
+        // show main menus
+        return;
+    }
+
+    if (bIsLobby)
+    {
+        ApplyInputProfile(EInputProfile::Menu);
+        EnsureReadyButton();              // create + AddToViewport if needed
+        return;
+    }
+
+    // gameplay maps
+    EnsureReadyButton();
+    ApplyInputProfile(EInputProfile::Gameplay);
+}
 
 
 void AMyPlayerController::TravelToLobby_Implementation()
@@ -311,6 +337,29 @@ void AMyPlayerController::TravelToLobby_Implementation()
     }
 }
 
+void AMyPlayerController::EnsureReadyButton()
+{
+	const FString Map = UGameplayStatics::GetCurrentLevelName(this, true);
+    const bool bIsLobby = (Map == TEXT("LobbyLevel"));
+	if (bIsLobby)
+	{
+		if (ReadyButtonWidgetClass && !ReadyButtonWidgetInstance)
+		{
+			ReadyButtonWidgetInstance = CreateWidget<UReadyButtonWidget>(this, ReadyButtonWidgetClass);
+		}
+		if (ReadyButtonWidgetInstance && !ReadyButtonWidgetInstance->IsInViewport())
+		{
+			ReadyButtonWidgetInstance->AddToViewport(2000);
+		}
+	}
+	else
+	{
+		if (ReadyButtonWidgetInstance && ReadyButtonWidgetInstance->IsInViewport())
+		{
+			ReadyButtonWidgetInstance->RemoveFromParent();
+		}
+	}
+}
 void AMyPlayerController::Server_SetPlayerReady_Implementation()
 {
     if (ALobbyPlayerState* PS = GetPlayerState<ALobbyPlayerState>())
@@ -406,16 +455,16 @@ void AMyPlayerController::EnsureRoundHUDWidget()
 
 void AMyPlayerController::ShowRoundIntroSplashWidget(int32 RoundNumber)
 {
-	EnsureRoundSplashWidget();
+	EnsureRoundSplashWidget(); // create the widget
 	if (!RoundSplashWidgetInstance) return;
 
-	if (!RoundSplashWidgetInstance->IsInViewport())
+	if (!RoundSplashWidgetInstance->IsInViewport()) // if instance valid and not in viewport add to viewport
 	{
 		RoundSplashWidgetInstance->AddToViewport(1000);
 	}
 
-	RoundSplashWidgetInstance->SetVisibility(ESlateVisibility::Visible);
-	RoundSplashWidgetInstance->SetRound(RoundNumber);
+	RoundSplashWidgetInstance->SetVisibility(ESlateVisibility::Visible); 
+	RoundSplashWidgetInstance->SetRound(RoundNumber); // this 
 	
     if (RoundNumber != LastIntroSoundRoundPlayed)
     {
@@ -520,7 +569,10 @@ void AMyPlayerController::ShowPauseMenu()
         return;
     }
 
-    PauseMenuWidgetInstance->AddToViewport(1000);
+    if(!PauseMenuWidgetInstance->IsInViewport())
+	{
+		PauseMenuWidgetInstance->AddToViewport(9999);
+	}
     bPauseMenuOpen = true;
 
     // Only pause the world in standalone; in network, pause should be local UI only.
@@ -536,13 +588,13 @@ void AMyPlayerController::ShowPauseMenu()
         UGameplayStatics::SetGamePaused(this, true);
     }
 
-	ApplyInputProfile(EInputProfile::Lobby);
+	bShowMouseCursor = true;
+    bEnableClickEvents = true;
+    bEnableMouseOverEvents = true;
 
-	// move block to pause input profile
-    FInputModeGameAndUI Mode;
-    Mode.SetHideCursorDuringCapture(false);
-    Mode.SetWidgetToFocus(PauseMenuWidgetInstance->TakeWidget());
+    FInputModeUIOnly Mode;
     Mode.SetLockMouseToViewportBehavior(EMouseLockMode::DoNotLock);
+    Mode.SetWidgetToFocus(PauseMenuWidgetInstance->TakeWidget());
     SetInputMode(Mode);
 }
 
@@ -572,7 +624,7 @@ void AMyPlayerController::QuitToMainMenuFromPause()
 void AMyPlayerController::RequestRestartLevel()
 {
 	// adjust for multiplayer- only server should request restart
-	static const FName ZombiesLevel(*UGameplayStatics::GetCurrentLevelName(this, true));
+	const FName ZombiesLevel(*UGameplayStatics::GetCurrentLevelName(this, true));
 	UGameplayStatics::OpenLevel(this, ZombiesLevel);
 }
 

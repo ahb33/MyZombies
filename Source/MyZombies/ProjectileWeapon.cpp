@@ -7,10 +7,9 @@
 #include "Engine/SkeletalMeshSocket.h" 
 #include "Kismet/GameplayStatics.h"
 #include "Net/UnrealNetwork.h"
-#include "Sound/SoundCue.h"
+#include "GameFramework/ProjectileMovementComponent.h"
 #include "Components/SphereComponent.h"
 #include "Perception/AISense_Hearing.h"
-#include "EnemyCharacter.h"
 
 
 void AProjectileWeapon::Fire(const FVector& HitTarget)

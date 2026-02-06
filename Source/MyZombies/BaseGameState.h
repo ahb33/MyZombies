@@ -17,16 +17,16 @@ enum class EMatchPhase : uint8
     Intro,
     Active,
     RoundOver,
-    GameOver
+    GameOver,
+	None
 };
 
 
 UENUM(BlueprintType)
 enum class EInputProfile : uint8
 {
-  Lobby,
+  Menu,
   Gameplay,
-  PauseMenu
 };
 
 
@@ -34,7 +34,7 @@ UENUM(BlueprintType)
 enum class EMatchMode : uint8 
 { 
   Zombies, 
-  Deathmatch
+  Deathmatch,
 };
 
 
@@ -80,10 +80,10 @@ protected:
   EMatchMode MatchMode = EMatchMode::Zombies; // set default
 
   UPROPERTY(ReplicatedUsing=OnRep_InputProfile)
-  EInputProfile InputProfile = EInputProfile::Lobby; // set default
+  EInputProfile InputProfile = EInputProfile::Menu; // set default
 
   UPROPERTY(ReplicatedUsing=OnRep_MatchPhase)
-  EMatchPhase MatchPhase = EMatchPhase::Intro; // set default
+  EMatchPhase MatchPhase = EMatchPhase::None; // set default
 
 	UFUNCTION()
 	void OnRep_MatchPhase();

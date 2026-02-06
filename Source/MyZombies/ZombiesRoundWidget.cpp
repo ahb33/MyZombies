@@ -4,10 +4,6 @@
 #include "ZombiesRoundWidget.h"
 #include "Components/TextBlock.h"
 
-void UZombiesRoundWidget::NativeConstruct()
-{
-
-}
 
 void UZombiesRoundWidget::SetRound(int32 Round)
 {    

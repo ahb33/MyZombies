@@ -4,21 +4,36 @@
 #include "MenuUIManager.h"
 #include "MyPlayerController.h"
 
+
+
 // Fill out your copyright notice in the Description page of Project Settings.
-
-
-
-void UBaseMenuWidget::NativeConstruct()
+void UBaseMenuWidget::NativeOnInitialized()
 {
-	Super::NativeConstruct();
+    Super::NativeOnInitialized();
+    SetIsFocusable(true); 
+}
 
-	if (!GetWorld() || GetWorld()->IsNetMode(NM_DedicatedServer) || !GetOwningPlayer())
-	{
-		return;
-	}
+void UBaseMenuWidget::ApplyInitialFocus()
+{
+    APlayerController* PC = GetOwningPlayer();
+    if (!PC) return;
 
-	CachedPC = Cast<AMyPlayerController>(GetOwningPlayer());
-	OnMenuShown();
+    if (UWorld* World = GetWorld())
+    {
+        World->GetTimerManager().SetTimerForNextTick(FTimerDelegate::CreateWeakLambda(this, [this, PC]()
+        {
+            if (UWidget* Target = GetDefaultFocusWidget())
+            {
+                Target->SetUserFocus(PC);
+                Target->SetKeyboardFocus();
+            }
+            else
+            {
+                SetUserFocus(PC);
+                SetKeyboardFocus();
+            }
+        }));
+    }
 }
 
 void UBaseMenuWidget::NativeDestruct()
@@ -29,11 +44,14 @@ void UBaseMenuWidget::NativeDestruct()
 
 AMyPlayerController* UBaseMenuWidget::GetMyPC() const
 {
-	if (CachedPC.IsValid())
-	{
-		return CachedPC.Get();
-	}
-	return Cast<AMyPlayerController>(GetOwningPlayer());
+    if (CachedPC.IsValid()) return CachedPC.Get();
+
+    if (AMyPlayerController* PC = Cast<AMyPlayerController>(GetOwningPlayer()))
+    {
+        CachedPC = PC;
+        return PC;
+    }
+    return nullptr;
 }
 
 UMenuUIManager* UBaseMenuWidget::GetMenuUI() const

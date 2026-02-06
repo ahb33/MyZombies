@@ -15,6 +15,8 @@ class MYZOMBIES_API UMainMenuWidget : public UBaseMenuWidget
 
 protected:
 	virtual void NativeOnInitialized() override;
+	
+ 	virtual UWidget* GetDefaultFocusWidget_Implementation() const override {return SoloButton ? SoloButton : MultiplayerButton;}
 
 private:
 	UFUNCTION()
@@ -28,4 +30,6 @@ private:
 
 	UPROPERTY(meta=(BindWidgetOptional))
 	TObjectPtr<UButton> MultiplayerButton = nullptr;
+
+
 };

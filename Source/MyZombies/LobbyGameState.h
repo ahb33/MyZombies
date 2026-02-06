@@ -23,7 +23,6 @@ public:
 	UFUNCTION(BlueprintCallable)
 	bool AreAllPlayersReady() const;
 
-	void StartGameMatch();
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="Lobby")
     int32 DesiredPlayerCount = 0;
@@ -31,7 +30,6 @@ public:
 protected:
 
     UPROPERTY()
-    UMultiplayerSessions* MultiplayerSubsystem = nullptr;
+    TObjectPtr<UMultiplayerSessions> MultiplayerSubsystem = nullptr;
 
-    int32 GetDesiredPlayerCountSafe() const; 
 };
