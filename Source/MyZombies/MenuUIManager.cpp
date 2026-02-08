@@ -63,28 +63,47 @@ UUserWidget* UMenuUIManager::GetOrCreateMenu(FName MenuID)
 
 void UMenuUIManager::ShowMenu(FName MenuID)
 {
-    UUserWidget* Next = GetOrCreateMenu(MenuID);
-    if(!Next) return;
+	UUserWidget* Next = GetOrCreateMenu(MenuID);
+	if (!Next) return;
 
-    if(ActiveMenu && ActiveMenu != Next)
-    {
-        ActiveMenu->RemoveFromParent();
-    }
+	if (ActiveMenu && ActiveMenu != Next)
+	{
+		ActiveMenu->RemoveFromParent();
+	}
 
-    ActiveMenuID = MenuID;
+	ActiveMenuID = MenuID;
 	ActiveMenu = Next;
 
-    const int32 ZOrder = MenuZOrder.Contains(MenuID) ? MenuZOrder[MenuID] : 0;
+	const int32 ZOrder = MenuZOrder.Contains(MenuID) ? MenuZOrder[MenuID] : 0;
+	if (!ActiveMenu->IsInViewport())
+	{
+		ActiveMenu->AddToViewport(ZOrder);
+	}
 
-    if (!ActiveMenu->IsInViewport())
+	 if (OwnerPC && ActiveMenu)
     {
-        ActiveMenu->AddToViewport(ZOrder);
+        FInputModeUIOnly Mode;
+        Mode.SetLockMouseToViewportBehavior(EMouseLockMode::DoNotLock);
+
+        TSharedPtr<SWidget> RootSlate = ActiveMenu->GetCachedWidget();
+        if (!RootSlate.IsValid())
+        {
+            RootSlate = ActiveMenu->TakeWidget(); // fallback
+        }
+
+        Mode.SetWidgetToFocus(RootSlate);
+        OwnerPC->SetInputMode(Mode);
+
+        OwnerPC->bShowMouseCursor = true;
+        OwnerPC->bEnableClickEvents = true;
+        OwnerPC->bEnableMouseOverEvents = true;
     }
-	
 
-    if (UBaseMenuWidget* Base = Cast<UBaseMenuWidget>(ActiveMenu)) Base->ApplyInitialFocus();
+    if (UBaseMenuWidget* Base = Cast<UBaseMenuWidget>(ActiveMenu))
+    {
+        Base->ApplyInitialFocus(); // next tick: FocusWidget(default) sets input mode + keyboard focus correctly
+    }
 }
-
 
 
 void UMenuUIManager::PushMenu(FName MenuID)

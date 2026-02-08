@@ -22,5 +22,10 @@ public:
 
 private:
     TArray<FString> Lines;
+
+    bool bDrawSphere = false;
+    FVector SphereCenter = FVector::ZeroVector;
+    float SphereRadius = 150.f;
+    FColor SphereColor = FColor::Green;
 };
 #endif

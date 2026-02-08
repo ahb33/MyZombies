@@ -3,14 +3,24 @@
 #include "Components/TextBlock.h"
 #include "MyGameInstance.h"
 
-void UJoinSessionMenuWidget::NativeConstruct()
+void UJoinSessionMenuWidget::NativeOnInitialized()
 {
-    Super::NativeConstruct();
+    Super::NativeOnInitialized();
 
     if (JoinButton && !JoinButton->OnClicked.IsAlreadyBound(this, &UJoinSessionMenuWidget::OnJoinSessionClicked))
     {
         JoinButton->OnClicked.AddDynamic(this, &UJoinSessionMenuWidget::OnJoinSessionClicked);
     }
+}
+
+void UJoinSessionMenuWidget::NativeDestruct()
+{
+	if (JoinButton)
+	{
+        JoinButton->OnClicked.RemoveDynamic(this, &UJoinSessionMenuWidget::OnJoinSessionClicked);
+	}
+
+   	Super::NativeDestruct(); 
 }
 
 void UJoinSessionMenuWidget::Setup(int32 InIndex, const FMySessionResult& InSession)

@@ -30,16 +30,14 @@ public:
         Debugger.NotifyCategoriesChanged();
 #endif
     }
-
+    
     virtual void ShutdownModule() override
     {
 #if WITH_GAMEPLAY_DEBUGGER
         if (IGameplayDebugger::IsAvailable())
         {
-            IGameplayDebugger& Debugger = IGameplayDebugger::Get();
-            static const FName CategoryName(TEXT("CC"));
-            Debugger.UnregisterCategory(CategoryName);
-            Debugger.NotifyCategoriesChanged();
+            IGameplayDebugger::Get().UnregisterCategory(TEXT("CC"));
+            IGameplayDebugger::Get().NotifyCategoriesChanged();
         }
 #endif
     }

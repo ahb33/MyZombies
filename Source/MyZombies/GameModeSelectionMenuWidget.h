@@ -19,6 +19,8 @@ protected:
 
 	virtual void NativeOnInitialized() override; // called once per widget instance
 
+	virtual UWidget* GetDefaultFocusWidget_Implementation() const override;
+
 
 private:
 	UFUNCTION()
@@ -34,7 +36,6 @@ private:
 
 	void HandleGameModeSelection(FName GameModeName);
 
-private:
 	UPROPERTY(meta=(BindWidgetOptional))
 	TObjectPtr<UButton> DeathmatchButton = nullptr;
 

@@ -9,6 +9,19 @@
 #include "MainCharacter.h"
 #include "MyAIController.h"
 
+namespace
+{
+	static const FName BB_CanSeePlayer(TEXT("CanSeePlayer"));
+	static const FName BB_CanHearPlayer(TEXT("CanHearPlayer"));
+	static const FName BB_Player(TEXT("Player"));
+	static const FName BB_LastKnownPosition(TEXT("LastKnownPosition"));
+	static const FName BB_PlayerWithinRange(TEXT("PlayerWithinRange"));
+
+	FName ResolveKey(const FBlackboardKeySelector& Selector, const FName Fallback)
+	{
+		return (Selector.SelectedKeyName != NAME_None) ? Selector.SelectedKeyName : Fallback;
+	}
+}
 
 UBTService_ChasingBehavior::UBTService_ChasingBehavior(const FObjectInitializer& ObjectInitializer) : Super(ObjectInitializer)
 {
@@ -36,42 +49,53 @@ void UBTService_ChasingBehavior::TickNode(UBehaviorTreeComponent& OwnerComp, uin
 
     GetStaticDescription();
 
-    UBlackboardComponent* BlackboardComp = OwnerComp.GetBlackboardComponent();
-    if (BlackboardComp == nullptr) return;
+    UBlackboardComponent* BB  = OwnerComp.GetBlackboardComponent();
+    if (BB  == nullptr) return;
 
     // Get the AI controller from OwnerComp and check whether it is valid
-    AAIController* AIController = OwnerComp.GetAIOwner();
-    if (AIController == nullptr) return;
+    AAIController* AIC = OwnerComp.GetAIOwner();
+    if (AIC == nullptr) return;
          
     // cast our AI controller to our custom AI controller
-    AMyAIController* ZombieAI = Cast<AMyAIController>(AIController);
+    AMyAIController* ZombieAI = Cast<AMyAIController>(AIC);
     if (ZombieAI == nullptr) return;
 
-    // Retrieve the player's location from the blackboard
-    FVector PlayerLocation = BlackboardComp->GetValueAsVector("PlayerLocation");
-
-    // Retrieve CanSeePlayer value from blckboard
-    bool bCanSeePlayer = BlackboardComp->GetValueAsBool("CanSeePlayer"); // Make sure the key string matches
-
-    bool bCanHearPlayer = BlackboardComp->GetValueAsBool("CanHearPlayer");
+    AEnemyCharacter* Enemy = Cast<AEnemyCharacter>(AIC->GetPawn());
+	if (!Enemy) return;
 
 
+    
+	const FName CanSeeKeyName = ResolveKey(CanSeePlayerKey, BB_CanSeePlayer);
+	const FName CanHearKeyName = ResolveKey(CanHearPlayerKey, BB_CanHearPlayer);
+	const FName PlayerKeyName = ResolveKey(PlayerKey, BB_Player);
+	const FName LKPKeyName = ResolveKey(LastKnownPositionKey, BB_LastKnownPosition);
+	const FName InRangeKeyName = ResolveKey(PlayerWithinAttackRangeKey, BB_PlayerWithinRange);
+
+	const bool bCanSeePlayer = BB->GetValueAsBool(CanSeeKeyName);
+	const bool bCanHearPlayer = BB->GetValueAsBool(CanHearKeyName);
+
+    AActor* PlayerActor = Cast<AActor>(BB->GetValueAsObject(PlayerKeyName));
+	AMainCharacter* Player = Cast<AMainCharacter>(PlayerActor);
+
+
+ 
     // Update the last known player position based on the current perception
-    if (bCanSeePlayer || bCanHearPlayer)
-    {
-        // UE_LOG(LogTemp, Warning, TEXT("bCanSeePlayer is valid"));
-        FVector CurrentPlayerLocation = BlackboardComp->GetValueAsVector(PlayerKey.SelectedKeyName);
-        BlackboardComp->SetValueAsVector(LastKnownPositionKey.SelectedKeyName, CurrentPlayerLocation);
-    }
+	if (bCanSeePlayer && PlayerActor)
+	{
+		BB->SetValueAsVector(LKPKeyName, PlayerActor->GetActorLocation());
+	}
 
-    // Check if the visibility of the player has changed
-    if (bCanSeePlayer != bLastCanSeePlayer)
-    {
-        // Potentially handle changes in visibility state here
-    }
+	// Keep "within range" fresh; perception events are NOT enough for this.
+	const bool bInRange = (Player && Enemy) ? ZombieAI->IsPlayerWithinRange(Player, Enemy) : false;
+	BB->SetValueAsBool(InRangeKeyName, bInRange);
+
+	if (bInRange)
+	{
+		AIC->StopMovement();
+	}
 
 
-    bLastCanSeePlayer = bCanSeePlayer;
+	bLastCanSeePlayer = bCanSeePlayer;
     
 }
 
@@ -83,43 +107,43 @@ void UBTService_ChasingBehavior::OnBecomeRelevant(UBehaviorTreeComponent& OwnerC
     Super::OnBecomeRelevant(OwnerComp, NodeMemory);
 
     // Get reference to the player so that we can store it on the blackboard
-    UBlackboardComponent* BlackboardComp = OwnerComp.GetBlackboardComponent();
-    if (BlackboardComp)
-    {
-        // Retrieve the player character using the specified class from the blackboard
-        AActor* PlayerActor = nullptr;
-        TArray<AActor*> Actors;
-        UGameplayStatics::GetAllActorsOfClass(GetWorld(), PlayerClass, Actors);
-        if (Actors.Num() > 0)
-        {
-            // Assuming there's only one player, otherwise you'll need additional logic to select the right one
-            PlayerActor = Actors[0];
-        }
+    UBlackboardComponent* BB = OwnerComp.GetBlackboardComponent();
+	if (!BB) return;
 
-        // Make sure we have successfully found the player
-        if (PlayerActor != nullptr)
-        {
-            // Update the blackboard with the player's location
-            BlackboardComp->SetValueAsVector(LastKnownPositionKey.SelectedKeyName, PlayerActor->GetActorLocation());
+	const FName PlayerKeyName = ResolveKey(PlayerKey, BB_Player);
+	const FName LKPKeyName = ResolveKey(LastKnownPositionKey, BB_LastKnownPosition);
 
-            // Update the blackboard with the player actor reference
-            BlackboardComp->SetValueAsObject(PlayerKey.SelectedKeyName, PlayerActor);
+	AActor* PlayerActor = Cast<AActor>(BB->GetValueAsObject(PlayerKeyName));
 
-        }
-    }
+ 	if (!IsValid(PlayerActor))
+	{
+		if (UWorld* World = OwnerComp.GetWorld())
+		{
+			if (World->GetNetMode() == NM_Standalone)
+			{
+				PlayerActor = UGameplayStatics::GetPlayerCharacter(World, 0);
+				if (IsValid(PlayerActor))
+				{
+					BB->SetValueAsObject(PlayerKeyName, PlayerActor);
+				}
+			}
+		}
+	}
+
+	if (IsValid(PlayerActor))
+	{
+		BB->SetValueAsVector(LKPKeyName, PlayerActor->GetActorLocation());
+	}
 }
 
 void UBTService_ChasingBehavior::OnCeaseRelevant(UBehaviorTreeComponent& OwnerComp, uint8* NodeMemory)
 {
 	Super::OnCeaseRelevant(OwnerComp, NodeMemory);
 
-	// Clear in-range when service stops to avoid stale "true".
 	if (UBlackboardComponent* BB = OwnerComp.GetBlackboardComponent())
 	{
-		if (PlayerWithinAttackRangeKey.IsSet())
-			BB->ClearValue(PlayerWithinAttackRangeKey.SelectedKeyName);
-		else
-			BB->SetValueAsBool(TEXT("PlayerWithinAttackRange"), false);
+		const FName InRangeKeyName = ResolveKey(PlayerWithinAttackRangeKey, BB_PlayerWithinRange);
+		BB->SetValueAsBool(InRangeKeyName, false);
 	}
 }
 

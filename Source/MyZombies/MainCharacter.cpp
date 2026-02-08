@@ -259,6 +259,11 @@ AWeapon* AMainCharacter::GetEquippedWeapon() const
     return combatComponent ? combatComponent->GetEquippedWeapon() : nullptr;
 }
 
+AWeapon* AMainCharacter::GetSecondaryWeapon() const
+{
+    return combatComponent ? combatComponent->GetSecondaryWeapon() : nullptr;
+}
+
 void AMainCharacter::SetOverlappingItem(APickUp* PickUp)
 {
 	if (OverlappingItem)
@@ -582,6 +587,7 @@ void AMainCharacter::Die()
     SetNetDormancy(DORM_Awake); // ensure awake for this burst
 
     if(GetEquippedWeapon()) GetEquippedWeapon()->SetWeaponState(EWeaponState::Dropped);
+    if(GetSecondaryWeapon()) GetSecondaryWeapon()->SetWeaponState(EWeaponState::Dropped);
 
     SetLifeSpan(0.3f);
 }

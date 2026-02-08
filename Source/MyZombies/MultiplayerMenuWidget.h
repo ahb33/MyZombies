@@ -31,7 +31,8 @@ public:
 	bool IsBusy() const { return bIsBusy; }
 	
 protected:
-	virtual void NativeOnInitialized() override;
+    virtual void NativeOnInitialized() override;
+    virtual void NativeDestruct() override;
 
 private:
 	UFUNCTION()

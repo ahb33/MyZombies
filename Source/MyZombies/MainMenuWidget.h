@@ -25,10 +25,10 @@ private:
 	UFUNCTION()
 	void OnMultiplayerClicked();
 
-	UPROPERTY(meta=(BindWidgetOptional))
+	UPROPERTY(BlueprintReadOnly, Category="UI|Widgets", meta=(BindWidgetOptional, AllowPrivateAccess="true"))	
 	TObjectPtr<UButton> SoloButton = nullptr;
 
-	UPROPERTY(meta=(BindWidgetOptional))
+	UPROPERTY(BlueprintReadOnly, Category="UI|Widgets", meta=(BindWidgetOptional, AllowPrivateAccess="true"))
 	TObjectPtr<UButton> MultiplayerButton = nullptr;
 
 

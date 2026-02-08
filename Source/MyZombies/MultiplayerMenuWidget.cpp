@@ -21,6 +21,16 @@ void UMultiplayerMenuWidget::NativeOnInitialized()
 	SetBusy(false);
 }
 
+void UMultiplayerMenuWidget::NativeDestruct()
+{
+	if (MultiplayerBackButton)
+	{
+        MultiplayerBackButton->OnClicked.RemoveDynamic(this, &UMultiplayerMenuWidget::OnBackButtonClicked);
+	}
+
+	Super::NativeDestruct();
+}
+
 void UMultiplayerMenuWidget::OnBackButtonClicked()
 {
 	if (bIsBusy) return;

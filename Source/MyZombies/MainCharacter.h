@@ -67,6 +67,7 @@ public:
 	FVector GetHitTarget() const;
 	ECombatState GetCharacterCombatState() const;
 	AWeapon* GetEquippedWeapon() const;
+	AWeapon* GetSecondaryWeapon() const;
 	
 	virtual void PossessedBy(AController* NewController) override;
 	virtual void OnRep_Controller() override;

@@ -34,8 +34,10 @@ public:
 	FOnBusyChangedBP OnBusyChanged;
 
 protected:
-    virtual void NativeConstruct() override;
+    virtual void NativeOnInitialized() override;
+    virtual void NativeDestruct() override;
 
+	
     UFUNCTION()
     void OnJoinSessionClicked();
 

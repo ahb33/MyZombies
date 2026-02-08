@@ -13,8 +13,10 @@
 #include "PauseMenuWidget.h"
 #include "CharacterStats.h"
 #include "BaseGameState.h"
+#include "BaseMenuWidget.h"
 #include "MenuUIManager.h"
 #include "KillDeathStats.h"
+#include "Framework/Application/SlateApplication.h"
 #include "Components/AudioComponent.h"
 #include "ZombiesGameState.h"
 #include "Kismet/GameplayStatics.h"
@@ -48,7 +50,6 @@ void AMyPlayerController::BeginPlay()
         MenuUI->RegisterMenu("JoinSessionMenu", JoinSessionMenuWidgetClass, 0);
 
         MenuUI->ShowMenu("MainMenu");
-        ApplyInputProfile(EInputProfile::Menu);
     }
     else
     {
@@ -90,6 +91,9 @@ void AMyPlayerController::EndPlay(const EEndPlayReason::Type EndPlayReason)
 void AMyPlayerController::BeginPlayingState()
 {
     Super::BeginPlayingState();
+
+	const FString Map = UGameplayStatics::GetCurrentLevelName(this, true);
+    if (Map == TEXT("MainMenu_Level")) return; 
     UpdateUIForCurrentMap();
 }
 
@@ -176,20 +180,10 @@ void AMyPlayerController::SyncFromCachedState()
 
 void AMyPlayerController::HandleInputProfileChanged(EInputProfile Profile)
 {
-    const FString Map = UGameplayStatics::GetCurrentLevelName(this, true);
-    const bool bIsMainMenu = (Map == TEXT("MainMenu_Level"));
-    const bool bIsLobby    = (Map == TEXT("LobbyLevel"));
+   const FString Map = UGameplayStatics::GetCurrentLevelName(this, true);
+    if (Map == TEXT("MainMenu_Level")) return;
 
-    if (bIsMainMenu || bIsLobby)
-    {
-        ApplyInputProfile(EInputProfile::Menu);
-    }
-    else
-    {
-        ApplyInputProfile(Profile); // gameplay maps only
-    }
-
-    // ReadyButton is ONLY lobby-level UI (not input-profile UI)
+    ApplyInputProfile(Profile);
     EnsureReadyButton();
 }
 
@@ -256,6 +250,7 @@ void AMyPlayerController::HandleRoundNumberChanged(int32 RoundNumber)
 	}
 }
 
+
 void AMyPlayerController::ApplyInputProfile(EInputProfile Profile)
 {
     switch(Profile)
@@ -275,12 +270,12 @@ void AMyPlayerController::ApplyInputProfile(EInputProfile Profile)
             Mode.SetLockMouseToViewportBehavior(EMouseLockMode::DoNotLock);
             Mode.SetHideCursorDuringCapture(false);
 
-            SetInputMode(Mode);
+			SetInputMode(Mode);
 
-            bShowMouseCursor = true;
-            bEnableClickEvents = true;
-            bEnableMouseOverEvents = true;
-            break;
+			bShowMouseCursor = true;
+			bEnableClickEvents = true;
+			bEnableMouseOverEvents = true;
+			break;
 		}
 		default:
 			break;			

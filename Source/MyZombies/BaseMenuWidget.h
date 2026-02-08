@@ -4,6 +4,7 @@
 
 #include "CoreMinimal.h"
 #include "Blueprint/UserWidget.h"
+#include "Styling/SlateTypes.h"
 #include "BaseMenuWidget.generated.h"
 
 /**
@@ -12,7 +13,7 @@
 
 class AMyPlayerController;
 class UMenuUIManager;
-
+class UButton; 
  
 UCLASS()
 class MYZOMBIES_API UBaseMenuWidget : public UUserWidget
@@ -20,30 +21,25 @@ class MYZOMBIES_API UBaseMenuWidget : public UUserWidget
 	GENERATED_BODY()
 
 public:
-
 	UFUNCTION(BlueprintNativeEvent, BlueprintPure, Category="UI|Focus")
 	UWidget* GetDefaultFocusWidget() const;
 
 	virtual UWidget* GetDefaultFocusWidget_Implementation() const { return DefaultFocusWidget; }
 
 	UFUNCTION(BlueprintCallable, Category="UI|Focus")
-    void ApplyInitialFocus();
+	void ApplyInitialFocus();
 
+	UFUNCTION(BlueprintCallable, Category="UI|Focus")
+	void FocusWidget(UWidget* WidgetToFocus); // (optional) call from Button->OnHovered
 
 protected:
 	virtual void NativeOnInitialized() override;
-	virtual void NativeDestruct() override;
-
-
+	virtual FReply NativeOnMouseButtonDown(const FGeometry& InGeometry, const FPointerEvent& InMouseEvent) override;
 
 	AMyPlayerController* GetMyPC() const;
 	UMenuUIManager* GetMenuUI() const;
 
-	// Optional hooks for child widgets
-	virtual void OnMenuShown() {}
-	virtual void OnMenuHidden() {}
 
-	// Call these from buttons instead of TransitionToMenu/CreateAndStoreWidget
 	UFUNCTION(BlueprintCallable, Category="UI|Navigation")
 	void RequestShowMenu(FName MenuId);
 
@@ -53,9 +49,13 @@ protected:
 	UFUNCTION(BlueprintCallable, Category="UI|Navigation")
 	void RequestPopMenu();
 
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="UI|Focus") 
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="UI|Focus")
 	TObjectPtr<UWidget> DefaultFocusWidget = nullptr;
 
 private:
 	mutable TWeakObjectPtr<AMyPlayerController> CachedPC;
+	TWeakObjectPtr<UWidget> LastFocusedWidget;
+
+	TWeakObjectPtr<UButton> FocusStyledButton;
+	FButtonStyle FocusStyledButtonOriginalStyle;
 };

@@ -3,10 +3,10 @@
 
 #include "EnemyCharacter.h"
 #include "MyAIController.h"
-#include "BehaviorTree/BlackboardComponent.h"
 #include "Kismet/GameplayStatics.h"
 #include "GameFramework/DamageType.h"
 #include "Animation/AnimInstance.h"
+#include "BehaviorTree/BlackboardComponent.h"
 #include "DamageHelpers.h"
 #include "Components/SphereComponent.h"
 #include "Net/UnrealNetwork.h"
@@ -25,7 +25,7 @@ static FORCEINLINE AActor* GetBBTarget(const AAIController* AIC, FName Key)
 AEnemyCharacter::AEnemyCharacter()
 {
     bReplicates = true;
- 	// Set this character to call Tick() every frame.  You can turn this off to improve performance if you don't need it.
+    SetReplicateMovement(true); 
 	PrimaryActorTick.bCanEverTick = false;
 
     CollisionSphere = CreateDefaultSubobject<USphereComponent>(TEXT("CollisionSphere"));
@@ -54,6 +54,13 @@ void AEnemyCharacter::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutL
     DOREPLIFETIME(AEnemyCharacter, BaseHealth);
     DOREPLIFETIME(AEnemyCharacter, bIsDead);
     DOREPLIFETIME(AEnemyCharacter, CharacterTags);
+
+
+    DOREPLIFETIME(AEnemyCharacter, bCanSeePlayer);
+    DOREPLIFETIME(AEnemyCharacter, bCanHearPlayer);
+    DOREPLIFETIME(AEnemyCharacter, bPlayerWithinRange);
+    DOREPLIFETIME(AEnemyCharacter, bIsChasing);
+    DOREPLIFETIME(AEnemyCharacter, MaxHealth);
 }
 
 
@@ -82,7 +89,6 @@ void AEnemyCharacter::Attack()
     const float Now = GetWorld()->GetTimeSeconds();
     if (Now < NextAttackTime) return;// cooldown
 
-    // (Optional) also ensure we're still in range before starting
     if (AActor* Target = GetBBTarget(Cast<AAIController>(GetController()), BBKey_Player))
     {
         if (FVector::DistSquared(GetActorLocation(), Target->GetActorLocation()) >
@@ -97,8 +103,7 @@ void AEnemyCharacter::Attack()
 
 void AEnemyCharacter::Server_Attack_Implementation()
 {
-    // Keep actual logic in Attack(); this call merely ensures server entry.
-    Attack(); // why: reuses server-side validation + multicast.
+    Attack(); // reuse server-side validation + multicast.
 }
 
 void AEnemyCharacter::Multicast_PlayAttackMontage_Implementation(FName SectionName)
@@ -107,7 +112,7 @@ void AEnemyCharacter::Multicast_PlayAttackMontage_Implementation(FName SectionNa
 
     if (UAnimInstance* Anim = GetMesh()->GetAnimInstance())
     {
-        // why: avoid double-plays if rapid multicast happens
+        // avoid double-plays if rapid multicast happens
         if (!Anim->Montage_IsPlaying(AttackMontage))
         {
             Anim->Montage_Play(AttackMontage, 1.0f);
@@ -136,12 +141,12 @@ float AEnemyCharacter::TakeDamage(float DamageAmount, const FDamageEvent& Damage
     if (BaseHealth <= 0.f && !bIsDead)
     {
         bIsDead = true;
-        GetWorld()->GetTimerManager().SetTimer(DestructionTimer, this, &AEnemyCharacter::Die, 1.0f, false);
+        ApplyDeadState();   // server visuals
+        ForceNetUpdate(); 
+        GetWorld()->GetTimerManager().SetTimer(DestructionTimer, this, &AEnemyCharacter::Die, 3.0f, false);
     }
     return DamageAmount;
 }
-
-
 
 void AEnemyCharacter::Die()
 {
@@ -155,15 +160,34 @@ void AEnemyCharacter::Die()
         Destroy();
     }
 }
+void AEnemyCharacter::ApplyDeadState()
+{
+    if (HasAuthority())
+    {
+        if (AAIController* AIC = Cast<AAIController>(GetController()))
+        {
+            AIC->StopMovement();
+            if (UBrainComponent* Brain = AIC->GetBrainComponent())
+            {
+                Brain->StopLogic(TEXT("Dead"));
+            }
+        }
+
+        if (UCharacterMovementComponent* Move = GetCharacterMovement())
+        {
+            Move->DisableMovement();
+        }
+    }
+    if (UAI_AnimInstance* AI = Cast<UAI_AnimInstance>(GetMesh() ? GetMesh()->GetAnimInstance() : nullptr))
+    {
+        AI->SetIsDead(true);
+    }
+}
 
 
 void AEnemyCharacter::OnRep_IsDead()
 {
-    UE_LOG(LogTemp, Warning, TEXT("OnRep is dead"));
-    if (UAI_AnimInstance* AI = Cast<UAI_AnimInstance>(GetMesh()->GetAnimInstance()))
-    {
-        AI->SetIsDead(true); // ensures death anim plays on all clients
-    }
+    if (bIsDead) ApplyDeadState();
 }
 
 void AEnemyCharacter::ApplyCharacterStats()
@@ -178,5 +202,30 @@ void AEnemyCharacter::ApplyCharacterStats()
     MaxHealth = FMath::Max(1.f, MaxHealth * CharacterStats.HealthMultiplier);
     AttackDamage *= CharacterStats.DamageMultiplier;
     BaseHealth = MaxHealth; // reset current to new max once
+}
+
+void AEnemyCharacter::SetPerceptionState(bool bSee, bool bHear, bool bInRange)
+{
+    if (!HasAuthority()) return;
+
+    const bool bChanged =
+        (bCanSeePlayer != bSee) ||
+        (bCanHearPlayer != bHear) ||
+        (bPlayerWithinRange != bInRange);
+
+        bCanSeePlayer = bSee;
+        bCanHearPlayer = bHear;
+        bPlayerWithinRange = bInRange;
+
+        if (bChanged) ForceNetUpdate();
+}
+
+
+void AEnemyCharacter::SetChasingState(bool bChasing)
+{
+    if (!HasAuthority()) return;
+    if (bIsChasing == bChasing) return;
+    bIsChasing = bChasing;
+    ForceNetUpdate();
 }
 

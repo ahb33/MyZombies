@@ -39,6 +39,16 @@ void UGameModeSelectionMenuWidget::BindButtonEvents()
     }
 }
 
+UWidget* UGameModeSelectionMenuWidget::GetDefaultFocusWidget_Implementation() const
+{
+	// Pick the first button you want focused when menu opens
+	if (DeathmatchButton) return DeathmatchButton;
+	if (ZombiesButton)    return ZombiesButton;
+	if (BackButton)       return BackButton;
+
+	return Super::GetDefaultFocusWidget_Implementation();
+}
+
 
 void UGameModeSelectionMenuWidget::OnSelectDeathmatchButtonClicked()
 {

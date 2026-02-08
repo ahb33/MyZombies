@@ -8,6 +8,8 @@
 #include "Components/CapsuleComponent.h"
 #include "Engine/ActorChannel.h" 
 #include "GameplayTagContainer.h" 
+#include "AIController.h"
+#include "BehaviorTree/BlackboardComponent.h"
 #include "UObject/UnrealType.h" 
 
 static const TCHAR* RoleToText(ENetRole Role) 
@@ -88,6 +90,7 @@ void FCCGameplayDebuggerCategory::CollectData(APlayerController* OwnerPC, AActor
 {
     Lines.Reset();
 
+    bDrawSphere = false;
     if (!OwnerPC)
     {
         Lines.Add(TEXT("No OwnerPC"));
@@ -100,89 +103,57 @@ void FCCGameplayDebuggerCategory::CollectData(APlayerController* OwnerPC, AActor
         return;
     }
 
-    const FVector Loc = DebugActor->GetActorLocation();
-    const FVector Vel = DebugActor->GetVelocity();
+    APawn* Pawn = Cast<APawn>(DebugActor);
+    AAIController* AI = Pawn ? Cast<AAIController>(Pawn->GetController()) : nullptr;
+    UBlackboardComponent* BB = AI ? AI->GetBlackboardComponent() : nullptr;
+
+    const bool bHasBB = (BB != nullptr);
+
+    const bool bInRange = bHasBB ? BB->GetValueAsBool(TEXT("PlayerWithinRange")) : false;
+    const bool bCanSee  = bHasBB ? BB->GetValueAsBool(TEXT("CanSeePlayer")) : false;
+    const bool bCanHear = bHasBB ? BB->GetValueAsBool(TEXT("CanHearPlayer")) : false;
+
+    SphereCenter = DebugActor->GetActorLocation();
+
+    float Range = 0.f;
+    const bool bHasRange = 
+    TryReadFloat(DebugActor, TEXT("AttackRange"), Range) ||
+    TryReadFloat(DebugActor, TEXT("InteractRange"), Range) ||
+    TryReadFloat(DebugActor, TEXT("InteractionRange"), Range);
+
+    SphereRadius = bHasRange ? Range : FMath::Max(150.f, GetCapsuleRadiusSafe(DebugActor) * 2.5f);
+    SphereColor  = bInRange ? FColor::Red : FColor::Green;
+    bDrawSphere  = true;
 
     Lines.Add(FString::Printf(TEXT("Actor: %s  Class: %s"),
-        *GetNameSafe(DebugActor),
-        *GetNameSafe(DebugActor->GetClass())));
+    *GetNameSafe(DebugActor),
+    *GetNameSafe(DebugActor->GetClass())));
 
-    // UE 5.4: GetNetDormancy(...) returns bool and requires view + viewer context.
-    FVector ViewPos;
-    FRotator ViewRot;
-    OwnerPC->GetPlayerViewPoint(ViewPos, ViewRot);
+    Lines.Add(FString::Printf(TEXT("HasBB: %d  CanSee: %d  CanHear: %d  InRange: %d"),
+    bHasBB ? 1 : 0,
+    bCanSee ? 1 : 0,
+    bCanHear ? 1 : 0,
+    bInRange ? 1 : 0));
 
-    const FVector ViewDir = ViewRot.Vector();
-    AActor* Viewer = OwnerPC->GetPawn();
-    AActor* ViewTarget = OwnerPC->GetViewTarget();
-    const float TimeSeconds = OwnerPC->GetWorld() ? OwnerPC->GetWorld()->TimeSeconds : 0.f;
-
-    const bool bDormantForViewer = DebugActor->GetNetDormancy(
-        ViewPos,
-        ViewDir,
-        Viewer,
-        ViewTarget,
-        /*InChannel=*/nullptr,
-        TimeSeconds,
-        /*bLowBandwidth=*/false
-    );
-
-    Lines.Add(FString::Printf(TEXT("Role: %s  DormantForMe: %d  NetUpdateFreq: %.1f"),
-        RoleToText(DebugActor->GetLocalRole()),
-        bDormantForViewer ? 1 : 0,
-        DebugActor->NetUpdateFrequency));
-
-    Lines.Add(FString::Printf(TEXT("Owner: %s"),
-        *GetNameSafe(DebugActor->GetOwner())));
-
-    Lines.Add(FString::Printf(TEXT("Location: (%.0f, %.0f, %.0f)  Speed: %.1f"),
-        Loc.X, Loc.Y, Loc.Z, Vel.Size()));
-
-    // Gameplay Tags
-    if (const IGameplayTagAssetInterface* TagsIf = Cast<IGameplayTagAssetInterface>(DebugActor))
-    {
-        FGameplayTagContainer Tags;
-        TagsIf->GetOwnedGameplayTags(Tags);
-
-        if (Tags.Num() > 0)
-        {
-            Lines.Add(TEXT("Tags:"));
-            for (const FGameplayTag& T : Tags)
-            {
-                Lines.Add(FString::Printf(TEXT("  - %s"), *T.ToString()));
-            }
-        }
-    }
-
-    // Generic health read (no dependency on your game module)
-    float HP = 0.f, MaxHP = 0.f;
-
-    const bool bHasHP =
-        TryReadFloat(DebugActor, TEXT("PlayerHealth"), HP) ||
-        TryReadFloat(DebugActor, TEXT("Health"), HP);
-
-    const bool bHasMax =
-        TryReadFloat(DebugActor, TEXT("MaxHealth"), MaxHP) ||
-        TryReadFloat(DebugActor, TEXT("MaxHP"), MaxHP);
-
-    if (bHasHP || bHasMax)
-    {
-        Lines.Add(FString::Printf(TEXT("Health: %.1f / %.1f"), HP, MaxHP));
-    }
-
-    bool bDead = false;
-    if (TryReadBool(DebugActor, TEXT("bIsDead"), bDead))
-    {
-        Lines.Add(FString::Printf(TEXT("Dead: %s"), bDead ? TEXT("true") : TEXT("false")));
-    }
+    Lines.Add(FString::Printf(TEXT("RangeSphere Radius: %.0f (source: %s)"),
+    SphereRadius,
+    bHasRange ? TEXT("prop") : TEXT("fallback")));
 }
 
-void FCCGameplayDebuggerCategory::DrawData(APlayerController* /*OwnerPC*/, FGameplayDebuggerCanvasContext& CanvasContext)
+void FCCGameplayDebuggerCategory::DrawData(APlayerController* OwnerPC, FGameplayDebuggerCanvasContext& CanvasContext)
 {
     for (const FString& L : Lines)
     {
         CanvasContext.Printf(TEXT("%s"), *L);
     }
+
+    if (!bDrawSphere || !OwnerPC) return;
+
+    UWorld* World = OwnerPC->GetWorld();
+    if (!World) return;
+
+    // Lifetime 0 => redraw each frame while debugger is open/active.
+    DrawDebugSphere(World, SphereCenter, SphereRadius, 24, SphereColor, false, 0.f, 0, 2.0f);
 }
 
 #endif 

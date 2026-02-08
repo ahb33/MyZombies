@@ -5,24 +5,42 @@
 #include "Kismet/GameplayStatics.h"
 #include "MyGameInstance.h"
 
-void UCreateSessionMenuWidget::NativeConstruct()
+void UCreateSessionMenuWidget::NativeOnInitialized()
 {
     Super::NativeConstruct();
 
     if (CreateSessionButton)
     {
-        CreateSessionButton->OnClicked.AddDynamic(this, &UCreateSessionMenuWidget::OnCreateSessionClicked);
+        CreateSessionButton->OnClicked.AddUniqueDynamic(this, &UCreateSessionMenuWidget::OnCreateSessionClicked);
     }
 
     if (const UMyGameInstance* GI = Cast<UMyGameInstance>(GetGameInstance()))
     {
         MultiplayerSubsystem = GI->GetMultiplayerSessions();
-
-        if (MultiplayerSubsystem && !MultiplayerSubsystem->MultiplayerOnCreateSessionComplete.IsAlreadyBound(this, &UCreateSessionMenuWidget::OnCreateSessionComplete))
+        if (MultiplayerSubsystem)
         {
-            MultiplayerSubsystem->MultiplayerOnCreateSessionComplete.AddDynamic(this, &UCreateSessionMenuWidget::OnCreateSessionComplete);
+            MultiplayerSubsystem->MultiplayerOnCreateSessionComplete.AddUniqueDynamic(
+                this, &UCreateSessionMenuWidget::OnCreateSessionComplete
+            );
         }
     }
+}
+
+void UCreateSessionMenuWidget::NativeDestruct()
+{
+    if (CreateSessionButton)
+    {
+        CreateSessionButton->OnClicked.RemoveDynamic(this, &UCreateSessionMenuWidget::OnCreateSessionClicked);
+    }
+
+    if (MultiplayerSubsystem)
+    {
+        MultiplayerSubsystem->MultiplayerOnCreateSessionComplete.RemoveDynamic(
+            this, &UCreateSessionMenuWidget::OnCreateSessionComplete
+        );
+    }
+
+    Super::NativeDestruct();
 }
 
 void UCreateSessionMenuWidget::OnCreateSessionClicked()

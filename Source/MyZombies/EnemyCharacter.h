@@ -16,6 +16,8 @@
 class AMyAIController;
 class UBlackboardComponent;
 class UAnimMontage;
+class USphereComponent; 
+
 
 
 DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnZombieDeath);
@@ -29,9 +31,16 @@ public:
 	// Sets default values for this character's properties
 	AEnemyCharacter();
 
-	// Properties and functions that all enemies should have
-    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "AI")
-    UBehaviorTree* BehaviorTree;
+	UBehaviorTree* GetBehaviorTree() const { return BehaviorTree.Get(); }
+
+	bool CanSeePlayer() const { return bCanSeePlayer; }
+    bool CanHearPlayer() const { return bCanHearPlayer; }
+    bool IsPlayerWithinRange() const { return bPlayerWithinRange; }
+    bool IsChasing() const { return bIsChasing; }
+
+	void SetPerceptionState(bool bSee, bool bHear, bool bInRange);
+    void SetChasingState(bool bChasing);
+
 
 	UFUNCTION(BlueprintCallable, Category="Combat")
     virtual void Attack();
@@ -47,7 +56,6 @@ public:
         OutTags.AppendTags(CharacterTags);
     }
 
-
 	virtual float TakeDamage(float DamageAmount, struct FDamageEvent const& DamageEvent,
     class AController* EventInstigator, AActor* DamageCauser) override;
 
@@ -58,6 +66,8 @@ public:
 
 	UFUNCTION()
 	void OnRep_IsDead();
+	UFUNCTION()
+	void ApplyDeadState();
 
     // Functions to set multipliers or adjust properties based on stats
     void ApplyCharacterStats();
@@ -67,8 +77,6 @@ public:
 
 	FORCEINLINE float GetWalkSpeed()  const { return WalkSpeed;  }
 	FORCEINLINE float GetChaseSpeed() const { return ChaseSpeed; }
-	FORCEINLINE void  SetWalkSpeed(float InWalk)   { WalkSpeed  = InWalk; }
-	FORCEINLINE void  SetChaseSpeed(float InChase) { ChaseSpeed = InChase; }
 	FORCEINLINE float  GetAttackRange() const { return AttackRange; }
 	
 protected:
@@ -80,12 +88,12 @@ protected:
 private:	
 
 	// overlap
-	class USphereComponent* CollisionSphere; 
+	TObjectPtr<USphereComponent> CollisionSphere = nullptr; 
 	
     UPROPERTY(Replicated, BlueprintReadWrite, EditAnywhere, Category = Health, meta = (AllowPrivateAccess = "true"))
     float BaseHealth;
 
-	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = Health, meta = (AllowPrivateAccess = "true"))
+	UPROPERTY(Replicated, BlueprintReadWrite, EditAnywhere, Category = Health, meta = (AllowPrivateAccess = "true"))
     float MaxHealth = 100;
 	
 	UPROPERTY(ReplicatedUsing=OnRep_IsDead)
@@ -96,21 +104,37 @@ private:
 	// AI Character stats for configuring properties in the editor
     FAICharacterStats CharacterStats;
 
+	// Properties and functions that all enemies should have
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "AI", meta=(AllowPrivateAccess="true"))
+    TObjectPtr<UBehaviorTree> BehaviorTree = nullptr;
+
 	UPROPERTY(Replicated, VisibleAnywhere, Category="Tags", meta=(AllowPrivateAccess="true"))
 	FGameplayTagContainer CharacterTags;
 
-protected:
 
 	// EnemyCharacter.h (only the essentials)
 	UPROPERTY(EditAnywhere, Category="Combat") float AttackRange    = 120.f;
 	UPROPERTY(EditAnywhere, Category="Combat") float AttackDamage   = 20.f;
 	UPROPERTY(EditAnywhere, Category="Combat") float AttackCooldown = 1.2f;
-	UPROPERTY(EditAnywhere, Category="Combat") UAnimMontage* AttackMontage = nullptr;
+	UPROPERTY(EditAnywhere, Category="Combat") TObjectPtr<UAnimMontage> AttackMontage = nullptr;
 	UPROPERTY(EditAnywhere, Category="AI|Blackboard") FName BBKey_Player = TEXT("Player");
 
 	float NextAttackTime = 0.f;          // per-enemy cooldown
 
 	UPROPERTY(EditAnywhere, Category="Movement") float WalkSpeed  = 120.f;
     UPROPERTY(EditAnywhere, Category="Movement") float ChaseSpeed = 360.f; // set your chase speed
+
+	UPROPERTY(Replicated, BlueprintReadOnly, Category="AI|Anim", meta=(AllowPrivateAccess="true"))
+	bool bCanSeePlayer = false;
+
+	UPROPERTY(Replicated, BlueprintReadOnly, Category="AI|Anim", meta=(AllowPrivateAccess="true"))
+	bool bCanHearPlayer = false;
+
+	UPROPERTY(Replicated, BlueprintReadOnly, Category="AI|Anim", meta=(AllowPrivateAccess="true"))
+	bool bPlayerWithinRange = false;
+
+	UPROPERTY(Replicated, BlueprintReadOnly, Category="AI|Anim", meta=(AllowPrivateAccess="true"))
+    bool bIsChasing = false;
+
 
 };

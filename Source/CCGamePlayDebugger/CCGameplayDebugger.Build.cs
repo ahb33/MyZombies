@@ -11,7 +11,8 @@ public class CCGameplayDebugger : ModuleRules
         { 
             "Core", 
             "CoreUObject", 
-            "Engine" 
+            "Engine",
+            "AIModule"
         }); 
 
         PrivateDependencyModuleNames.AddRange(new string[]     

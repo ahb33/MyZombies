@@ -77,7 +77,7 @@ void AMyAIController::OnPossess(APawn* InPawn)
 		DefaultWalkSpeed = Move->MaxWalkSpeed;
 	}
 
-	if (UBehaviorTree* BT = Enemy->BehaviorTree)
+	if (UBehaviorTree* BT = Enemy->GetBehaviorTree())
 	{
 		if (BT->BlackboardAsset)
 		{
@@ -129,7 +129,6 @@ void AMyAIController::OnTargetPerceptionUpdate(AActor* Actor, FAIStimulus Stimul
         if (bSensed)
         {
             BB->SetValueAsObject(KEY_Player, SeenPlayer);
-            // Optional: if you want hearing to update LKP too:
             BB->SetValueAsVector(KEY_LastKnownPosition, Stimulus.StimulusLocation);
         }
     }
@@ -139,12 +138,21 @@ void AMyAIController::OnTargetPerceptionUpdate(AActor* Actor, FAIStimulus Stimul
 
     if (UCharacterMovementComponent* Move = Enemy->GetCharacterMovement())
     {
-        const float Desired = (bSee || bHear) ? Enemy->GetChaseSpeed() : DefaultWalkSpeed;
+        const bool bChasing = (bSee || bHear);
+        const float Desired = bChasing ? Enemy->GetChaseSpeed() : DefaultWalkSpeed;
         SetWalkSpeedIfChanged(Move, Desired);
+        Enemy->SetChasingState(bChasing);
+
     }
 
-    const bool bInRange = IsPlayerWithinRange(SeenPlayer, Enemy);
-    BB->SetValueAsBool(KEY_PlayerWithinRange, bInRange);
+	AMainCharacter* BBPlayer = Cast<AMainCharacter>(BB->GetValueAsObject(KEY_Player));
+	const bool bInRange = IsPlayerWithinRange(BBPlayer, Enemy);
+	BB->SetValueAsBool(KEY_PlayerWithinRange, bInRange);
+
+    Enemy->SetPerceptionState(bSee, bHear, bInRange);
+
+
+       
 
 }
 

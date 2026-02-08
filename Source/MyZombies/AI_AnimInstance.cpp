@@ -53,16 +53,15 @@ void UAI_AnimInstance::NativeUpdateAnimation(float DeltaTime)
 
         // Clamp to CURRENT MaxWalkSpeed (dynamic), not a fixed 360
         const float CurrentMax = Move ? Move->MaxWalkSpeed : 360.f;
-        MovementSpeed = FMath::Clamp(MovementSpeed, 0.f, CurrentMax);
+        MovementSpeed = FVector(PawnInstance->GetVelocity().X, PawnInstance->GetVelocity().Y, 0.f).Size();
 
         UE_LOG(LogTemp, VeryVerbose, TEXT("[Anim] TargetSpeed=%.1f MovementSpeed=%.1f MaxWalkSpeed=%.1f"),
             TargetSpeed, MovementSpeed, CurrentMax);
 
-        if (AAIController* AIC = Cast<AAIController>(PawnInstance->GetController()))
-        if (UBlackboardComponent* BB = AIC->GetBlackboardComponent())
+        if (EnemyCharacterInstance)
         {
-            SetPlayerVisibility(BB->GetValueAsBool(TEXT("CanSeePlayer")));
-            SetPlayerAttackRange(BB->GetValueAsBool(TEXT("PlayerWithinRange")));
+            SetPlayerVisibility(EnemyCharacterInstance->CanSeePlayer());
+            SetPlayerAttackRange(EnemyCharacterInstance->IsPlayerWithinRange());
         }
     }
 }

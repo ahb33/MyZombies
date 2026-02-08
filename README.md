@@ -1,20 +1,49 @@
 "# MyZombies" 
 
-Project Overview
-    This project is a multiplayer Unreal Engine game built to explore UI system architecture, gameplay flow, and debugging workflows in a networked environment. The primary focus of this portfolio slice is a complete Zombies game mode, supported by modular UI systems and custom developer tools.
-Key Systems Demonstrated
-•	Multiplayer client/server gameplay (authority, replication boundaries)
-•	Centralized UI management via MenuUIManager owned by PlayerController
-•	Input profile switching (Gameplay, Lobby, Pause) without widget logic leaks
-•	Event-driven UI updates using delegates (no per-frame UI ticking)
-•	Custom Gameplay Debugger category for runtime inspection
-Design Decisions
-•	GameMode owns rules (server-only)
-•	GameState owns replicated match state (rounds, phases)
-•	PlayerController owns all UI decisions and input modes
-•	Widgets are presentation-only, never owning game logic
-Scope Note
-    A Deathmatch mode is planned but intentionally excluded from this slice. I chose to polish a complete Zombies gameplay loop and supporting tools rather than spread effort across unfinished modes.
-Keyboard/Focus-ready UI: 
-    MenuUIManager assigns default focus on menu open (post-AddToViewport) via each menu’s       GetDefaultFocusWidget(); focus is applied with SetUserFocus/SetKeyboardFocus and widgets are marked focusable for keyboard/controller navigation.
 
+Overview
+    Multiplayer Unreal Engine project focused on UI system architecture,networked gameplay flow, and debug friendly workflows. This portfolio slice highlights a complete Zombies mode supported by a modular UMG menu stack, HUD updates, and multiplayer session UX.
+
+Tech
+    Unreal Engine (C++ + Blueprints/UMG)
+    Client/server networking (authority + replication boundaries)
+    Online sessions (create/find/join flow)
+    Gameplay Debugger (custom category)
+
+UI Systems Demonstrated
+    Centralized UI management : `UMenuUIManager` owned by `AMyPlayerController` (single source of truth for menu stack + transitions)
+    Menu stack navigation : show / push / pop across Main → Mode Select → Multiplayer → Create/Join
+    Async UX states : session search disables inputs + blocks navigation, shows “searching” state, then renders results
+    Input mode switching : UI only vs gameplay modes controlled by PlayerController (no widget logic leaks)
+    Keyboard/controller focus : menus expose `GetDefaultFocusWidget()`; focus applied post `AddToViewport` via `SetUserFocus/SetKeyboardFocus`
+    In game HUD + overlays : health/ammo updates, pause menu, death/game over screens
+    Round intro presentation : round splash + audio cue, plus persistent round HUD
+
+Networking / Replication Highlights
+    Clear server authority boundaries (damage/death, match flow)
+    Replicated gameplay state drives UI (no per frame UI polling where avoidable)
+    Multiplayer ready UI behavior (client leave vs server shutdown flow)
+
+Debugging / Tooling
+    Custom Gameplay Debugger category for runtime inspection (network + actor state)
+    Built to support fast iteration and verification of replicated behavior
+
+Architecture Decisions
+  GameMode: server only rules
+  GameState: replicated match state (rounds/phases)
+  PlayerController: owns UI decisions + input modes
+  Widgets: presentation only (no gameplay authority)
+
+Scope Note
+A Deathmatch mode is planned but intentionally excluded from this slice. The focus is a polished Zombies loop and supporting UI/tools rather than splitting effort across unfinished modes.
+
+How to Run (Quick)
+  Open the project and play `MainMenu_Level`
+  Multiplayer flow: Mode Select → Multiplayer → Find/Join (or Create Session) → Lobby → Ready → Start
+
+Demo Checklist (What to Look For)
+  Menu stack navigation + focus behavior
+  Async session search UX (disabled buttons + blocker + status text)
+  Join session → lobby ready flow
+  In game HUD updates (health/ammo) + pause/death/game over
+  Round splash + persistent round HUD
