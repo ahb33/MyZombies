@@ -35,27 +35,40 @@ void AAI_EnemySpawner::InitZombieArray(int32 NumberOfZombies)
     UE_LOG(LogTemp, Warning, TEXT("InitZombiesArray Called"));
 
     ZombieSpawnArray.Empty(); // emptires array
+    TotalZombiesToSpawn = FMath::Max(0, NumberOfZombies); 
+    ZombieSpawnCount = 0; // Reset spawn count
 
     if (BP_EnemyCharacterClass)
     {
         ZombieSpawnArray.AddUnique(BP_EnemyCharacterClass); // Prevent duplicates
-        TotalZombiesToSpawn = NumberOfZombies; // Set spawn limit per level
-        ZombieSpawnCount = 0; // Reset spawn count
     }
+
+    if (UWorld* World = GetWorld())
+	{
+		World->GetTimerManager().ClearTimer(SpawnTimerHandle);
+	}
 }
 
 void AAI_EnemySpawner::SpawnZombies(int32 NumberOfZombies)
 {
 	// if array is empty return
 	// if actor does not have authority to spawn return
-    if (ZombieSpawnArray.IsEmpty() || !HasAuthority()) return;
+    if (!HasAuthority() || !GetWorld() || !SpawnArea) return;
+    if (ZombieSpawnArray.IsEmpty()) return;
     
+    GetWorld()->GetTimerManager().ClearTimer(SpawnTimerHandle);
     // Spawning zombies with a cooldown interval
     GetWorld()->GetTimerManager().SetTimer(SpawnTimerHandle, this, &AAI_EnemySpawner::Spawn, SpawnCooldown, true);
 }
 
 void AAI_EnemySpawner::Spawn()
 {
+    if (!HasAuthority() || !GetWorld() || !SpawnArea)
+	{
+		return;
+	}
+    if (ZombieSpawnArray.IsEmpty()) return;
+
     if (ZombieSpawnCount >= TotalZombiesToSpawn)
     {
         GetWorld()->GetTimerManager().ClearTimer(SpawnTimerHandle);
@@ -63,6 +76,7 @@ void AAI_EnemySpawner::Spawn()
     }
 
     const auto ZombieClass = ZombieSpawnArray[FMath::RandRange(0, ZombieSpawnArray.Num() - 1)];
+    if(!ZombieClass) return;
     const auto SpawnRotation = FRotator::ZeroRotator;
     const auto SpawnLocation = SpawnArea->GetComponentLocation() + FVector(
         FMath::RandRange(-SpawnArea->GetScaledBoxExtent().X, SpawnArea->GetScaledBoxExtent().X),

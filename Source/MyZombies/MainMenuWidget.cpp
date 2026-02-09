@@ -33,3 +33,10 @@ void UMainMenuWidget::OnMultiplayerClicked()
 	// Push so selection menu can Pop() back to Main
 	RequestPushMenu(TEXT("GameModeSelectionMenu"));
 }
+
+UWidget* UMainMenuWidget::GetDefaultFocusWidget_Implementation() const
+{
+    if (SoloButton) return SoloButton;
+    if (MultiplayerButton) return MultiplayerButton;
+    return Super::GetDefaultFocusWidget_Implementation();
+}

@@ -18,7 +18,16 @@ class UBlackboardComponent;
 class UAnimMontage;
 class USphereComponent; 
 
+USTRUCT(BlueprintType)
+struct FPerceptionState
+{
+    GENERATED_BODY()
 
+    UPROPERTY(BlueprintReadOnly) bool bSee = false;
+    UPROPERTY(BlueprintReadOnly) bool bHear = false;
+    UPROPERTY(BlueprintReadOnly) bool bInRange = false;
+    UPROPERTY(BlueprintReadOnly) bool bChasing = false;
+};
 
 DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnZombieDeath);
 
@@ -32,11 +41,10 @@ public:
 	AEnemyCharacter();
 
 	UBehaviorTree* GetBehaviorTree() const { return BehaviorTree.Get(); }
-
-	bool CanSeePlayer() const { return bCanSeePlayer; }
-    bool CanHearPlayer() const { return bCanHearPlayer; }
-    bool IsPlayerWithinRange() const { return bPlayerWithinRange; }
-    bool IsChasing() const { return bIsChasing; }
+    bool CanSeePlayer() const { return PerceptionState.bSee; }
+    bool CanHearPlayer() const { return PerceptionState.bHear; }
+    bool IsPlayerWithinRange() const { return PerceptionState.bInRange; }
+    bool IsChasing() const { return PerceptionState.bChasing; }
 
 	void SetPerceptionState(bool bSee, bool bHear, bool bInRange);
     void SetChasingState(bool bChasing);
@@ -124,17 +132,11 @@ private:
 	UPROPERTY(EditAnywhere, Category="Movement") float WalkSpeed  = 120.f;
     UPROPERTY(EditAnywhere, Category="Movement") float ChaseSpeed = 360.f; // set your chase speed
 
-	UPROPERTY(Replicated, BlueprintReadOnly, Category="AI|Anim", meta=(AllowPrivateAccess="true"))
-	bool bCanSeePlayer = false;
+	UPROPERTY(ReplicatedUsing=OnRep_PerceptionState)
+	FPerceptionState PerceptionState;
 
-	UPROPERTY(Replicated, BlueprintReadOnly, Category="AI|Anim", meta=(AllowPrivateAccess="true"))
-	bool bCanHearPlayer = false;
-
-	UPROPERTY(Replicated, BlueprintReadOnly, Category="AI|Anim", meta=(AllowPrivateAccess="true"))
-	bool bPlayerWithinRange = false;
-
-	UPROPERTY(Replicated, BlueprintReadOnly, Category="AI|Anim", meta=(AllowPrivateAccess="true"))
-    bool bIsChasing = false;
+	UFUNCTION()
+	void OnRep_PerceptionState();
 
 
 };

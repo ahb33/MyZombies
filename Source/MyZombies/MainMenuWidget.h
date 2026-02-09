@@ -16,7 +16,7 @@ class MYZOMBIES_API UMainMenuWidget : public UBaseMenuWidget
 protected:
 	virtual void NativeOnInitialized() override;
 	
- 	virtual UWidget* GetDefaultFocusWidget_Implementation() const override {return SoloButton ? SoloButton : MultiplayerButton;}
+ 	virtual UWidget* GetDefaultFocusWidget_Implementation() const override;
 
 private:
 	UFUNCTION()

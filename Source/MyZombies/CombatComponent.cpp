@@ -122,7 +122,7 @@ void UCombatComponent::OnFireCooldownFinished()
 
 
 void UCombatComponent::PerformLocalAndServerFire(const FVector_NetQuantize& Target, void (UCombatComponent::*LocalFunc)(const FVector_NetQuantize&),
-                                                                                    void (UCombatComponent::*ServerFunc)(const FVector_NetQuantize&))
+void (UCombatComponent::*ServerFunc)(const FVector_NetQuantize&))
 {
     if (!GetMainCharacter()) return;
     if (!GetMainCharacter()->HasAuthority()) (this->*LocalFunc)(Target);
@@ -359,6 +359,7 @@ void UCombatComponent::ServerReload_Implementation()
     GetEquippedWeapon()->RefreshHUD();
 
     float ReloadDuration = GetMainCharacter()->GetReloadDuration();
+    ReloadDuration = FMath::Max(0.f, ReloadDuration - 2.f);
     
     // UE_LOG(LogTemp, Warning, TEXT("ReloadTimer = %.2f, MontageLen = %.2f"),ReloadDuration,MainCharacter->GetReloadMontage() ? MainCharacter->GetReloadMontage()->GetPlayLength() : 0.f);
 
@@ -437,6 +438,11 @@ void UCombatComponent::OnRep_CombatState()
         case ECombatState::ECS_Unoccupied:
             bIsReloading = false;
             bCanFire = true;
+
+            if (bFireButtonPressed && GetMainCharacter()->IsLocallyControlled())
+            {
+                Fire();
+            }
             break;
 
         default: break;

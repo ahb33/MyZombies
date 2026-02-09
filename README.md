@@ -34,6 +34,9 @@ Architecture Decisions
   PlayerController: owns UI decisions + input modes
   Widgets: presentation only (no gameplay authority)
 
+Animation-driven melee damage (server-authoritative)
+    Implemented a custom UAnimNotifyState (“MeleeWindow”) that opens a hit window during the attack montage and performs a socket-based sphere sweep each tick to apply damage on the server only, with per-swing hit tracking to prevent double-hits.
+
 Scope Note
 A Deathmatch mode is planned but intentionally excluded from this slice. The focus is a polished Zombies loop and supporting UI/tools rather than splitting effort across unfinished modes.
 

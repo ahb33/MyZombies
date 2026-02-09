@@ -41,10 +41,26 @@ AEnemyCharacter::AEnemyCharacter()
 void AEnemyCharacter::BeginPlay()
 {
     Super::BeginPlay();
-    if (HasAuthority())
+
+    if (!HasAuthority()) return;
+
+    const FString Diff = GetWorld() ? FString(GetWorld()->URL.GetOption(TEXT("Difficulty="), TEXT("Medium"))) : TEXT("Medium");
+
+    float HealthMult = 1.0f, SpeedMult = 1.0f, DamageMult = 1.0f;
+    if (Diff.Equals(TEXT("Easy"), ESearchCase::IgnoreCase))      { HealthMult = 0.8f; SpeedMult = 0.9f; DamageMult = 0.8f; }
+    else if (Diff.Equals(TEXT("Hard"), ESearchCase::IgnoreCase)) { HealthMult = 1.3f; SpeedMult = 1.1f; DamageMult = 1.2f; }
+
+    MaxHealth    *= HealthMult;
+    AttackDamage *= DamageMult;
+    WalkSpeed    *= SpeedMult;
+    ChaseSpeed   *= SpeedMult;
+
+    if (UCharacterMovementComponent* Move = GetCharacterMovement())
     {
-        BaseHealth = MaxHealth;              
+        Move->MaxWalkSpeed = WalkSpeed;
     }
+
+    BaseHealth = MaxHealth;
 }
 
 void AEnemyCharacter::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
@@ -54,13 +70,8 @@ void AEnemyCharacter::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutL
     DOREPLIFETIME(AEnemyCharacter, BaseHealth);
     DOREPLIFETIME(AEnemyCharacter, bIsDead);
     DOREPLIFETIME(AEnemyCharacter, CharacterTags);
-
-
-    DOREPLIFETIME(AEnemyCharacter, bCanSeePlayer);
-    DOREPLIFETIME(AEnemyCharacter, bCanHearPlayer);
-    DOREPLIFETIME(AEnemyCharacter, bPlayerWithinRange);
-    DOREPLIFETIME(AEnemyCharacter, bIsChasing);
     DOREPLIFETIME(AEnemyCharacter, MaxHealth);
+    DOREPLIFETIME(AEnemyCharacter, PerceptionState);
 }
 
 
@@ -141,7 +152,7 @@ float AEnemyCharacter::TakeDamage(float DamageAmount, const FDamageEvent& Damage
     if (BaseHealth <= 0.f && !bIsDead)
     {
         bIsDead = true;
-        ApplyDeadState();   // server visuals
+        ApplyDeadState(); 
         ForceNetUpdate(); 
         GetWorld()->GetTimerManager().SetTimer(DestructionTimer, this, &AEnemyCharacter::Die, 3.0f, false);
     }
@@ -158,29 +169,6 @@ void AEnemyCharacter::Die()
         }
 
         Destroy();
-    }
-}
-void AEnemyCharacter::ApplyDeadState()
-{
-    if (HasAuthority())
-    {
-        if (AAIController* AIC = Cast<AAIController>(GetController()))
-        {
-            AIC->StopMovement();
-            if (UBrainComponent* Brain = AIC->GetBrainComponent())
-            {
-                Brain->StopLogic(TEXT("Dead"));
-            }
-        }
-
-        if (UCharacterMovementComponent* Move = GetCharacterMovement())
-        {
-            Move->DisableMovement();
-        }
-    }
-    if (UAI_AnimInstance* AI = Cast<UAI_AnimInstance>(GetMesh() ? GetMesh()->GetAnimInstance() : nullptr))
-    {
-        AI->SetIsDead(true);
     }
 }
 
@@ -209,23 +197,61 @@ void AEnemyCharacter::SetPerceptionState(bool bSee, bool bHear, bool bInRange)
     if (!HasAuthority()) return;
 
     const bool bChanged =
-        (bCanSeePlayer != bSee) ||
-        (bCanHearPlayer != bHear) ||
-        (bPlayerWithinRange != bInRange);
+        (PerceptionState.bSee != bSee) ||
+        (PerceptionState.bHear != bHear) ||
+        (PerceptionState.bInRange != bInRange);
 
-        bCanSeePlayer = bSee;
-        bCanHearPlayer = bHear;
-        bPlayerWithinRange = bInRange;
+    if (!bChanged) return;
 
-        if (bChanged) ForceNetUpdate();
+    PerceptionState.bSee = bSee;
+    PerceptionState.bHear = bHear;
+    PerceptionState.bInRange = bInRange;
+
+    ForceNetUpdate();
 }
-
 
 void AEnemyCharacter::SetChasingState(bool bChasing)
 {
     if (!HasAuthority()) return;
-    if (bIsChasing == bChasing) return;
-    bIsChasing = bChasing;
+
+    if (PerceptionState.bChasing == bChasing) return;    
+
+        PerceptionState.bChasing = bChasing;
     ForceNetUpdate();
 }
+
+
+void AEnemyCharacter::OnRep_PerceptionState()
+{
+    if (UAI_AnimInstance* AI = Cast<UAI_AnimInstance>(GetMesh() ? GetMesh()->GetAnimInstance() : nullptr))
+    {
+        AI->SetPlayerVisibility(PerceptionState.bSee);
+        AI->SetPlayerAttackRange(PerceptionState.bInRange);
+    }
+}
+void AEnemyCharacter::ApplyDeadState()
+{
+    if (HasAuthority())
+    {
+        if (AAIController* AIC = Cast<AAIController>(GetController()))
+        {
+            AIC->StopMovement();
+            if (UBrainComponent* Brain = AIC->GetBrainComponent())
+            {
+                Brain->StopLogic(TEXT("Dead"));
+            }
+        }
+
+        if (UCharacterMovementComponent* Move = GetCharacterMovement())
+        {
+            Move->DisableMovement();
+        }
+    }
+
+    if (UAI_AnimInstance* AI = Cast<UAI_AnimInstance>(GetMesh() ? GetMesh()->GetAnimInstance() : nullptr))
+    {
+        AI->SetIsDead(true);
+    }
+}
+
 

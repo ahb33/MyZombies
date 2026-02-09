@@ -8,7 +8,12 @@
 #include "Blueprint/WidgetLayoutLibrary.h"
 #include "InputCoreTypes.h"
 
-// Fill out your copyright notice in the Description page of Project Settings.
+void UBaseMenuWidget::NativeConstruct()
+{
+    Super::NativeConstruct();
+    CachedPC = GetMyPC(); // works if CreateWidget was given an owning player
+}
+
 void UBaseMenuWidget::NativeOnInitialized()
 {
 	Super::NativeOnInitialized();
@@ -62,14 +67,15 @@ void UBaseMenuWidget::FocusWidget(UWidget* WidgetToFocus)
 
 	if (UButton* Button = Cast<UButton>(Target))
 	{
+
 		FocusStyledButton = Button;
-		FocusStyledButtonOriginalStyle = Button->WidgetStyle;
+		FocusStyledButtonOriginalStyle = Button->GetStyle();
 
 		FButtonStyle FocusStyle = FocusStyledButtonOriginalStyle;
-
-		// Make "focused" look like "hovered"
 		FocusStyle.SetNormal(FocusStyle.Hovered);
-		FocusStyle.NormalForeground = FocusStyle.HoveredForeground; // helps text/icon tint match
+		FocusStyle.SetPressed(FocusStyle.Hovered);
+		FocusStyle.NormalForeground  = FocusStyle.HoveredForeground;
+		FocusStyle.PressedForeground = FocusStyle.HoveredForeground;
 
 		Button->SetStyle(FocusStyle);
 	}

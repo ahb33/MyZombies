@@ -20,7 +20,7 @@ class MYZOMBIES_API AAmmoPickUp : public APickUp
 
 public:
 
-	AAmmoPickUp() = default;
+	AAmmoPickUp();
 
 	EWeaponType GetWeaponType() const {return WeaponType;}
 
@@ -29,19 +29,11 @@ public:
 private:
 
 	UPROPERTY(EditAnywhere, Category="Weapon")
-	EWeaponType WeaponType = EWeaponType::None;
+	EWeaponType WeaponType = EWeaponType::AssaultRifle;
 
 	UPROPERTY(EditAnywhere, Category="Weapon", meta=(ClampMin="0"))
 	int32 AmmoAmount = 0;
 
-	int32 GetAmmoAmountForWeaponType() const
-	{
-		switch (WeaponType)
-		{
-		case EWeaponType::AssaultRifle: return 50;
-		case EWeaponType::Shotgun:      return 8;
-		default:                        return 0;
-		}
-	}
+	static int32 GetAmmoAmountForWeaponType(EWeaponType InType);
 };
 

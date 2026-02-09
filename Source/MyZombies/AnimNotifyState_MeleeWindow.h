@@ -19,7 +19,7 @@ public:
 	FName StrikeSocket = TEXT("hand_r");         
 
 	UPROPERTY(EditAnywhere, Category="Melee")
-	float SphereRadius = 12.f; // cm
+	float SphereRadius = 15.f; // cm
 
 	UPROPERTY(EditAnywhere, Category="Melee")
 	TEnumAsByte<ECollisionChannel> TraceChannel = ECC_Pawn;

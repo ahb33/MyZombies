@@ -73,6 +73,9 @@ private:
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Animation", meta=(AllowPrivateAccess="true"))
 	float MaxBlendSpeed = 360.f; 
+	
+	FVector PrevLoc = FVector::ZeroVector;
+	bool bHasPrevLoc = false;
 
 
 };

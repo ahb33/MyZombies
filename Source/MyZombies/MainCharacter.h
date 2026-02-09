@@ -103,7 +103,6 @@ public:
 	// Ammo hook (wire to CombatComponent/Weapon later)
 	UFUNCTION(BlueprintNativeEvent, Category="Combat")
 	bool AddAmmoFromPickup(EWeaponType WeaponType, int32 Amount);
-	virtual bool AddAmmoFromPickup_Implementation(EWeaponType WeaponType, int32 Amount);
 
 	// --- Input actions ---
 	void EquipButtonPressed();

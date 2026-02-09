@@ -7,23 +7,23 @@
 
 void UCreateSessionMenuWidget::NativeOnInitialized()
 {
-    Super::NativeConstruct();
-
-    if (CreateSessionButton)
-    {
-        CreateSessionButton->OnClicked.AddUniqueDynamic(this, &UCreateSessionMenuWidget::OnCreateSessionClicked);
-    }
+    Super::NativeOnInitialized();
 
     if (const UMyGameInstance* GI = Cast<UMyGameInstance>(GetGameInstance()))
     {
         MultiplayerSubsystem = GI->GetMultiplayerSessions();
-        if (MultiplayerSubsystem)
-        {
-            MultiplayerSubsystem->MultiplayerOnCreateSessionComplete.AddUniqueDynamic(
-                this, &UCreateSessionMenuWidget::OnCreateSessionComplete
-            );
-        }
     }
+}
+
+void UCreateSessionMenuWidget::NativeConstruct()
+{
+    Super::NativeConstruct();
+
+    if (CreateSessionButton)
+        CreateSessionButton->OnClicked.AddUniqueDynamic(this, &UCreateSessionMenuWidget::OnCreateSessionClicked);
+
+    if (MultiplayerSubsystem)
+        MultiplayerSubsystem->MultiplayerOnCreateSessionComplete.AddUniqueDynamic(this, &UCreateSessionMenuWidget::OnCreateSessionComplete);
 }
 
 void UCreateSessionMenuWidget::NativeDestruct()

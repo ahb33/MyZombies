@@ -36,12 +36,12 @@ private:
 
 	void HandleGameModeSelection(FName GameModeName);
 
-	UPROPERTY(meta=(BindWidgetOptional))
+	UPROPERTY(BlueprintReadOnly, Category="UI|Widgets", meta=(BindWidgetOptional, AllowPrivateAccess="true"))
 	TObjectPtr<UButton> DeathmatchButton = nullptr;
 
-	UPROPERTY(meta=(BindWidgetOptional))
+	UPROPERTY(BlueprintReadOnly, Category="UI|Widgets", meta=(BindWidgetOptional, AllowPrivateAccess="true"))
 	TObjectPtr<UButton> ZombiesButton = nullptr;
 
-	UPROPERTY(meta=(BindWidgetOptional))
+	UPROPERTY(BlueprintReadOnly, Category="UI|Widgets", meta=(BindWidgetOptional, AllowPrivateAccess="true"))
 	TObjectPtr<UButton> BackButton = nullptr;
 };

@@ -17,10 +17,14 @@ void UAI_AnimInstance::NativeInitializeAnimation()
     Super::NativeInitializeAnimation(); // this calls the parent function to ensure code in it gets called
     if(PawnInstance == nullptr) // the following code is to ensure we the function does not return a nullptr which could cause a crash
     {               
+        
         PawnInstance = TryGetPawnOwner(); // this function will return the Pawn belonging to this animinstance
+        EnemyCharacterInstance = Cast<AEnemyCharacter>(PawnInstance);
+
         if (PawnInstance)
-        {        
-            EnemyCharacterInstance = Cast<AEnemyCharacter>(PawnInstance);
+        {
+            PrevLoc = PawnInstance->GetActorLocation();
+            bHasPrevLoc = true;
         }
 
         /* if both checks above succeed, we will have a variable with access to the pawn in
@@ -32,36 +36,39 @@ void UAI_AnimInstance::NativeUpdateAnimation(float DeltaTime)
 {
     Super::NativeUpdateAnimation(DeltaTime);
 
-    // Ensure that we always have a valid reference to Pawn.
-    if (PawnInstance == nullptr)
+    if (!PawnInstance)
     {
         PawnInstance = TryGetPawnOwner();
-        // Attempt to cast once and cache the result for future frames.
         EnemyCharacterInstance = Cast<AEnemyCharacter>(PawnInstance);
+        if (PawnInstance)
+        {
+            PrevLoc = PawnInstance->GetActorLocation();
+            bHasPrevLoc = true;
+        }
     }
 
-    // Once Pawn is valid, we proceed to update the animation properties.
-    if (PawnInstance)
+    if (!PawnInstance) return;
+
+    // Speed from velocity (if valid) OR from location delta (robust)
+    const FVector Vel = PawnInstance->GetVelocity();
+    const float VelSpeed2D = FVector(Vel.X, Vel.Y, 0.f).Size();
+
+    float LocSpeed2D = 0.f;
+    const FVector Loc = PawnInstance->GetActorLocation();
+    if (bHasPrevLoc && DeltaTime > KINDA_SMALL_NUMBER)
     {
-        const FVector Vel = PawnInstance->GetVelocity();
-        const float TargetSpeed = FVector(Vel.X, Vel.Y, 0.f).Size();
+        LocSpeed2D = FVector::Dist2D(Loc, PrevLoc) / DeltaTime;
+    }
+    PrevLoc = Loc;
+    bHasPrevLoc = true;
 
-        const UCharacterMovementComponent* Move = EnemyCharacterInstance ? EnemyCharacterInstance->GetCharacterMovement() : nullptr;
-        bIsAccelerating = Move && Move->GetCurrentAcceleration().Size() > 0.f;
+    const float TargetSpeed = FMath::Max(VelSpeed2D, LocSpeed2D);
 
-        MovementSpeed = FMath::FInterpTo(MovementSpeed, TargetSpeed, DeltaTime, SpeedInterpRate);
+    MovementSpeed = FMath::FInterpTo(MovementSpeed, TargetSpeed, DeltaTime, SpeedInterpRate);
 
-        // Clamp to CURRENT MaxWalkSpeed (dynamic), not a fixed 360
-        const float CurrentMax = Move ? Move->MaxWalkSpeed : 360.f;
-        MovementSpeed = FVector(PawnInstance->GetVelocity().X, PawnInstance->GetVelocity().Y, 0.f).Size();
-
-        UE_LOG(LogTemp, VeryVerbose, TEXT("[Anim] TargetSpeed=%.1f MovementSpeed=%.1f MaxWalkSpeed=%.1f"),
-            TargetSpeed, MovementSpeed, CurrentMax);
-
-        if (EnemyCharacterInstance)
-        {
-            SetPlayerVisibility(EnemyCharacterInstance->CanSeePlayer());
-            SetPlayerAttackRange(EnemyCharacterInstance->IsPlayerWithinRange());
-        }
+    if (EnemyCharacterInstance)
+    {
+        SetPlayerVisibility(EnemyCharacterInstance->CanSeePlayer());
+        SetPlayerAttackRange(EnemyCharacterInstance->IsPlayerWithinRange());
     }
 }

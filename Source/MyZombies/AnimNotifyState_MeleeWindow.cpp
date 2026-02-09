@@ -9,6 +9,7 @@
 void UAnimNotifyState_MeleeWindow::NotifyBegin(USkeletalMeshComponent* Mesh, UAnimSequenceBase*, float, const FAnimNotifyEventReference&)
 {
 	if (!Mesh) return;
+	if(!Mesh->DoesSocketExist(StrikeSocket)) return;
 	PrevLoc.Add(Mesh, Mesh->GetSocketLocation(StrikeSocket));
 	AlreadyHit.FindOrAdd(Mesh).Reset();
 }
@@ -16,6 +17,7 @@ void UAnimNotifyState_MeleeWindow::NotifyBegin(USkeletalMeshComponent* Mesh, UAn
 void UAnimNotifyState_MeleeWindow::NotifyTick(USkeletalMeshComponent* Mesh, UAnimSequenceBase*, float Dt, const FAnimNotifyEventReference&)
 {
 	if (!Mesh) return;
+	if (!Mesh->DoesSocketExist(StrikeSocket)) return; 
 
 	AActor* Owner = Mesh->GetOwner();
 	if (!Owner || !Owner->HasAuthority()) return; // gameplay only on server

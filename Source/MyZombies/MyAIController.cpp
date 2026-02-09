@@ -139,7 +139,7 @@ void AMyAIController::OnTargetPerceptionUpdate(AActor* Actor, FAIStimulus Stimul
     if (UCharacterMovementComponent* Move = Enemy->GetCharacterMovement())
     {
         const bool bChasing = (bSee || bHear);
-        const float Desired = bChasing ? Enemy->GetChaseSpeed() : DefaultWalkSpeed;
+        const float Desired = bChasing ? Enemy->GetChaseSpeed() : Enemy->GetWalkSpeed();
         SetWalkSpeedIfChanged(Move, Desired);
         Enemy->SetChasingState(bChasing);
 

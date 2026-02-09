@@ -12,21 +12,16 @@ void UMultiplayerMenuWidget::NativeOnInitialized()
 {
 	Super::NativeOnInitialized();
 
-	if (MultiplayerBackButton)
-	{
-		MultiplayerBackButton->OnClicked.RemoveAll(this);
-		MultiplayerBackButton->OnClicked.AddDynamic(this, &UMultiplayerMenuWidget::OnBackButtonClicked);
-	}
+	if (MultiplayerBackButton && !MultiplayerBackButton->OnClicked.IsAlreadyBound(this, &UMultiplayerMenuWidget::OnBackButtonClicked))
+    {
+        MultiplayerBackButton->OnClicked.AddDynamic(this, &UMultiplayerMenuWidget::OnBackButtonClicked);
+    }
 
 	SetBusy(false);
 }
 
 void UMultiplayerMenuWidget::NativeDestruct()
 {
-	if (MultiplayerBackButton)
-	{
-        MultiplayerBackButton->OnClicked.RemoveDynamic(this, &UMultiplayerMenuWidget::OnBackButtonClicked);
-	}
 
 	Super::NativeDestruct();
 }

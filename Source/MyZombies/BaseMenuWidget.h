@@ -33,10 +33,14 @@ public:
 	void FocusWidget(UWidget* WidgetToFocus); // (optional) call from Button->OnHovered
 
 protected:
+    virtual void NativeConstruct() override;
 	virtual void NativeOnInitialized() override;
 	virtual FReply NativeOnMouseButtonDown(const FGeometry& InGeometry, const FPointerEvent& InMouseEvent) override;
 
+
+	UFUNCTION(BlueprintCallable)
 	AMyPlayerController* GetMyPC() const;
+
 	UMenuUIManager* GetMenuUI() const;
 
 

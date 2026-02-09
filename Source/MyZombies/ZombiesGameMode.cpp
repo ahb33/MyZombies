@@ -69,6 +69,11 @@ void AZombiesGameMode::ApplyLevelModifiers()
         FAICharacterStats* Stats = AIDifficultyTable->FindRow<FAICharacterStats>(FName(*FString::Printf(TEXT("Level%d"), CurrentLevel)), ContextString);
         if (Stats)
         {
+            const FString Diff = GetWorld() ? FString(GetWorld()->URL.GetOption(TEXT("Difficulty="), TEXT("Medium"))) : TEXT("Medium");
+
+            float CountMult = 1.0f; 
+            if (Diff.Equals(TEXT("Easy"), ESearchCase::IgnoreCase))      CountMult = 0.75f;
+            else if (Diff.Equals(TEXT("Hard"), ESearchCase::IgnoreCase)) CountMult = 1.25f;
             // Set the number of zombies to spawn for the current wave
             NumberOfZombiesForCurrentLevel = Stats->ZombiesPerLevel;
             UE_LOG(LogTemp, Warning, TEXT("ZombiesPerLevel retrieved from data table: %d"), Stats->ZombiesPerLevel);

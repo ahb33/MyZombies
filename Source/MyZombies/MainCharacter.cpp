@@ -279,9 +279,23 @@ void AMainCharacter::SetOverlappingItem(APickUp* PickUp)
 	}
 }
 
-bool AMainCharacter::AddAmmoFromPickup_Implementation(EWeaponType WeaponType, int32 Amount)
+bool AMainCharacter::AddAmmoFromPickup_Implementation(EWeaponType InType, int32 Amount)
 {
-    return (WeaponType != EWeaponType::None) && (Amount > 0);
+	if (InType == EWeaponType::None || Amount <= 0) return false;
+
+	AWeapon* W = GetEquippedWeapon();
+	if (!W) return false;  // no weapon -> don't consume pickup
+	if (W->GetWeaponType() != InType) return false; // wrong ammo type -> don't consume
+
+	const int32 Reserve = W->GetCurrentAmmoOnHand();
+	const int32 MaxReserve = W->GetMaxAmmoOnHand();
+	const int32 NewReserve = FMath::Clamp(Reserve + Amount, 0, MaxReserve);
+
+	if (NewReserve == Reserve) return false;  // already full -> don't consume
+
+	W->SetAmmo(NewReserve, W->GetCurrentAmmoInMag()); // (OnHand, InMag)
+	W->ForceNetUpdate();  // helps push OwnerOnly ammo replication faster
+	return true;
 }
 
 void AMainCharacter::PickUpButtonPressed()
@@ -444,7 +458,7 @@ void AMainCharacter::PlayReloadMontage()
 
 float AMainCharacter::GetReloadDuration() const
 {
-    if (this->ReloadMontage)
+    if (!ReloadMontage) return 0.0f; 
     {
         return this->ReloadMontage->GetPlayLength();
     }

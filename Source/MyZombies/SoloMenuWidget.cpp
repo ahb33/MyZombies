@@ -17,17 +17,35 @@ void USoloMenuWidget::NativeOnInitialized()
 	if (BackButton)   { BackButton->OnClicked.RemoveAll(this);   BackButton->OnClicked.AddDynamic(this, &USoloMenuWidget::OnBackButtonClicked); }
 }
 
+UWidget* USoloMenuWidget::GetDefaultFocusWidget_Implementation() const
+{
+	// Pick the first button you want focused when menu opens
+	if (HardButton) return HardButton;
+	if (MediumButton)    return MediumButton;
+	if (EasyButton)       return EasyButton;
+
+
+	return Super::GetDefaultFocusWidget_Implementation();
+}
+
 
 void USoloMenuWidget::OnEasyButtonClicked()
 {
-	UE_LOG(LogTemp, Warning, TEXT("Easy clicked"));
-
-	UGameplayStatics::OpenLevel(GetWorld(), FName(TEXT("/Game/GameAssets/Levels/Zombies_Level")));
-
+    UGameplayStatics::OpenLevel(GetWorld(), FName(TEXT("/Game/GameAssets/Levels/Zombies_Level")),
+    true, TEXT("Difficulty=Easy"));
 }
 
-void USoloMenuWidget::OnMediumButtonClicked() {}
-void USoloMenuWidget::OnHardButtonClicked() {}
+void USoloMenuWidget::OnMediumButtonClicked()
+{
+    UGameplayStatics::OpenLevel(GetWorld(), FName(TEXT("/Game/GameAssets/Levels/Zombies_Level")),
+    true, TEXT("Difficulty=Medium"));
+}
+
+void USoloMenuWidget::OnHardButtonClicked()
+{
+    UGameplayStatics::OpenLevel(GetWorld(), FName(TEXT("/Game/GameAssets/Levels/Zombies_Level")),
+    true, TEXT("Difficulty=Hard"));
+}
 
 void USoloMenuWidget::OnBackButtonClicked()
 {

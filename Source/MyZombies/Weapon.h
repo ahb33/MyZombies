@@ -62,6 +62,7 @@ public:
     {
         AmmoOnHand = NewAmmoOnHand;
         AmmoInMag  = NewAmmoInMag;
+        RefreshHUD();
     }
     virtual int32  GetCurrentAmmoOnHand() const { return AmmoOnHand; }
     virtual int32  GetCurrentAmmoInMag()  const { return AmmoInMag; }

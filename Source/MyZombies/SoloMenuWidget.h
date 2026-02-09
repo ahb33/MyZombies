@@ -30,21 +30,24 @@ class MYZOMBIES_API USoloMenuWidget : public UBaseMenuWidget
 protected:
 	virtual void NativeOnInitialized() override;
 
+	virtual UWidget* GetDefaultFocusWidget_Implementation() const override;
+
+
 private:
 	UFUNCTION() void OnEasyButtonClicked();
 	UFUNCTION() void OnMediumButtonClicked();
 	UFUNCTION() void OnHardButtonClicked();
 	UFUNCTION() void OnBackButtonClicked();
 
-	UPROPERTY(meta=(BindWidgetOptional)) 
+	UPROPERTY(BlueprintReadOnly, Category="UI|Widgets", meta=(BindWidgetOptional, AllowPrivateAccess="true")) 
 	TObjectPtr<UButton> EasyButton = nullptr;
 
-	UPROPERTY(meta=(BindWidgetOptional)) 
+	UPROPERTY(BlueprintReadOnly, Category="UI|Widgets", meta=(BindWidgetOptional, AllowPrivateAccess="true")) 
 	TObjectPtr<UButton> MediumButton = nullptr;
 
-	UPROPERTY(meta=(BindWidgetOptional)) 
+	UPROPERTY(BlueprintReadOnly, Category="UI|Widgets", meta=(BindWidgetOptional, AllowPrivateAccess="true")) 
 	TObjectPtr<UButton> HardButton = nullptr;
 
-	UPROPERTY(meta=(BindWidgetOptional)) 
+	UPROPERTY(BlueprintReadOnly, Category="UI|Widgets", meta=(BindWidgetOptional, AllowPrivateAccess="true")) 
 	TObjectPtr<UButton> BackButton = nullptr;
 };

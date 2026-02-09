@@ -20,6 +20,7 @@ class MYZOMBIES_API UCreateSessionMenuWidget : public UUserWidget
 protected:
     virtual void NativeOnInitialized() override;
     virtual void NativeDestruct() override;
+    virtual void NativeConstruct() override;
 
 
     UFUNCTION()
