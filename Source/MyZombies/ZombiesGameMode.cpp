@@ -31,7 +31,11 @@ void AZombiesGameMode::BeginPlay()
 
 void AZombiesGameMode::HandlePlayerDeath(AController* Victim, AController* Killer)
 {
-	SetMatchPhase(EMatchPhase::GameOver);
+
+    GetWorldTimerManager().SetTimer(GameOverDelayHandle, 
+    FTimerDelegate::CreateWeakLambda(this, [this]{ UGameplayStatics::SetGamePaused(this, true); 
+    SetMatchPhase(EMatchPhase::GameOver); }), 2.f, false);
+
 }
 
 

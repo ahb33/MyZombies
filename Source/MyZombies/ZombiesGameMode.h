@@ -43,6 +43,7 @@ private:
 	int32 NumberOfZombiesForCurrentLevel;
 
 	FTimerHandle WaveIntroTimer;
+	FTimerHandle GameOverDelayHandle;
 
 	UPROPERTY(EditAnywhere, Category="Waves")
 	float WaveIntroDelay = 2.0f;

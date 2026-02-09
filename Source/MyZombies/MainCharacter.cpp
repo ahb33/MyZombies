@@ -327,24 +327,51 @@ void AMainCharacter::Server_TryPickup_Implementation(APickUp* Pickup)
 void AMainCharacter::SetPlayerHealth(float NewHealth)
 {
     const float Clamped = FMath::Clamp(NewHealth, 0.f, MaxHealth);
-    if (HasAuthority())
-    {
-        PlayerHealth = Clamped;    
-        if (IsLocallyControlled()) UpdateHUDHealth();  
-    }
-    else
-    {
-        Server_SetPlayerHealth(Clamped);        // client requests server to set
-    }
-}
+	if (!HasAuthority())
+	{
+		Server_SetPlayerHealth(Clamped);
+		return;
+	}
+	PlayerHealth = Clamped;
 
+	Client_OnHealthUpdated(PlayerHealth, MaxHealth);
+
+	ForceNetUpdate();
+
+	if (IsLocallyControlled())
+	{
+		UpdateHUDHealth();
+	}
+}
 
 void AMainCharacter::Server_SetPlayerHealth_Implementation(float NewHealth) 
 {
     PlayerHealth = FMath::Clamp(NewHealth, 0.f, MaxHealth);     // runs on server
+
+    Client_OnHealthUpdated(PlayerHealth, MaxHealth);
+
+	ForceNetUpdate();
+
     if (IsLocallyControlled()) UpdateHUDHealth();
 }
 
+void AMainCharacter::Client_OnHealthUpdated_Implementation(float NewHealth, float InMaxHealth)
+{
+	if (!IsLocallyControlled()) return;
+
+	if (!bUIInitDone) InitValues();
+
+	if (MyPlayerController)
+	{
+		MyPlayerController->SetHUDHealth(NewHealth, InMaxHealth);
+		return;
+	}
+
+	if (AMyPlayerController* PC = Cast<AMyPlayerController>(GetController()))
+	{
+		PC->SetHUDHealth(NewHealth, InMaxHealth);
+	}
+}
 void AMainCharacter::UpdateHUDHealth() const
 {
     if (auto* PC = Cast<AMyPlayerController>(GetController()))
@@ -458,7 +485,7 @@ void AMainCharacter::PlayReloadMontage()
 
 float AMainCharacter::GetReloadDuration() const
 {
-    if (!ReloadMontage) return 0.0f; 
+    if (this->ReloadMontage)
     {
         return this->ReloadMontage->GetPlayLength();
     }
@@ -577,13 +604,21 @@ float AMainCharacter::TakeDamage(float DamageAmount, const FDamageEvent& DamageE
     return Applied;
 }
 
+void AMainCharacter::OnRep_IsDead()
+{
+    if (!bIsDead) return;
+    if(GetEquippedWeapon()) GetEquippedWeapon()->SetWeaponState(EWeaponState::Dropped);
+    if(GetSecondaryWeapon()) GetSecondaryWeapon()->SetWeaponState(EWeaponState::Dropped);
+
+}
 
 
 void AMainCharacter::Die()
 {
     CCDBG_SCOPE(this, "Die");
 
-    
+    if(bIsDead) return; // if bisdead return
+
     // Forward to server if called on a client.
 	if (!HasAuthority())
 	{
@@ -591,19 +626,21 @@ void AMainCharacter::Die()
 		return;
 	}
 
-    if (bIsDead) return;
+    bIsDead = true;  
+
+    FlushNetDormancy();
+    ForceNetUpdate();
+
+    OnRep_IsDead(); // drop weapons then notify gamemode player died
+
     if (AZombiesGameMode* GM = GetWorld()->GetAuthGameMode<AZombiesGameMode>()) GM->HandlePlayerDeath(Controller, nullptr);
 
+
     CCDBG(this, TEXT("Die start  HasAuth=%d  bIsDead=%d"), HasAuthority()?1:0, bIsDead?1:0);
-    bIsDead = true;  
     CCDBG(this, TEXT("Die start  HasAuth=%d  bIsDead=%d"), HasAuthority()?1:0, bIsDead?1:0);
 
-    SetNetDormancy(DORM_Awake); // ensure awake for this burst
 
-    if(GetEquippedWeapon()) GetEquippedWeapon()->SetWeaponState(EWeaponState::Dropped);
-    if(GetSecondaryWeapon()) GetSecondaryWeapon()->SetWeaponState(EWeaponState::Dropped);
-
-    SetLifeSpan(0.3f);
+    SetLifeSpan(0.5f);
 }
 
 void AMainCharacter::ServerDie_Implementation()

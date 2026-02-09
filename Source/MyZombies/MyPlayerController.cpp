@@ -613,7 +613,7 @@ void AMyPlayerController::HidePauseMenu()
 void AMyPlayerController::QuitToMainMenuFromPause()
 {
 
-	UGameplayStatics::OpenLevel(this, FName("MainMenu_Level"));
+	GoToMainMenu();
 }
 
 void AMyPlayerController::RequestRestartLevel()
@@ -634,8 +634,16 @@ void AMyPlayerController::GoToMainMenu()
 
 	if(HasAuthority())
 	{
-		// Server: kill the whole game
-        UKismetSystemLibrary::QuitGame(this, this, EQuitPreference::Quit,true);
+
+        if(AGameModeBase* GM = UGameplayStatics::GetGameMode(this))
+		{
+			GM->ReturnToMainMenuHost();
+		}
+		else
+		{
+			GetWorld()->ServerTravel(TEXT("Game/Maps/MainMenu_Level?listen"));
+		}
+		return;
 	}
 
 	else
@@ -643,7 +651,6 @@ void AMyPlayerController::GoToMainMenu()
         // Client: disconnect and return to menu
         ClientReturnToMainMenuWithTextReason(FText::FromString("Server ended the game"));
     }
-
 }
 
 

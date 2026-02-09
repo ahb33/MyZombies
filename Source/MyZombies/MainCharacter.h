@@ -74,7 +74,7 @@ public:
 	virtual void UnPossessed() override;
 
 	// --- Health ---
-	UFUNCTION(BlueprintPure, Category="Health Stats")
+	UFUNCTION()
 	float GetPlayerHealth() const { return PlayerHealth; }
 	
 	void SetPlayerHealth(float NewHealth);
@@ -82,7 +82,7 @@ public:
 	// Health setters that enforce authority and replication
 	UFUNCTION(Server, Reliable) void Server_SetPlayerHealth(float NewValue);
 	
-	UFUNCTION(BlueprintPure, Category="Health Stats")
+	UFUNCTION()
 	float GetMaxHealth() const { return MaxHealth; }
 
 	// Health authority API
@@ -98,6 +98,8 @@ public:
 	void OnRep_OverlappingWeapon();
 	UFUNCTION()
 	void OnRep_Health();
+	UFUNCTION()
+	void OnRep_IsDead();
 
 
 	// Ammo hook (wire to CombatComponent/Weapon later)
@@ -141,6 +143,9 @@ protected:
 
 private:
 
+	UFUNCTION(Client, Unreliable)
+	void Client_OnHealthUpdated(float NewHealth, float InMaxHealth);
+
 	UPROPERTY(Transient) bool bUIInitDone = false; // idempotent guard
 
 	// --- Components & replicated refs ---
@@ -171,8 +176,11 @@ private:
 	UPROPERTY(EditAnywhere, Category="Combat")
 	TObjectPtr<UAnimMontage> ReloadMontage = nullptr;
 
-	UPROPERTY(Replicated) 
+	UPROPERTY(ReplicatedUsing=OnRep_IsDead) 
 	bool bIsDead = false;
+
+	UPROPERTY(Transient)
+	bool bWeaponsDropped = false;
 
 	TObjectPtr<AHealthPickUp> pickUpHealth = nullptr;
 
