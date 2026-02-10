@@ -62,8 +62,6 @@ public:
 	UFUNCTION(BlueprintCallable) 
 	void ShowDeathScreenLocal(); // local-only UI creator (used by Client RPC + OnRep fallback)
 
-
-
 	// HUD Helpers
 	void SetHUDHealth(float CurrentHealth, float MaxHealth);
 	void SetHUDAmmo(int32 Ammo);

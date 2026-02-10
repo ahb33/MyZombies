@@ -31,11 +31,20 @@ void AZombiesGameMode::BeginPlay()
 
 void AZombiesGameMode::HandlePlayerDeath(AController* Victim, AController* Killer)
 {
+    SetMatchPhase(EMatchPhase::GameOver);
 
-    GetWorldTimerManager().SetTimer(GameOverDelayHandle, 
-    FTimerDelegate::CreateWeakLambda(this, [this]{ UGameplayStatics::SetGamePaused(this, true); 
-    SetMatchPhase(EMatchPhase::GameOver); }), 2.f, false);
-
+    GetWorldTimerManager().SetTimer(
+        GameOverDelayHandle,
+        FTimerDelegate::CreateWeakLambda(this, [this]
+        {
+            if (UWorld* W = GetWorld())
+            {
+                UGameplayStatics::SetGamePaused(W, true);
+            }
+        }),
+        1.0f,
+        false
+    );
 }
 
 
@@ -122,36 +131,56 @@ void AZombiesGameMode::BeginWaveActive()
     SetMatchPhase(EMatchPhase::Active);
 
     // Retrieve all spawners in the game
-    TArray<AActor*> Spawners;
-    UGameplayStatics::GetAllActorsOfClass(GetWorld(), AAI_EnemySpawner::StaticClass(), Spawners);
+    TArray<AActor*> SpawnerActors;
+    UGameplayStatics::GetAllActorsOfClass(GetWorld(), AAI_EnemySpawner::StaticClass(), SpawnerActors);
 
-    if (Spawners.Num() == 0)
+    if (SpawnerActors.Num() == 0)
     {
         UE_LOG(LogTemp, Error, TEXT("No spawners found in the level!"));
         return;
     }
 
-    // Distribute zombies across random spawners
+    TArray<AAI_EnemySpawner*> Spawners;
+    Spawners.Reserve(SpawnerActors.Num());
+
+    for (AActor* Actor : SpawnerActors)
+    {
+        if (AAI_EnemySpawner* S = Cast<AAI_EnemySpawner>(Actor))
+        {
+            Spawners.Add(S);
+        }
+    }
+
+    if (Spawners.Num() == 0)
+    {
+        UE_LOG(LogTemp, Error, TEXT("Spawner actors found, but none cast to AAI_EnemySpawner!"));
+        return;
+    }
+
     int32 ZombiesToSpawn = NumberOfZombiesForCurrentLevel;
+    TMap<AAI_EnemySpawner*, int32> SpawnPlan;
 
     while (ZombiesToSpawn > 0)
     {
         // Pick a random spawner
-        int32 RandomIndex = FMath::RandRange(0, Spawners.Num() - 1);
+        const int32 RandomIndex = FMath::RandRange(0, Spawners.Num() - 1);
         if (AAI_EnemySpawner* EnemySpawner = Cast<AAI_EnemySpawner>(Spawners[RandomIndex]))
         {
             // Calculate zombies for this spawner
-            int32 SpawnCount = FMath::Min(FMath::RandRange(1, ZombiesToSpawn), ZombiesToSpawn);
+            const int32 SpawnCount = FMath::Min(FMath::RandRange(1, ZombiesToSpawn), ZombiesToSpawn);
 
-            
-            EnemySpawner->InitZombieArray(SpawnCount); // intialize array and reset spawn count
-            EnemySpawner->SpawnZombies(SpawnCount); 
-
+            SpawnPlan.FindOrAdd(EnemySpawner) += SpawnCount;
             // Deduct from remaining zombies
             ZombiesToSpawn -= SpawnCount;
         }
     }
 
+    for (const TPair<AAI_EnemySpawner*, int32>& Pair : SpawnPlan)
+    {
+        if (!Pair.Key || Pair.Value <= 0) continue;
+        Pair.Key->InitZombieArray(Pair.Value);
+        Pair.Key->SpawnZombies(Pair.Value);
+    }
     UE_LOG(LogTemp, Warning, TEXT("Wave %d started with %d zombies."), CurrentLevel, NumberOfZombiesForCurrentLevel);
 }
 

@@ -43,7 +43,7 @@ private:
 	FTimerHandle SpawnTimerHandle; // interval used to spawn enemies
  
 	int32 ZombieSpawnCount = 0;
-    int32 TotalZombiesToSpawn;
+    int32 TotalZombiesToSpawn = 0;
     float SpawnCooldown = 1.5f;
 
 };

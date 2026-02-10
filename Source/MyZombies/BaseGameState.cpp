@@ -17,6 +17,7 @@ void ABaseGameState::SetMatchPhase(EMatchPhase NewPhase)
 {
 	if (!HasAuthority() || MatchPhase == NewPhase) return;
 	MatchPhase = NewPhase;
+	ForceNetUpdate();
 	BroadcastMatchPhase();
 }
 

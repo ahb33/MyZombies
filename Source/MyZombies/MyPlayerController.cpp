@@ -4,8 +4,6 @@
 #include "MyPlayerController.h"
 #include "MyHUD.h"
 #include "LobbyPlayerState.h"
-#include "Blueprint/UserWidget.h"
-#include "Blueprint/WidgetBlueprintLibrary.h"
 #include "ReadyButtonWidget.h"
 #include "GameOverMenuWidget.h"
 #include "ZombiesRoundWidget.h"
@@ -16,7 +14,6 @@
 #include "BaseMenuWidget.h"
 #include "MenuUIManager.h"
 #include "KillDeathStats.h"
-#include "Framework/Application/SlateApplication.h"
 #include "Components/AudioComponent.h"
 #include "ZombiesGameState.h"
 #include "Kismet/GameplayStatics.h"
@@ -91,7 +88,7 @@ void AMyPlayerController::EndPlay(const EEndPlayReason::Type EndPlayReason)
 void AMyPlayerController::BeginPlayingState()
 {
     Super::BeginPlayingState();
-
+	TryBindToGameState(); // rebind on clients after gameplay starts
 	const FString Map = UGameplayStatics::GetCurrentLevelName(this, true);
     if (Map == TEXT("MainMenu_Level")) return; 
     UpdateUIForCurrentMap();
@@ -207,9 +204,10 @@ void AMyPlayerController::HandleMatchPhaseChanged(EMatchPhase Phase)
 {
 	switch (Phase)
 	{
+
 	case EMatchPhase::GameOver:
-		ShowDeathScreenLocal();
-		break;
+    	ShowDeathScreenLocal();
+    break;
 
 	case EMatchPhase::Intro:
 		// Splash only makes sense for Zombies.
@@ -388,6 +386,7 @@ void AMyPlayerController::SetHUDMagAmmo(int32 AmmoInMag)
 	HUD->CharacterStats->AmmoInMag->SetText(FText::AsNumber(AmmoInMag));
 }
 
+// for death match game mode; not implemented in zombies
 void AMyPlayerController::UpdateHUDKillDeath(int32 Kills, int32 Deaths)
 {
     if (AMyHUD* HUD = GetMyHUD())
@@ -432,7 +431,9 @@ void AMyPlayerController::ShowDeathScreenLocal()
 		bEnableClickEvents = true;
 		bEnableMouseOverEvents = true;
     }
+
 }
+
 
 void AMyPlayerController::EnsureRoundHUDWidget()
 {

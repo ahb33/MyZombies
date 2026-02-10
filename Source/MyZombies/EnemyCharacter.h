@@ -23,10 +23,14 @@ struct FPerceptionState
 {
     GENERATED_BODY()
 
-    UPROPERTY(BlueprintReadOnly) bool bSee = false;
-    UPROPERTY(BlueprintReadOnly) bool bHear = false;
-    UPROPERTY(BlueprintReadOnly) bool bInRange = false;
-    UPROPERTY(BlueprintReadOnly) bool bChasing = false;
+    UPROPERTY(BlueprintReadOnly) 
+	bool bSee = false;
+    UPROPERTY(BlueprintReadOnly) 
+	bool bHear = false;
+    UPROPERTY(BlueprintReadOnly) 
+	bool bInRange = false;
+    UPROPERTY(BlueprintReadOnly) 
+	bool bChasing = false;
 };
 
 DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnZombieDeath);
@@ -48,6 +52,10 @@ public:
 
 	void SetPerceptionState(bool bSee, bool bHear, bool bInRange);
     void SetChasingState(bool bChasing);
+	void SetLastKnownPlayerPos(const FVector& InPos);
+
+	UFUNCTION(BlueprintPure)
+    FVector GetLastKnownPlayerPos() const { return LastKnownPlayerPos; }
 
 
 	UFUNCTION(BlueprintCallable, Category="Combat")
@@ -137,6 +145,12 @@ private:
 
 	UFUNCTION()
 	void OnRep_PerceptionState();
+
+	UPROPERTY(ReplicatedUsing=OnRep_LastKnownPlayerPos)
+    FVector_NetQuantize10 LastKnownPlayerPos;
+
+    UFUNCTION()
+    void OnRep_LastKnownPlayerPos();
 
 
 };

@@ -72,6 +72,7 @@ void AEnemyCharacter::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutL
     DOREPLIFETIME(AEnemyCharacter, CharacterTags);
     DOREPLIFETIME(AEnemyCharacter, MaxHealth);
     DOREPLIFETIME(AEnemyCharacter, PerceptionState);
+    DOREPLIFETIME(AEnemyCharacter, LastKnownPlayerPos);
 }
 
 
@@ -207,6 +208,8 @@ void AEnemyCharacter::SetPerceptionState(bool bSee, bool bHear, bool bInRange)
     PerceptionState.bHear = bHear;
     PerceptionState.bInRange = bInRange;
 
+    SetNetDormancy(DORM_Awake);
+    FlushNetDormancy();
     ForceNetUpdate();
 }
 
@@ -253,5 +256,31 @@ void AEnemyCharacter::ApplyDeadState()
         AI->SetIsDead(true);
     }
 }
+
+
+void AEnemyCharacter::SetLastKnownPlayerPos(const FVector& InPos)
+{
+    if (!HasAuthority()) return;
+
+    const FVector_NetQuantize10 Q = InPos;
+    if (LastKnownPlayerPos.Equals(Q, 1.f)) return; // avoid spam
+
+    LastKnownPlayerPos = Q;
+
+    SetNetDormancy(DORM_Awake);
+    FlushNetDormancy();
+    ForceNetUpdate();
+}
+
+void AEnemyCharacter::OnRep_LastKnownPlayerPos()
+{
+    // Example: drive anim/UI direction on clients
+    if (UAI_AnimInstance* AI = Cast<UAI_AnimInstance>(GetMesh() ? GetMesh()->GetAnimInstance() : nullptr))
+    {
+        const FVector Dir2D = (FVector(LastKnownPlayerPos) - GetActorLocation()).GetSafeNormal2D();
+        // AI->SetLastKnownDirYaw(Dir2D.Rotation().Yaw);  // add if you want
+    }
+}
+
 
 

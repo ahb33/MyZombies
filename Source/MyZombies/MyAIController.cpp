@@ -130,6 +130,7 @@ void AMyAIController::OnTargetPerceptionUpdate(AActor* Actor, FAIStimulus Stimul
         {
             BB->SetValueAsObject(KEY_Player, SeenPlayer);
             BB->SetValueAsVector(KEY_LastKnownPosition, Stimulus.StimulusLocation);
+            Enemy->SetLastKnownPlayerPos(Stimulus.StimulusLocation);
         }
     }
 
@@ -151,7 +152,7 @@ void AMyAIController::OnTargetPerceptionUpdate(AActor* Actor, FAIStimulus Stimul
 
     Enemy->SetPerceptionState(bSee, bHear, bInRange);
 
-
+    
        
 
 }

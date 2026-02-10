@@ -80,14 +80,15 @@ public:
 	void SetPlayerHealth(float NewHealth);
 	
 	// Health setters that enforce authority and replication
-	UFUNCTION(Server, Reliable) void Server_SetPlayerHealth(float NewValue);
+	UFUNCTION(Server, Reliable) 
+	void Server_SetPlayerHealth(float NewValue);
 	
 	UFUNCTION()
 	float GetMaxHealth() const { return MaxHealth; }
 
 	// Health authority API
 	UFUNCTION()
-	void UpdateHUDHealth() const;
+	void UpdateHUDHealth();
 
 	// --- Inventory / pickups & overlap ---
 	void SetOverlappingWeapon(AWeapon* Weapon);
@@ -97,7 +98,7 @@ public:
 	UFUNCTION()
 	void OnRep_OverlappingWeapon();
 	UFUNCTION()
-	void OnRep_Health();
+	void OnRep_Health(float OldHealth);
 	UFUNCTION()
 	void OnRep_IsDead();
 
@@ -142,9 +143,6 @@ protected:
 	void TurnInPlace(float DeltaTime);
 
 private:
-
-	UFUNCTION(Client, Unreliable)
-	void Client_OnHealthUpdated(float NewHealth, float InMaxHealth);
 
 	UPROPERTY(Transient) bool bUIInitDone = false; // idempotent guard
 

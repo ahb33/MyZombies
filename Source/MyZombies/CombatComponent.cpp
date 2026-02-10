@@ -247,6 +247,11 @@ void UCombatComponent::EquipSecondaryWeapon(AWeapon* WeaponToEquip)
     GetSecondaryWeapon()->SetOwner(GetMainCharacter());
     AttachWeaponToBackSocket(GetSecondaryWeapon());
     GetSecondaryWeapon()->ShowPickUpWidget(false);
+
+    if (GetMainCharacter()->IsLocallyControlled() && GetEquippedWeapon())
+    {
+        GetEquippedWeapon()->RefreshHUD();
+    }
 }
 
 void UCombatComponent::OnRep_EquippedWeapon()
@@ -256,7 +261,7 @@ void UCombatComponent::OnRep_EquippedWeapon()
         UE_LOG(LogTemp, Warning, TEXT("OnRep equipped weapon called"));
         AttachActorToRightHand(GetEquippedWeapon());
         GetEquippedWeapon()->ShowPickUpWidget(false);
-        GetEquippedWeapon()->RefreshHUD();
+        if (GetMainCharacter()->IsLocallyControlled()) GetEquippedWeapon()->RefreshHUD();
     }
 }
 

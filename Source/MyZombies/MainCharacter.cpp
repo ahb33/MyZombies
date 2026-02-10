@@ -209,6 +209,9 @@ void AMainCharacter::EquipButtonPressed()
     {
         combatComponent->SwapWeapons();
     }
+
+
+
 }
 
 void AMainCharacter::Server_EquipButtonPressed_Implementation()
@@ -332,54 +335,38 @@ void AMainCharacter::SetPlayerHealth(float NewHealth)
 		Server_SetPlayerHealth(Clamped);
 		return;
 	}
+    const float OldHealth = PlayerHealth;
 	PlayerHealth = Clamped;
-
-	Client_OnHealthUpdated(PlayerHealth, MaxHealth);
-
-	ForceNetUpdate();
 
 	if (IsLocallyControlled())
 	{
-		UpdateHUDHealth();
+        OnRep_Health(OldHealth);
 	}
+
+    ForceNetUpdate();
 }
 
 void AMainCharacter::Server_SetPlayerHealth_Implementation(float NewHealth) 
 {
-    PlayerHealth = FMath::Clamp(NewHealth, 0.f, MaxHealth);     // runs on server
-
-    Client_OnHealthUpdated(PlayerHealth, MaxHealth);
-
-	ForceNetUpdate();
-
-    if (IsLocallyControlled()) UpdateHUDHealth();
+	SetPlayerHealth(NewHealth);
 }
 
-void AMainCharacter::Client_OnHealthUpdated_Implementation(float NewHealth, float InMaxHealth)
+
+void AMainCharacter::UpdateHUDHealth()
 {
 	if (!IsLocallyControlled()) return;
 
 	if (!bUIInitDone) InitValues();
 
-	if (MyPlayerController)
-	{
-		MyPlayerController->SetHUDHealth(NewHealth, InMaxHealth);
-		return;
-	}
-
 	if (AMyPlayerController* PC = Cast<AMyPlayerController>(GetController()))
 	{
-		PC->SetHUDHealth(NewHealth, InMaxHealth);
+		PC->SetHUDHealth(PlayerHealth, MaxHealth);
 	}
 }
-void AMainCharacter::UpdateHUDHealth() const
-{
-    if (auto* PC = Cast<AMyPlayerController>(GetController()))
-    PC->SetHUDHealth(PlayerHealth, MaxHealth);
-}
 
-void AMainCharacter::OnRep_Health()
+void AMainCharacter::OnRep_Health(float OldHealth)
 {
+    if (!IsLocallyControlled()) return;
 	UpdateHUDHealth();
 }
 
@@ -607,6 +594,7 @@ float AMainCharacter::TakeDamage(float DamageAmount, const FDamageEvent& DamageE
 void AMainCharacter::OnRep_IsDead()
 {
     if (!bIsDead) return;
+    SetOverlappingWeapon(nullptr);
     if(GetEquippedWeapon()) GetEquippedWeapon()->SetWeaponState(EWeaponState::Dropped);
     if(GetSecondaryWeapon()) GetSecondaryWeapon()->SetWeaponState(EWeaponState::Dropped);
 
@@ -628,8 +616,6 @@ void AMainCharacter::Die()
 
     bIsDead = true;  
 
-    FlushNetDormancy();
-    ForceNetUpdate();
 
     OnRep_IsDead(); // drop weapons then notify gamemode player died
 
@@ -638,6 +624,9 @@ void AMainCharacter::Die()
 
     CCDBG(this, TEXT("Die start  HasAuth=%d  bIsDead=%d"), HasAuthority()?1:0, bIsDead?1:0);
     CCDBG(this, TEXT("Die start  HasAuth=%d  bIsDead=%d"), HasAuthority()?1:0, bIsDead?1:0);
+
+    FlushNetDormancy();
+    ForceNetUpdate();
 
 
     SetLifeSpan(0.5f);
