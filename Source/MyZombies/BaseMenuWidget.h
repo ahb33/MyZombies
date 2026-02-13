@@ -58,8 +58,8 @@ protected:
 
 private:
 	mutable TWeakObjectPtr<AMyPlayerController> CachedPC;
-	TWeakObjectPtr<UWidget> LastFocusedWidget;
 
+	TWeakObjectPtr<UWidget> LastFocusedWidget;
 	TWeakObjectPtr<UButton> FocusStyledButton;
 	FButtonStyle FocusStyledButtonOriginalStyle;
 };

@@ -7,24 +7,16 @@ public class CCGameplayDebugger : ModuleRules
     { 
         PCHUsage = PCHUsageMode.UseExplicitOrSharedPCHs; 
 
-        PublicDependencyModuleNames.AddRange(new string[] 
-        { 
-            "Core", 
-            "CoreUObject", 
-            "Engine",
-            "AIModule"
-        }); 
 
-        PrivateDependencyModuleNames.AddRange(new string[]     
-        { 
-            "GameplayTags" // for IGameplayTagAssetInterface / GameplayTagContainer 
-        }); 
-
-        // GameplayDebugger is developer tooling; best kept out of Shipping. 
-        if (Target.bBuildDeveloperTools) 
-        { 
-            PrivateDependencyModuleNames.Add("GameplayDebugger"); 
-        }         
+		PublicDependencyModuleNames.AddRange(new string[]
+		{
+			"Core",
+			"CoreUObject",
+			"Engine",
+			"GameplayDebugger",
+			"AIModule",
+			"InputCore"
+		});
     }
 }
 

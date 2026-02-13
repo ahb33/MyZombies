@@ -13,6 +13,6 @@ public class MyZombies : ModuleRules
 			"GameplayTags",  "GameplayTasks", "AIModule", "Niagara", 
 			"NavigationSystem", "MultiplayerPlugin", "OnlineSubsystem", "OnlineSubsystemSteam", "Sockets"});
 	
-		PrivateDependencyModuleNames.AddRange(new string[] { "CCDebug", "Slate", "SlateCore", "CCGameplayDebugger" });
+		PrivateDependencyModuleNames.AddRange(new string[] { "CCDebug", "Slate", "SlateCore", "CCGameplayDebugger"});
 	}
 }

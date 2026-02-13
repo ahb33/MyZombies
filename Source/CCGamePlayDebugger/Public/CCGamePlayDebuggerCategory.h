@@ -4,13 +4,12 @@
 
 #if WITH_GAMEPLAY_DEBUGGER
 #include "GameplayDebuggerCategory.h"
-#endif
 
-#if WITH_GAMEPLAY_DEBUGGER
+
 class FCCGameplayDebuggerCategory final : public FGameplayDebuggerCategory
 {
 public:
-    FCCGameplayDebuggerCategory() = default;
+    FCCGameplayDebuggerCategory();
 
     static TSharedRef<FGameplayDebuggerCategory> MakeInstance()
     {
@@ -21,11 +20,10 @@ public:
     virtual void DrawData(APlayerController* OwnerPC, FGameplayDebuggerCanvasContext& CanvasContext) override;
 
 private:
-    TArray<FString> Lines;
+	void ToggleRange();
+	void ToggleOnlyAI();
 
-    bool bDrawSphere = false;
-    FVector SphereCenter = FVector::ZeroVector;
-    float SphereRadius = 150.f;
-    FColor SphereColor = FColor::Green;
+	bool bDrawRange = true;
+	bool bOnlyAI = true;
 };
 #endif

@@ -22,15 +22,15 @@ void UBaseMenuWidget::NativeOnInitialized()
 	SetVisibility(ESlateVisibility::Visible);
 
 	// make the root hit-testable so clicks on "empty space" don't fall through to the viewport.
-	if (WidgetTree && WidgetTree->RootWidget)
-	{
-		WidgetTree->RootWidget->SetVisibility(ESlateVisibility::Visible);
-	}
+	// if (WidgetTree && WidgetTree->RootWidget)
+	// {
+	// 	WidgetTree->RootWidget->SetVisibility(ESlateVisibility::Visible);
+	// }
 }
 
 void UBaseMenuWidget::ApplyInitialFocus()
 {
-	APlayerController* PC = GetOwningPlayer();
+	AMyPlayerController* PC = GetMyPC();
 	if (!PC) return;
 
 	if (UWorld* World = GetWorld())
@@ -83,7 +83,7 @@ void UBaseMenuWidget::FocusWidget(UWidget* WidgetToFocus)
 
 FReply UBaseMenuWidget::NativeOnMouseButtonDown(const FGeometry& InGeometry, const FPointerEvent& InMouseEvent)
 {
-	// Only fires when the click hits the menu root (i.e., empty space outside the frame).
+	// // Only fires when the click hits the menu root (i.e., empty space outside the frame).
 	if (InMouseEvent.GetEffectingButton() == EKeys::LeftMouseButton)
 	{
 		if (UWidget* Target = LastFocusedWidget.Get())

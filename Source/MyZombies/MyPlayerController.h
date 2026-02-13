@@ -6,7 +6,6 @@
 #include "GameFramework/PlayerController.h"
 #include "TimerManager.h"
 #include "BaseGameState.h"
-#include "ZombiesTypes.h"
 #include "MyPlayerController.generated.h"
 
 
