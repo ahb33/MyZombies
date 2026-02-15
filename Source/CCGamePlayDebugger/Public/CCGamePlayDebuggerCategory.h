@@ -5,7 +5,7 @@
 #if WITH_GAMEPLAY_DEBUGGER
 #include "GameplayDebuggerCategory.h"
 
-
+// CustomCategory class
 class FCCGameplayDebuggerCategory final : public FGameplayDebuggerCategory
 {
 public:
@@ -22,8 +22,12 @@ public:
 private:
 	void ToggleRange();
 	void ToggleOnlyAI();
+    void ToggleVision();
 
 	bool bDrawRange = true;
 	bool bOnlyAI = true;
+    bool bDrawVision = true;
+
+    
 };
 #endif

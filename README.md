@@ -29,24 +29,25 @@ Debugging / Tooling
     Built to support fast iteration and verification of replicated behavior
 
 Architecture Decisions
-  GameMode: server only rules
-  GameState: replicated match state (rounds/phases)
-  PlayerController: owns UI decisions + input modes
-  Widgets: presentation only (no gameplay authority)
+    GameMode: server only rules
+    GameState: replicated match state (rounds/phases)
+    PlayerController: owns UI decisions + input modes
+    Widgets: presentation only (no gameplay authority)
 
 Animation-driven melee damage (server-authoritative)
     Implemented a custom UAnimNotifyState (“MeleeWindow”) that opens a hit window during the attack montage and performs a socket-based sphere sweep each tick to apply damage on the server only, with per-swing hit tracking to prevent double-hits.
 
-Scope Note
-A Deathmatch mode is planned but intentionally excluded from this slice. The focus is a polished Zombies loop and supporting UI/tools rather than splitting effort across unfinished modes.
 
 How to Run (Quick)
-  Open the project and play `MainMenu_Level`
-  Multiplayer flow: Mode Select → Multiplayer → Find/Join (or Create Session) → Lobby → Ready → Start
+    Open the project and play `MainMenu_Level`
+    Multiplayer flow: Mode Select → Multiplayer → Find/Join (or Create Session) → Lobby → Ready → Start
 
 Demo Checklist (What to Look For)
-  Menu stack navigation + focus behavior
-  Async session search UX (disabled buttons + blocker + status text)
-  Join session → lobby ready flow
-  In game HUD updates (health/ammo) + pause/death/game over
-  Round splash + persistent round HUD
+    Menu stack navigation + focus behavior
+    Async session search UX (disabled buttons + blocker + status text)
+    Join session → lobby ready flow
+    In game HUD updates (health/ammo) + pause/death/game over
+    Round splash + persistent round HUD
+
+Scope Note
+    A Deathmatch mode is planned but intentionally excluded from this slice. The focus is a polished Zombies loop and supporting UI/tools rather than splitting effort across unfinished modes.

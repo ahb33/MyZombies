@@ -12,6 +12,7 @@ public class CCGameplayDebugger : ModuleRules
 		{
 			"Core",
 			"CoreUObject",
+			"CCDebug",
 			"Engine",
 			"GameplayDebugger",
 			"AIModule",

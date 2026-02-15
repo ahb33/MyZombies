@@ -3,12 +3,15 @@
 
 #if WITH_GAMEPLAY_DEBUGGER 
 
-#include "GameplayDebuggerTypes.h"
-#include "InputCoreTypes.h"
 #include "AIController.h"
 #include "BehaviorTree/BlackboardComponent.h"
 #include "Components/CapsuleComponent.h"
+#include "Engine/World.h"
+#include "EngineUtils.h"
 #include "GameFramework/Pawn.h"
+#include "GameplayDebuggerTypes.h"
+#include "InputCoreTypes.h"
+#include "CCDebug.h"
 #include "UObject/UnrealType.h"
 
 
@@ -48,16 +51,39 @@ namespace
         return 0.f;
     }
 
+    static bool GetBBBoolSafe(const UBlackboardComponent* BB, const FName Key, bool& OutValue)
+    {
+        if (!BB || Key.IsNone()) return false;
+        OutValue = BB->GetValueAsBool(Key);
+        return true;
+    }
+
+
 }
 
 
 FCCGameplayDebuggerCategory::FCCGameplayDebuggerCategory()
 {
-    const FGameplayDebuggerInputHandlerConfig ToggleRangeCfg(TEXT("CC.ToggleRange"), EKeys::R.GetFName());
-    BindKeyPress(ToggleRangeCfg, this, &FCCGameplayDebuggerCategory::ToggleRange, EGameplayDebuggerInputMode::Local);
+	BindKeyPress(
+		FGameplayDebuggerInputHandlerConfig(TEXT("CC.ToggleRange"), EKeys::R.GetFName()),
+		this,
+		&FCCGameplayDebuggerCategory::ToggleRange,
+		EGameplayDebuggerInputMode::Local
+	);
 
-    const FGameplayDebuggerInputHandlerConfig ToggleOnlyAICfg(TEXT("CC.ToggleOnlyAI"), EKeys::O.GetFName());
-    BindKeyPress(ToggleOnlyAICfg, this, &FCCGameplayDebuggerCategory::ToggleOnlyAI, EGameplayDebuggerInputMode::Local);
+	BindKeyPress(
+		FGameplayDebuggerInputHandlerConfig(TEXT("CC.ToggleOnlyAI"), EKeys::O.GetFName()),
+		this,
+		&FCCGameplayDebuggerCategory::ToggleOnlyAI,
+		EGameplayDebuggerInputMode::Local
+	);
+
+	BindKeyPress(
+		FGameplayDebuggerInputHandlerConfig(TEXT("CC.ToggleVision"), EKeys::V.GetFName()),
+		this,
+		&FCCGameplayDebuggerCategory::ToggleVision,
+		EGameplayDebuggerInputMode::Local
+	);
 }
 
 void FCCGameplayDebuggerCategory::ToggleRange()
@@ -70,56 +96,105 @@ void FCCGameplayDebuggerCategory::ToggleOnlyAI()
 	bOnlyAI = !bOnlyAI;
 }
 
+void FCCGameplayDebuggerCategory::ToggleVision()
+{
+    bDrawVision = !bDrawVision;
+}
+
 void FCCGameplayDebuggerCategory::CollectData(APlayerController* OwnerPC, AActor* DebugActor)
 {
-	AddTextLine(TEXT("{green}[R]{white} toggle range  {green}[O]{white} toggle AI-only"));
+	AddTextLine(TEXT("{green}[R]{white} toggle range  {green}[O]{white} toggle AI-only {green}[V]{white} vision "));
 
     if (!OwnerPC)
     {
         AddTextLine(TEXT("No OwnerPC"));
         return;
     }
+
     if (!DebugActor)
     {
         AddTextLine(TEXT("No DebugActor selected."));
         return;
     }
 
-    APawn* Pawn = Cast<APawn>(DebugActor);
-    AAIController* AI = Pawn ? Cast<AAIController>(Pawn->GetController()) : nullptr;
+    
+	UWorld* World = DebugActor->GetWorld();
+	AddTextLine(FString::Printf(TEXT("NetMode: %s  Role: %s"),
+		CCD_NetModeStr(World),
+		CCD_RoleStr(DebugActor)));
 
+	AddTextLine(FString::Printf(TEXT("Actor: %s  Class: %s"),
+		*GetNameSafe(DebugActor),
+		*GetNameSafe(DebugActor->GetClass())));
+
+    APawn* Pawn = Cast<APawn>(DebugActor);
+    AAIController * AI = Pawn ? Cast<AAIController>(Pawn->GetController()) : nullptr;
+    
     if (bOnlyAI && !AI)
 	{
-		AddTextLine(TEXT("Selected actor is not AI-controlled. Press [O] to show anyway."));
+		AddTextLine(TEXT("{yellow} Not AI-controlled. Press [O] to show anyway."));
 		return;
 	}
-
+    
+	if (World && World->GetNetMode() == NM_Client && AI)
+	{
+		AddTextLine(TEXT("{red}WARNING: AIController present on Client. Verify authority-only AI logic."));
+	}
+   
+	AddTextLine(FString::Printf(TEXT("Controller: %s"), AI ? *GetNameSafe(AI) : TEXT("<none>")));
 
     UBlackboardComponent* BB = AI ? AI->GetBlackboardComponent() : nullptr;
 
-    const bool bHasBB = (BB != nullptr);
-    const bool bInRange = bHasBB ? BB->GetValueAsBool(TEXT("PlayerWithinRange")) : false;
-    const bool bCanSee  = bHasBB ? BB->GetValueAsBool(TEXT("CanSeePlayer")) : false;
-    const bool bCanHear = bHasBB ? BB->GetValueAsBool(TEXT("CanHearPlayer")) : false;
+    bool bBBInRange = false, bBBCanSee = false, bBBCanHear = false;
+    const bool bHasInRange = GetBBBoolSafe(BB, BB_InRange, bBBInRange);
+    const bool bHasCanSee  = GetBBBoolSafe(BB, BB_CanSee,  bBBCanSee);
+    const bool bHasCanHear = GetBBBoolSafe(BB, BB_CanHear, bBBCanHear);
 
+	AddTextLine(FString::Printf(
+		TEXT("BB: %s=%s  %s=%s  %s=%s"),
+		*BB_InRange.ToString(), bHasInRange ? (bBBInRange ? TEXT("true") : TEXT("false")) : TEXT("<missing>"),
+		*BB_CanSee.ToString(),  bHasCanSee  ? (bBBCanSee  ? TEXT("true") : TEXT("false")) : TEXT("<missing>"),
+		*BB_CanHear.ToString(), bHasCanHear ? (bBBCanHear ? TEXT("true") : TEXT("false")) : TEXT("<missing>")
+	));
+
+    // Player distance + range
     const FVector Center = DebugActor->GetActorLocation();
 
     float Range = 0.f;
+    FString RangeSource = TEXT("Fallback");
+
     const bool bHasRange = 
     TryReadFloat(DebugActor, TEXT("AttackRange"), Range) ||
     TryReadFloat(DebugActor, TEXT("InteractRange"), Range) ||
     TryReadFloat(DebugActor, TEXT("InteractionRange"), Range);
 
-    const float SphereRadius = bHasRange ? Range : FMath::Max(150.f, GetCapsuleRadiusSafe(DebugActor) * 2.5f);    
-    const FColor SphereColor  = bInRange ? FColor::Red : FColor::Green;
+    const float Fallback  = FMath::Max(150.f, GetCapsuleRadiusSafe(DebugActor) * 2.5f);
+    const float Radius = bHasRange ? Range : Fallback;
 
-    AddTextLine(FString::Printf(TEXT("Actor: %s Class: %s"), *GetNameSafe(DebugActor), *GetNameSafe(DebugActor->GetClass()))); 
-    
-    AddTextLine(FString::Printf(TEXT("HasBB:%d CanSee:%d CanHear:%d InRange:%d"), bHasBB?1:0, bCanSee?1:0, bCanHear?1:0, bInRange?1:0)); 
-    
-    AddTextLine(FString::Printf(TEXT("RangeSphere SphereRadius: %.0f (source: %s)"), SphereRadius, bHasRange ? TEXT("prop") : TEXT("fallback"))); 
-    
-    AddShape(FGameplayDebuggerShape::MakeCapsule(Center, SphereRadius, SphereRadius, SphereColor, TEXT("Range")));
+    APawn* PlayerPawn = OwnerPC->GetPawn();
+    const float PlayerDist = PlayerPawn ? FVector::Dist(Center, PlayerPawn->GetActorLocation()) : TNumericLimits<float>::Max();
+    const bool bComputedInRange = PlayerPawn && (PlayerDist <= Radius);
+
+  AddTextLine(FString::Printf(TEXT("PlayerDist: %.1f  Radius: %.1f  InRange: %s"),
+		PlayerDist, Radius, bComputedInRange ? TEXT("true") : TEXT("false")));
+
+	if (bDrawRange)
+	{
+		const FColor RangeColor = bComputedInRange ? FColor::Green : FColor::Red;
+		AddShape(FGameplayDebuggerShape::MakeCapsule(Center, Radius, Radius, RangeColor, TEXT("Range")));
+	}
+
+	if (bDrawVision && PlayerPawn)
+	{
+		const bool bLOS = (AI != nullptr) ? AI->LineOfSightTo(PlayerPawn) : false;
+		const bool bSees = bBBCanSee || bLOS;
+
+		const FColor VisionColor = bSees ? FColor::Cyan : FColor(128, 128, 128);
+		AddShape(FGameplayDebuggerShape::MakeSegment(Center, PlayerPawn->GetActorLocation(), VisionColor, TEXT("Vision")));
+		AddTextLine(FString::Printf(TEXT("Vision: BB=%s  LOS=%s"),
+			bBBCanSee ? TEXT("true") : TEXT("false"),
+			bLOS ? TEXT("true") : TEXT("false")));
+	}
 }
 
 void FCCGameplayDebuggerCategory::DrawData(APlayerController* OwnerPC, FGameplayDebuggerCanvasContext& CanvasContext)

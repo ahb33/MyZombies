@@ -33,6 +33,21 @@ FORCEINLINE const TCHAR* CCD_RoleStr(const AActor* A)
 	}
 }
 
+
+FORCEINLINE const TCHAR* CCD_NetModeStr(const UWorld* World)
+{
+	if (!World) return TEXT("NoWorld");
+	switch (World->GetNetMode())
+	{
+	case NM_Standalone:      return TEXT("Standalone");
+	case NM_Client:          return TEXT("Client");
+	case NM_ListenServer:    return TEXT("ListenServer");
+	case NM_DedicatedServer: return TEXT("DedicatedServer");
+	default:                 return TEXT("Unknown");
+	}
+}
+
+
 struct FCCDScopeTimer
 {
 	AActor* Actor; 
@@ -40,7 +55,9 @@ struct FCCDScopeTimer
 	double Start;
 	explicit FCCDScopeTimer(AActor* InActor, const TCHAR* InLabel)
 		: Actor(InActor), Label(InLabel), Start(FPlatformTime::Seconds()) {}
+
 	~FCCDScopeTimer()
+
 	{
 #if !UE_BUILD_SHIPPING
 		if (!CCD_IsEnabled()) return;
@@ -62,6 +79,7 @@ struct FCCDScopeTimer
                CCD_RoleStr(ACTOR), *GetNameSafe(ACTOR),                               \
                *FString::Printf(FMT, ##__VA_ARGS__));                                 \
   } } while(0)
+
   #define CCDBG_IF(COND, ACTOR, FMT, ...)  do{ if ((COND)) CCDBG(ACTOR, FMT, ##__VA_ARGS__); }while(0)
   #define CCDBG_SCOPE(ACTOR, LABEL_LIT)    FCCDScopeTimer CCD_JOIN(_ccdscope_,__LINE__)(ACTOR, TEXT(LABEL_LIT))
   #define CCDBG_NETFLUSH(ACTOR)            do{ if(ACTOR){ (ACTOR)->FlushNetDormancy(); (ACTOR)->ForceNetUpdate(); CCDBG(ACTOR, TEXT("NET FLUSHED")); } }while(0)
