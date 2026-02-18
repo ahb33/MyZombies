@@ -1,11 +1,12 @@
 #include "UIHelpers.h"
 #include "GameFramework/PlayerController.h"
+#include "MyPlayerController.h"
 #include "Blueprint/UserWidget.h"
 
 namespace UIHelpers
 {
     
-    void SetUIInputMode(AMyPlayerController* PC, bool bUIOnly, UWidget* FocusWidget)
+    void SetUIInputMode(AMyPlayerController* PC, bool bUIOnly, TObjectPtr<UUserWidget> FocusWidget)
     {
         if (!PC) return;
 

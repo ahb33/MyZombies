@@ -9,7 +9,7 @@ class UWdiget;
 namespace UIHelpers
 {
     
-    void SetUIInputMode(AMyPlayerController* PC, bool bUIOnly, UWdiget* FocusWidget = nullptr); // Sets UI-only input mode with optional widget focus
+    void SetUIInputMode(AMyPlayerController* PC, bool bUIOnly, TObjectPtr<UUserWidget> FocusWidget = nullptr); // Sets UI-only input mode with optional widget focus
 
     
     void RestoreGameplayInput(AMyPlayerController* PC); // Restores gameplay-only input mode

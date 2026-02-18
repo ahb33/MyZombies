@@ -13,6 +13,7 @@
 #include "BaseGameState.h"
 #include "BaseMenuWidget.h"
 #include "MenuUIManager.h"
+#include "UIHelpers.h"
 #include "KillDeathStats.h"
 #include "Components/AudioComponent.h"
 #include "ZombiesGameState.h"
@@ -256,24 +257,14 @@ void AMyPlayerController::ApplyInputProfile(EInputProfile Profile)
     {
 		case EInputProfile::Gameplay:
 		{
-			FInputModeGameOnly Mode;
-			SetInputMode(Mode);
-			bShowMouseCursor = false;
+			UIHelpers::RestoreGameplayInput(this);
 			break;
 		}
 
         case EInputProfile::Menu:
 		{
-            FInputModeGameAndUI Mode;
-            Mode.SetLockMouseToViewportBehavior(EMouseLockMode::DoNotLock);
-            Mode.SetHideCursorDuringCapture(false);
-
-			SetInputMode(Mode);
-
-			bShowMouseCursor = true;
-			bEnableClickEvents = true;
-			bEnableMouseOverEvents = true;
-			break;
+            UIHelpers::SetUIInputMode(this, true);  // No specific FocusWidget here; general menu mode
+            break;
 		}
 		default:
 			break;			
@@ -423,13 +414,8 @@ void AMyPlayerController::ShowDeathScreenLocal()
     {
 		DeathScreenInstance->AddToViewport(1000);
 
-		FInputModeUIOnly Mode;
-		Mode.SetWidgetToFocus(DeathScreenInstance->TakeWidget());
-		SetInputMode(Mode);
-
-		bShowMouseCursor = true;
-		bEnableClickEvents = true;
-		bEnableMouseOverEvents = true;
+        UIHelpers::SetUIInputMode(this, true, DeathScreenInstance);
+		
     }
 
 }
@@ -584,14 +570,7 @@ void AMyPlayerController::ShowPauseMenu()
         UGameplayStatics::SetGamePaused(this, true);
     }
 
-	bShowMouseCursor = true;
-    bEnableClickEvents = true;
-    bEnableMouseOverEvents = true;
-
-    FInputModeUIOnly Mode;
-    Mode.SetLockMouseToViewportBehavior(EMouseLockMode::DoNotLock);
-    Mode.SetWidgetToFocus(PauseMenuWidgetInstance->TakeWidget());
-    SetInputMode(Mode);
+	UIHelpers::SetUIInputMode(this, true, PauseMenuWidgetInstance);
 }
 
 void AMyPlayerController::HidePauseMenu()
