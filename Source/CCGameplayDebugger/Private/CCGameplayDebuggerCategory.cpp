@@ -25,20 +25,34 @@ namespace
     {
         if(!Obj) return false;
 
-        if(const FProperty* Prop = Obj->GetClass()->FindPropertyByName(PropName))
+        static TMap<UClass*, TMap<FName, const FProperty*>> Cache;
+        UClass* Cls = Obj->GetClass();
+        if(!Cls) return false;
+
+        const FProperty* const* Found = Cache.FindOrAdd(Cls).Find(PropName);
+
+        const FProperty* Prop = Found ? *Found : nullptr;
+        if (!Prop)
         {
-            if(const FFloatProperty* FloatProp = CastField<FFloatProperty>(Prop))
-            {
-                OutValue = FloatProp->GetPropertyValue_InContainer(Obj);
-                return true;
-            }
-            if(const FDoubleProperty* DoubleProp = CastField<FDoubleProperty>(Prop))
-            {
-                OutValue = static_cast<float>(DoubleProp->GetPropertyValue_InContainer(Obj));
-                return true;
-            }
+            Prop = Cls->FindPropertyByName(PropName);
+            Cache.FindOrAdd(Cls).Add(PropName, Prop); // caches null too
+        }
+
+        if (!Prop) return false;
+
+        if (const FFloatProperty* FloatProp = CastField<FFloatProperty>(Prop))
+        {
+            OutValue = FloatProp->GetPropertyValue_InContainer(Obj);
+            return true;
+        }
+        
+        if (const FDoubleProperty* DoubleProp = CastField<FDoubleProperty>(Prop))
+        {
+            OutValue = (float)DoubleProp->GetPropertyValue_InContainer(Obj);
+            return true;
         }
         return false;
+
     }
 
     static float GetCapsuleRadiusSafe(AActor* Actor)
@@ -51,14 +65,30 @@ namespace
         return 0.f;
     }
 
+    static bool GetCapsuleDimsSafe(AActor* Actor, float& OutRadius, float& OutHalfHeight)
+    {
+        OutRadius = 0.f;
+        OutHalfHeight = 0.f;
+        if (!Actor) return false;
+
+        if (UCapsuleComponent* Cap = Actor->FindComponentByClass<UCapsuleComponent>())
+        {
+            OutRadius     = Cap->GetScaledCapsuleRadius();
+            OutHalfHeight = Cap->GetScaledCapsuleHalfHeight();
+            return true;
+        }
+        return false;
+    }
+
     static bool GetBBBoolSafe(const UBlackboardComponent* BB, const FName Key, bool& OutValue)
     {
         if (!BB || Key.IsNone()) return false;
+        const FBlackboard::FKey KeyID = BB->GetKeyID(Key);
+        if (KeyID == FBlackboard::InvalidKey) return false;
+
         OutValue = BB->GetValueAsBool(Key);
         return true;
     }
-
-
 }
 
 
@@ -117,7 +147,8 @@ void FCCGameplayDebuggerCategory::CollectData(APlayerController* OwnerPC, AActor
         return;
     }
 
-    
+    AddTextLine(bOnlyAI ? TEXT("AI-only: {green}ON") : TEXT("AI-only: {red}OFF"));
+
 	UWorld* World = DebugActor->GetWorld();
 	AddTextLine(FString::Printf(TEXT("NetMode: %s  Role: %s"),
 		CCD_NetModeStr(World),
@@ -128,14 +159,19 @@ void FCCGameplayDebuggerCategory::CollectData(APlayerController* OwnerPC, AActor
 		*GetNameSafe(DebugActor->GetClass())));
 
     APawn* Pawn = Cast<APawn>(DebugActor);
-    AAIController * AI = Pawn ? Cast<AAIController>(Pawn->GetController()) : nullptr;
-    
+    if (!Pawn)
+    {
+        AddTextLine(TEXT("{red}Select an AI Pawn/Character (not a Controller)."));
+        return;
+    }
+
+    AAIController* AI = Cast<AAIController>(Pawn->GetController());
     if (bOnlyAI && !AI)
-	{
-		AddTextLine(TEXT("{yellow} Not AI-controlled. Press [O] to show anyway."));
-		return;
-	}
-    
+    {
+        AddTextLine(TEXT("{yellow}Not AI-controlled. Press [O] to show anyway."));
+        return;
+    }
+       
 	if (World && World->GetNetMode() == NM_Client && AI)
 	{
 		AddTextLine(TEXT("{red}WARNING: AIController present on Client. Verify authority-only AI logic."));
@@ -158,10 +194,14 @@ void FCCGameplayDebuggerCategory::CollectData(APlayerController* OwnerPC, AActor
 	));
 
     // Player distance + range
-    const FVector Center = DebugActor->GetActorLocation();
+    FVector Center = Pawn->GetActorLocation();
+    if (const UCapsuleComponent* Cap = Pawn->FindComponentByClass<UCapsuleComponent>())
+    {
+        Center = Cap->GetComponentLocation();
+    }
+    AActor* Target = DebugActor;
 
     float Range = 0.f;
-    FString RangeSource = TEXT("Fallback");
 
     const bool bHasRange = 
     TryReadFloat(DebugActor, TEXT("AttackRange"), Range) ||
@@ -175,14 +215,41 @@ void FCCGameplayDebuggerCategory::CollectData(APlayerController* OwnerPC, AActor
     const float PlayerDist = PlayerPawn ? FVector::Dist(Center, PlayerPawn->GetActorLocation()) : TNumericLimits<float>::Max();
     const bool bComputedInRange = PlayerPawn && (PlayerDist <= Radius);
 
-  AddTextLine(FString::Printf(TEXT("PlayerDist: %.1f  Radius: %.1f  InRange: %s"),
+    AddTextLine(FString::Printf(TEXT("PlayerDist: %.1f  Radius: %.1f  InRange: %s"),
 		PlayerDist, Radius, bComputedInRange ? TEXT("true") : TEXT("false")));
 
 	if (bDrawRange)
 	{
-		const FColor RangeColor = bComputedInRange ? FColor::Green : FColor::Red;
-		AddShape(FGameplayDebuggerShape::MakeCapsule(Center, Radius, Radius, RangeColor, TEXT("Range")));
-	}
+        FVector RangeCenter = DebugActor->GetActorLocation();
+
+        // Use capsule center if present (most characters/pawns).
+        if (const UCapsuleComponent* Cap = DebugActor->FindComponentByClass<UCapsuleComponent>())
+        {
+            RangeCenter = Cap->GetComponentLocation();
+        }
+        // If the debug actor is an AIController, draw around its pawn instead.
+        else if (const AAIController* AIC = Cast<AAIController>(DebugActor))
+        {
+            if (const APawn* P = AIC->GetPawn())
+            {
+                RangeCenter = P->GetActorLocation();
+                if (const UCapsuleComponent* PawnCap = P->FindComponentByClass<UCapsuleComponent>())
+                {
+                    RangeCenter = PawnCap->GetComponentLocation();
+                }
+            }
+        }
+
+        const FColor RangeColor = bComputedInRange ? FColor::Green : FColor::Red;
+
+        // Sphere-ish bubble (capsule degenerated to sphere when HalfHeight == Radius).
+        AddShape(FGameplayDebuggerShape::MakeCapsule(RangeCenter,
+            Radius,   // HalfHeight
+            Radius,   // Radius
+            RangeColor,
+            TEXT("Range")
+        ));
+    }
 
 	if (bDrawVision && PlayerPawn)
 	{

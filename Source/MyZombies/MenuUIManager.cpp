@@ -4,6 +4,7 @@
 #include "MenuUIManager.h"
 #include "BaseMenuWidget.h"
 #include "MyPlayerController.h"
+#include "UIHelpers.h"
 #include "Blueprint/WidgetBlueprintLibrary.h"
 
 void UMenuUIManager::Init(AMyPlayerController *InOwnerPC)
@@ -82,21 +83,7 @@ void UMenuUIManager::ShowMenu(FName MenuID)
 
 	 if (OwnerPC && ActiveMenu)
     {
-        FInputModeUIOnly Mode;
-        Mode.SetLockMouseToViewportBehavior(EMouseLockMode::DoNotLock);
-
-        TSharedPtr<SWidget> RootSlate = ActiveMenu->GetCachedWidget();
-        if (!RootSlate.IsValid())
-        {
-            RootSlate = ActiveMenu->TakeWidget(); // fallback
-        }
-
-        Mode.SetWidgetToFocus(RootSlate);
-        OwnerPC->SetInputMode(Mode);
-
-        OwnerPC->bShowMouseCursor = true;
-        OwnerPC->bEnableClickEvents = true;
-        OwnerPC->bEnableMouseOverEvents = true;
+		UIHelpers::SetUIInputMode(OwnerPC, true, ActiveMenu);
     }
 
     if (UBaseMenuWidget* Base = Cast<UBaseMenuWidget>(ActiveMenu))

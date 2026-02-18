@@ -103,8 +103,8 @@ void AEnemyCharacter::Attack()
 
     if (AActor* Target = GetBBTarget(Cast<AAIController>(GetController()), BBKey_Player))
     {
-        if (FVector::DistSquared(GetActorLocation(), Target->GetActorLocation()) >
-            FMath::Square(AttackRange)) return;
+        if (FVector::DistSquared(GetActorLocation(), Target->GetActorLocation()) > 
+        FMath::Square(AttackRange)) return;
     }
 
     NextAttackTime = Now + AttackCooldown;

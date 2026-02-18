@@ -26,8 +26,6 @@ AProjectile::AProjectile()
     CollisionSphere->SetCollisionEnabled(ECollisionEnabled::QueryOnly);
     CollisionSphere->SetCollisionObjectType(ECC_GameTraceChannel1);
     CollisionSphere->SetCollisionResponseToAllChannels(ECollisionResponse::ECR_Ignore);
-    CollisionSphere->SetCollisionResponseToChannel(ECC_Pawn, ECollisionResponse::ECR_Overlap);
-
 
     // Bind the OnHit function
     CollisionSphere->OnComponentHit.AddDynamic(this, &AProjectile::OnHit);

@@ -90,17 +90,17 @@ protected:
 
 private:
     UPROPERTY(ReplicatedUsing=OnRep_EquippedWeapon)
-    AWeapon* EquippedWeapon = nullptr;
+    TObjectPtr<AWeapon> EquippedWeapon = nullptr;
 
     UPROPERTY(ReplicatedUsing=OnRep_SecondaryWeapon)
-    AWeapon* SecondaryWeapon = nullptr;
+    TObjectPtr<AWeapon> SecondaryWeapon = nullptr;
 
     UPROPERTY(ReplicatedUsing= OnRep_CombatState)
     ECombatState CombatState = ECombatState::ECS_Unoccupied;
 
     // Local refs
-    AMainCharacter*      MainCharacter = nullptr;
-    AMyPlayerController* Controller     = nullptr;
+    TObjectPtr<AMainCharacter> MainCharacter = nullptr;
+    TObjectPtr<AMyPlayerController> Controller = nullptr;
 
     UPROPERTY() AMyHUD* HUD = nullptr;
 

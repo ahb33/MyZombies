@@ -151,10 +151,6 @@ void AMyAIController::OnTargetPerceptionUpdate(AActor* Actor, FAIStimulus Stimul
 	BB->SetValueAsBool(KEY_PlayerWithinRange, bInRange);
 
     Enemy->SetPerceptionState(bSee, bHear, bInRange);
-
-    
-       
-
 }
 
 void AMyAIController::UpdateNearbyAgents()
@@ -187,7 +183,7 @@ void AMyAIController::SetWalkSpeedIfChanged(UCharacterMovementComponent* MoveCom
 {
 	if (!MoveComp) return;
 	if (!FMath::IsNearlyEqual(MoveComp->MaxWalkSpeed, Desired))
-	{
+	{         
 		MoveComp->MaxWalkSpeed = Desired;
 	}
 }

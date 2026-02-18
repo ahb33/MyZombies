@@ -38,6 +38,7 @@ private:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Animation, meta = (AllowPrivateAccess = "true"))
 	TObjectPtr<AMainCharacter> MainCharacter = nullptr;
 
+	UPROPERTY()
 	TObjectPtr<AWeapon> playerWeapon = nullptr;
 
 	// class UCombatComponent* combatComp;
