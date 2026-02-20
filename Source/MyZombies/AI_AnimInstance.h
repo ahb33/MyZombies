@@ -26,6 +26,10 @@ public:
 	UFUNCTION(BlueprintCallable, Category = Animation)
 	virtual void NativeUpdateAnimation(float DeltaTime) override;
 
+	void UpdatePawnReferences();
+	void UpdateMovementSpeed(float DeltaTime);
+    void UpdatePerceptionState();
+
 
 	// Setter function to set the random dying animation variable
 	UFUNCTION(BlueprintCallable, Category = "Animation")

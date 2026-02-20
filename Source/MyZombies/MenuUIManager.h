@@ -3,8 +3,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "UObject/NoExportTypes.h"
-#include "Blueprint/UserWidget.h"
+#include "UObject/Object.h"
 #include "MenuUIManager.generated.h"
 
 /**
@@ -13,6 +12,7 @@
  */
 
 class AMyPlayerController;
+class UUserWidget;
 
 UCLASS()
 class MYZOMBIES_API UMenuUIManager : public UObject
@@ -44,8 +44,8 @@ private:
 	UUserWidget* GetOrCreateMenu(FName MenuID);
 private:
 
-	UPROPERTY(Transient)
-	TObjectPtr<AMyPlayerController> OwnerPC;
+    UPROPERTY(Transient)
+    TWeakObjectPtr<AMyPlayerController> OwnerPC;
 
 	UPROPERTY(Transient)
 	TMap<FName, TSubclassOf<UUserWidget>> MenuClasses;

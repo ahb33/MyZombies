@@ -1,29 +1,26 @@
 // Fill out your copyright notice in the Description page of Project Settings.
 
-
 #include "MyPlayerController.h"
+
 #include "MyHUD.h"
 #include "LobbyPlayerState.h"
 #include "ReadyButtonWidget.h"
-#include "GameOverMenuWidget.h"
-#include "ZombiesRoundWidget.h"
-#include "Components/ProgressBar.h" 
-#include "PauseMenuWidget.h"
+#include "Components/ProgressBar.h"
 #include "CharacterStats.h"
 #include "BaseGameState.h"
-#include "BaseMenuWidget.h"
-#include "MenuUIManager.h"
 #include "UIHelpers.h"
 #include "KillDeathStats.h"
-#include "Components/AudioComponent.h"
+#include "PlayerUISubsystem.h"
 #include "ZombiesGameState.h"
+#include "MenuUIManager.h"
+#include "MenuIds.h"
 #include "Kismet/GameplayStatics.h"
 
 AMyPlayerController::AMyPlayerController() {}
 
 void AMyPlayerController::BeginPlay()
 {
-    Super::BeginPlay();
+	Super::BeginPlay();
 
 	if (!IsLocalController())
 	{
@@ -31,68 +28,57 @@ void AMyPlayerController::BeginPlay()
 	}
 
 	TryBindToGameState();
-
-    const FString Map = UGameplayStatics::GetCurrentLevelName(this, true);
-
-    // Only build/show menu UI on the menu map
-    if (Map == TEXT("MainMenu_Level")) 
-    {
-        MenuUI = NewObject<UMenuUIManager>(this);
-        MenuUI->Init(this);
-
-        MenuUI->RegisterMenu("MainMenu", MainMenuWidgetClass, 0);
-        MenuUI->RegisterMenu("SoloMenu", SoloMenuWidgetClass, 0);
-        MenuUI->RegisterMenu("GameModeSelectionMenu", GameModeSelectionMenuWidgetClass, 0);
-        MenuUI->RegisterMenu("MultiplayerMenu", MultiplayerMenuWidgetClass, 0); 
-        MenuUI->RegisterMenu("CreateSessionMenu", CreateSessionMenuWidgetClass, 0);
-        MenuUI->RegisterMenu("JoinSessionMenu", JoinSessionMenuWidgetClass, 0);
-
-        MenuUI->ShowMenu("MainMenu");
-    }
-    else
-    {
-        ApplyInputProfile(EInputProfile::Gameplay);
-        // optional: if MenuUI exists, hide/clear it here
-    }
+	GetWorldTimerManager().SetTimerForNextTick(this, &AMyPlayerController::InitLocalUI);
 }
 
 void AMyPlayerController::SetupInputComponent()
 {
 	Super::SetupInputComponent();
 
-	if (InputComponent)
-	{
-		InputComponent->BindAction("StartGame", IE_Pressed, this, &AMyPlayerController::HandleReadyInput);
-		auto& Binding  = InputComponent->BindAction("Pause", IE_Pressed, this, &AMyPlayerController::TogglePauseMenu);
-		Binding.bExecuteWhenPaused = true;
-	}
+	if (!InputComponent) return;
+
+	InputComponent->BindAction("StartGame", IE_Pressed, this, &AMyPlayerController::HandleReadyInput);
+
+	auto& Binding = InputComponent->BindAction("Pause", IE_Pressed, this, &AMyPlayerController::TogglePauseMenu);
+	Binding.bExecuteWhenPaused = true;
 }
 
-void AMyPlayerController::EndPlay(const EEndPlayReason::Type EndPlayReason)
+void AMyPlayerController::InitLocalUI()
 {
-    if (UWorld* World = GetWorld())
-    {
-        auto& TM = World->GetTimerManager();
-        TM.ClearTimer(BindRetryTimerHandle);
-        TM.ClearTimer(RoundVoiceTimerHandle);
-        TM.ClearTimer(RoundIntroHideTimerHandle);
+	ULocalPlayer* LP = GetLocalPlayer();
+	if (!LP)
+	{
+		GetWorldTimerManager().SetTimerForNextTick(this, &AMyPlayerController::InitLocalUI);
+		return;
 	}
 
-	if (RoundIntroThudComp && RoundIntroThudComp->IsPlaying()) RoundIntroThudComp->Stop();
-	if (RoundIntroVoiceComp && RoundIntroVoiceComp->IsPlaying()) RoundIntroVoiceComp->Stop();
+	UISubsystem = LP->GetSubsystem<UPlayerUISubsystem>();
+	if (!UISubsystem)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("InitLocalUI - UISubsystem not found. Retrying next tick."));
+		GetWorldTimerManager().SetTimerForNextTick(this, &AMyPlayerController::InitLocalUI);
+		return;
+	}
 
-	UnbindFromGameState();
+	UISubsystem->SetOwnerPC(this);
+	bUIReady = true;
 
-	Super::EndPlay(EndPlayReason);
+	HandleMatchPhaseChanged(CachedPhase);
+	HandleRoundNumberChanged(CachedRoundNumber);
+
+	UpdateUIForCurrentMap();
 }
 
 void AMyPlayerController::BeginPlayingState()
 {
-    Super::BeginPlayingState();
-	TryBindToGameState(); // rebind on clients after gameplay starts
+	Super::BeginPlayingState();
+
+	TryBindToGameState();
+
 	const FString Map = UGameplayStatics::GetCurrentLevelName(this, true);
-    if (Map == TEXT("MainMenu_Level")) return; 
-    UpdateUIForCurrentMap();
+	if (Map == TEXT("MainMenu_Level")) return;
+
+	UpdateUIForCurrentMap();
 }
 
 void AMyPlayerController::TryBindToGameState()
@@ -100,40 +86,34 @@ void AMyPlayerController::TryBindToGameState()
 	UnbindFromGameState();
 
 	UWorld* World = GetWorld();
+	if (!World) return;
 
 	CachedBGS = World->GetGameState<ABaseGameState>();
-    if (!CachedBGS)
-    {
-        if (++BindRetryCount <= 20)
-        {
-            World->GetTimerManager().SetTimer(
-                BindRetryTimerHandle,
-                this,
-                &AMyPlayerController::TryBindToGameState,
-                0.2f,
-                false
-            );
-        }
-        return;
-    }
+	if (!CachedBGS)
+	{
+		if (++BindRetryCount <= 20)
+		{
+			World->GetTimerManager().SetTimer(
+				BindRetryTimerHandle,
+				this,
+				&AMyPlayerController::TryBindToGameState,
+				0.2f,
+				false
+			);
+		}
+		return;
+	}
 
 	BindRetryCount = 0;
 
-	InputProfileChangedHandle =
-    CachedBGS->OnInputProfileChanged.AddUObject(this, &AMyPlayerController::HandleInputProfileChanged);
+	InputProfileChangedHandle = CachedBGS->OnInputProfileChanged.AddUObject(this, &AMyPlayerController::HandleInputProfileChanged);
+	MatchPhaseChangedHandle = CachedBGS->OnMatchPhaseChanged.AddUObject(this, &AMyPlayerController::HandleMatchPhaseChanged);
+	MatchModeChangedHandle = CachedBGS->OnMatchModeChanged.AddUObject(this, &AMyPlayerController::HandleMatchModeChanged);
 
-	MatchPhaseChangedHandle =
-	CachedBGS->OnMatchPhaseChanged.AddUObject(this, &AMyPlayerController::HandleMatchPhaseChanged);
-
-	MatchModeChangedHandle =
-	CachedBGS->OnMatchModeChanged.AddUObject(this, &AMyPlayerController::HandleMatchModeChanged);
-
-	// Zombies-only GameState
-	CachedZGS = GetWorld() ? GetWorld()->GetGameState<AZombiesGameState>() : nullptr;
+	CachedZGS = World->GetGameState<AZombiesGameState>();
 	if (CachedZGS)
 	{
-		RoundNumberChangedHandle =
-		CachedZGS->OnRoundNumberChanged.AddUObject(this, &AMyPlayerController::HandleRoundNumberChanged);
+		RoundNumberChangedHandle = CachedZGS->OnRoundNumberChanged.AddUObject(this, &AMyPlayerController::HandleRoundNumberChanged);
 	}
 
 	SyncFromCachedState();
@@ -178,51 +158,46 @@ void AMyPlayerController::SyncFromCachedState()
 
 void AMyPlayerController::HandleInputProfileChanged(EInputProfile Profile)
 {
-   const FString Map = UGameplayStatics::GetCurrentLevelName(this, true);
-    if (Map == TEXT("MainMenu_Level")) return;
+	const FString Map = UGameplayStatics::GetCurrentLevelName(this, true);
+	if (Map == TEXT("MainMenu_Level")) return;
 
-    ApplyInputProfile(Profile);
-    EnsureReadyButton();
+	ApplyInputProfile(Profile);
+	EnsureReadyButton();
 }
 
 void AMyPlayerController::HandleMatchModeChanged(EMatchMode Mode)
 {
-	// Zombies-only UI; hide if leaving Zombies.
+	if (!UISubsystem) return;
+
 	if (Mode != EMatchMode::Zombies)
 	{
-		if (RoundHUDWidgetInstance && RoundHUDWidgetInstance->IsInViewport())
-		{
-			RoundHUDWidgetInstance->RemoveFromParent();
-		}
-		if (RoundSplashWidgetInstance)
-		{
-			RoundSplashWidgetInstance->SetVisibility(ESlateVisibility::Hidden);
-		}
+		UISubsystem->HideRoundHUD();
+		UISubsystem->HideRoundIntroSplash();
 	}
 }
 
 void AMyPlayerController::HandleMatchPhaseChanged(EMatchPhase Phase)
 {
+	CachedPhase = Phase;
+
+	if (!bUIReady || !UISubsystem) return;
+
 	switch (Phase)
 	{
+		case EMatchPhase::GameOver:
+			UISubsystem->ShowDeathScreenLocal();
+			break;
 
-	case EMatchPhase::GameOver:
-    	ShowDeathScreenLocal();
-    break;
+		case EMatchPhase::Intro:
+			if (CachedBGS && CachedBGS->GetMatchMode() == EMatchMode::Zombies)
+			{
+				UISubsystem->ShowRoundIntroSplashWidget(CachedRoundNumber);
+			}
+			break;
 
-	case EMatchPhase::Intro:
-		// Splash only makes sense for Zombies.
-		// when gamemode switches from into to active
-		if (CachedBGS && CachedBGS->GetMatchMode() == EMatchMode::Zombies)
-		{
-			ShowRoundIntroSplashWidget(CachedRoundNumber);
-		}
-		break;
-
-	default:
-		// Leaving intro hides splash.
-		HideRoundIntroSplashWidget();
-		break;
+		default:
+			UISubsystem->HideRoundIntroSplash();
+			break;
 	}
 }
 
@@ -235,105 +210,118 @@ void AMyPlayerController::HandleRoundNumberChanged(int32 RoundNumber)
 		return;
 	}
 
-	EnsureRoundHUDWidget();
-	if (RoundHUDWidgetInstance)
-	{
-		RoundHUDWidgetInstance->SetVisibility(ESlateVisibility::Visible);
-		RoundHUDWidgetInstance->SetRound(CachedRoundNumber);
-	}
+	if (!UISubsystem) return;
 
-	// // If the game is currently in Intro phase, show splash for the new round.
+	UISubsystem->UpdateRoundHUD(CachedRoundNumber);
+
 	if (CachedBGS->GetMatchPhase() == EMatchPhase::Intro)
 	{
-		ShowRoundIntroSplashWidget(CachedRoundNumber);
+		UISubsystem->ShowRoundIntroSplashWidget(CachedRoundNumber);
 	}
 }
-
 
 void AMyPlayerController::ApplyInputProfile(EInputProfile Profile)
 {
-    switch(Profile)
-
-    {
-		case EInputProfile::Gameplay:
-		{
-			UIHelpers::RestoreGameplayInput(this);
-			break;
-		}
-
-        case EInputProfile::Menu:
-		{
-            UIHelpers::SetUIInputMode(this, true);  // No specific FocusWidget here; general menu mode
-            break;
-		}
-		default:
-			break;			
-    }
+	ApplyInputProfile(Profile, nullptr);
 }
 
+void AMyPlayerController::ApplyInputProfile(EInputProfile Profile, UUserWidget* FocusWidget)
+{
+	switch (Profile)
+	{
+		case EInputProfile::Menu:
+		{
+            const FString Map = UGameplayStatics::GetCurrentLevelName(this, true);
+
+            // Lobby should allow movement + UI interaction + action mappings (Enter).
+            if (Map == TEXT("LobbyLevel"))
+            {
+                UIHelpers::ApplyGameAndUI(this, FocusWidget);
+            }
+            else
+            {
+                UIHelpers::ApplyUIOnly(this, FocusWidget);
+            }
+            break;
+
+		}
+
+        case EInputProfile::Gameplay:
+        default:
+            UIHelpers::ApplyGameOnly(this);
+            break;
+	}
+}
 
 void AMyPlayerController::HandleReadyInput()
 {
-	if(bReadyRequestInFlight) return;
+	if (bReadyRequestInFlight) return;
 	bReadyRequestInFlight = true;
 
 	if (ReadyButtonWidgetInstance)
-    {
-        ReadyButtonWidgetInstance->SetReadyPending(true);
-    }
+	{
+		ReadyButtonWidgetInstance->SetReadyPending(true);
+	}
 
 	Server_SetPlayerReady();
 }
 
 void AMyPlayerController::UpdateUIForCurrentMap()
 {
-    const FString Map = UGameplayStatics::GetCurrentLevelName(this, true);
+	const FString Map = UGameplayStatics::GetCurrentLevelName(this, true);
+	const bool bIsMainMenu = (Map == TEXT("MainMenu_Level"));
+	const bool bIsLobby = (Map == TEXT("LobbyLevel"));
 
-    const bool bIsMainMenu = (Map == TEXT("MainMenu_Level"));
-    const bool bIsLobby    = (Map == TEXT("LobbyLevel"));
+	ApplyInputProfile((bIsMainMenu || bIsLobby) ? EInputProfile::Menu : EInputProfile::Gameplay);
 
-    if (bIsMainMenu)
-    {
-        ApplyInputProfile(EInputProfile::Menu);
-        // show main menus
-        return;
-    }
+	if (bIsMainMenu)
+	{
+		if (!UISubsystem) return;
 
-    if (bIsLobby)
-    {
-        ApplyInputProfile(EInputProfile::Menu);
-        EnsureReadyButton();              // create + AddToViewport if needed
-        return;
-    }
+		UMenuUIManager* Manager = UISubsystem->GetMenuManager();
+		if (!Manager) return;
 
-    // gameplay maps
-    EnsureReadyButton();
-    ApplyInputProfile(EInputProfile::Gameplay);
+		if (Manager->GetActiveMenuID() != MenuIds::MainMenu)
+		{
+			Manager->ShowMenu(MenuIds::MainMenu);
+		}
+		return;
+	}
+
+	EnsureReadyButton();
+
+	if (bIsLobby && ReadyButtonWidgetInstance && ReadyButtonWidgetInstance->IsInViewport())
+	{
+		ReadyButtonWidgetInstance->SetUserFocus(this);
+		ReadyButtonWidgetInstance->SetKeyboardFocus();
+	}
 }
-
 
 void AMyPlayerController::TravelToLobby_Implementation()
 {
-    if(GetWorld())
-    {
-        GetWorld()->ServerTravel(TEXT("/Game/GameAssets/Levels/LobbyLevel?listen"));
-
-    }
+	if (UWorld* World = GetWorld())
+	{
+		World->ServerTravel(TEXT("/Game/GameAssets/Levels/LobbyLevel?listen"));
+	}
 }
 
 void AMyPlayerController::EnsureReadyButton()
 {
 	const FString Map = UGameplayStatics::GetCurrentLevelName(this, true);
-    const bool bIsLobby = (Map == TEXT("LobbyLevel"));
+	const bool bIsLobby = (Map == TEXT("LobbyLevel"));
+
 	if (bIsLobby)
 	{
 		if (ReadyButtonWidgetClass && !ReadyButtonWidgetInstance)
 		{
 			ReadyButtonWidgetInstance = CreateWidget<UReadyButtonWidget>(this, ReadyButtonWidgetClass);
 		}
+
 		if (ReadyButtonWidgetInstance && !ReadyButtonWidgetInstance->IsInViewport())
 		{
 			ReadyButtonWidgetInstance->AddToViewport(2000);
+			ReadyButtonWidgetInstance->SetUserFocus(this);
+			ReadyButtonWidgetInstance->SetKeyboardFocus();
 		}
 	}
 	else
@@ -344,11 +332,21 @@ void AMyPlayerController::EnsureReadyButton()
 		}
 	}
 }
+
 void AMyPlayerController::Server_SetPlayerReady_Implementation()
 {
     if (ALobbyPlayerState* PS = GetPlayerState<ALobbyPlayerState>())
     {
         PS->SetReadyStatus(true);
+
+        // Critical: readiness changes must re-evaluate lobby start conditions.
+        if (UWorld* World = GetWorld())
+        {
+            if (ALobbyGameMode* GM = World->GetAuthGameMode<ALobbyGameMode>())
+            {
+                GM->CheckLobbyReady(); // ensure this is public in LobbyGameMode.h
+            }
+        }
     }
 }
 
@@ -377,260 +375,76 @@ void AMyPlayerController::SetHUDMagAmmo(int32 AmmoInMag)
 	HUD->CharacterStats->AmmoInMag->SetText(FText::AsNumber(AmmoInMag));
 }
 
-// for death match game mode; not implemented in zombies
 void AMyPlayerController::UpdateHUDKillDeath(int32 Kills, int32 Deaths)
 {
-    if (AMyHUD* HUD = GetMyHUD())
-    {
-        if (HUD->KillDeathStats && HUD->KillDeathStats->PlayerKills && HUD->KillDeathStats->PlayerDeaths)
-        {
-            HUD->KillDeathStats->PlayerKills->SetText(FText::AsNumber(Kills));
-            HUD->KillDeathStats->PlayerDeaths->SetText(FText::AsNumber(Deaths));
-        }
-    }
+	if (AMyHUD* HUD = GetMyHUD())
+	{
+		if (HUD->KillDeathStats && HUD->KillDeathStats->PlayerKills && HUD->KillDeathStats->PlayerDeaths)
+		{
+			HUD->KillDeathStats->PlayerKills->SetText(FText::AsNumber(Kills));
+			HUD->KillDeathStats->PlayerDeaths->SetText(FText::AsNumber(Deaths));
+		}
+	}
 }
 
 AMyHUD* AMyPlayerController::GetMyHUD()
 {
-    if (!MyPlayerHUD)
-    {
-        MyPlayerHUD = Cast<AMyHUD>(GetHUD());
-    }
-    return MyPlayerHUD;
-}
-
-
-
-void AMyPlayerController::ShowDeathScreenLocal()
-{
-    if (!DeathScreenClass) return;
-
-    if (!DeathScreenInstance)
-    {
-        DeathScreenInstance = CreateWidget<UGameOverMenuWidget>(this, DeathScreenClass);
-    }
-
-    if (DeathScreenInstance && !DeathScreenInstance->IsInViewport())
-    {
-		DeathScreenInstance->AddToViewport(1000);
-
-        UIHelpers::SetUIInputMode(this, true, DeathScreenInstance);
-		
-    }
-
-}
-
-
-void AMyPlayerController::EnsureRoundHUDWidget()
-{
-	if (!RoundHUDWidgetClass) return;
-
-	if (!RoundHUDWidgetInstance)
+	if (!MyPlayerHUD)
 	{
-		RoundHUDWidgetInstance = CreateWidget<UZombiesRoundWidget>(this, RoundHUDWidgetClass);
+		MyPlayerHUD = Cast<AMyHUD>(GetHUD());
 	}
-	if (RoundHUDWidgetInstance && !RoundHUDWidgetInstance->IsInViewport())
-	{
-		RoundHUDWidgetInstance->AddToViewport(1000);
-	}
+	return MyPlayerHUD;
 }
-
-void AMyPlayerController::ShowRoundIntroSplashWidget(int32 RoundNumber)
-{
-	EnsureRoundSplashWidget(); // create the widget
-	if (!RoundSplashWidgetInstance) return;
-
-	if (!RoundSplashWidgetInstance->IsInViewport()) // if instance valid and not in viewport add to viewport
-	{
-		RoundSplashWidgetInstance->AddToViewport(1000);
-	}
-
-	RoundSplashWidgetInstance->SetVisibility(ESlateVisibility::Visible); 
-	RoundSplashWidgetInstance->SetRound(RoundNumber); // this 
-	
-    if (RoundNumber != LastIntroSoundRoundPlayed)
-    {
-        LastIntroSoundRoundPlayed = RoundNumber;
-        PlayRoundIntroSound(RoundNumber); // (this already does thud + delayed voice)
-    }
-
-
-    if (UWorld* World = GetWorld())
-    {
-        auto& TM = World->GetTimerManager();
-        TM.ClearTimer(RoundIntroHideTimerHandle);
-        TM.SetTimer(
-            RoundIntroHideTimerHandle,
-            this,
-            &AMyPlayerController::HideRoundIntroSplashWidget,
-            RoundIntroWidgetDuration,
-            false
-        );
-    }
-}
-
-void AMyPlayerController::EnsureRoundSplashWidget()
-{
-	if (!RoundSplashWidgetClass) return;
-
-	if (!RoundSplashWidgetInstance)
-	{
-		RoundSplashWidgetInstance = CreateWidget<UZombiesRoundWidget>(this, RoundSplashWidgetClass);
-	}
-}
-
-
-
-void AMyPlayerController::HideRoundIntroSplashWidget()
-{
-	if (RoundSplashWidgetInstance)
-	{
-		RoundSplashWidgetInstance->SetVisibility(ESlateVisibility::Hidden);
-	}
-}
-
-void AMyPlayerController::PlayRoundIntroSound(int32 RoundNumber)
-{
-	if (!GetWorld()) return;
-
-	// Stop previous intro audio if still playing
-	if (RoundIntroThudComp && RoundIntroThudComp->IsPlaying()) RoundIntroThudComp->Stop();
-	if (RoundIntroVoiceComp && RoundIntroVoiceComp->IsPlaying()) RoundIntroVoiceComp->Stop();
-	GetWorldTimerManager().ClearTimer(RoundVoiceTimerHandle);
-
-	float VoiceDelay = 0.15f;
-
-	if (RoundThudSound)
-	{
-		RoundIntroThudComp = UGameplayStatics::SpawnSound2D(this, RoundThudSound);
-		VoiceDelay = FMath::Clamp(RoundThudSound->GetDuration(), 0.10f, 1.00f);
-	}
-
-	const int32 Index = RoundNumber - 1;
-	if (RoundVoiceSounds.IsValidIndex(Index) && RoundVoiceSounds[Index])
-	{
-		USoundBase* VoiceSound = RoundVoiceSounds[Index];
-		GetWorldTimerManager().SetTimer(
-			RoundVoiceTimerHandle,
-			FTimerDelegate::CreateUObject(this, &AMyPlayerController::PlayRoundVoiceSound, VoiceSound),
-			VoiceDelay,
-			false
-		);
-	}
-}
-
-void AMyPlayerController::PlayRoundVoiceSound(USoundBase* VoiceSound)
-{
-	if (!VoiceSound) return;
-	RoundIntroVoiceComp = UGameplayStatics::SpawnSound2D(this, VoiceSound);
-}
-
 
 void AMyPlayerController::TogglePauseMenu()
 {
-    if (!IsLocalController())
-    {
-        return;
-    }
+	if (!IsLocalController() || !UISubsystem) return;
 
-    bPauseMenuOpen ? HidePauseMenu() : ShowPauseMenu();
-}
-
-
-
-void AMyPlayerController::ShowPauseMenu()
-{
-    if (!PauseMenuWidgetClass) return;
-
-	if(!PauseMenuWidgetInstance)
-    {
-        PauseMenuWidgetInstance = CreateWidget<UPauseMenuWidget>(this, PauseMenuWidgetClass);
-    }
-    if (!PauseMenuWidgetInstance)
-    {
-        return;
-    }
-
-    if(!PauseMenuWidgetInstance->IsInViewport())
+	if (bPauseMenuOpen)
 	{
-		PauseMenuWidgetInstance->AddToViewport(9999);
+		UISubsystem->HidePauseMenu();
 	}
-    bPauseMenuOpen = true;
-
-    // Only pause the world in standalone; in network, pause should be local UI only.
-	// PlayerController never runs on a dedicated server
-    const bool bIsStandalone = (GetNetMode() == NM_Standalone);
-    const bool bIsMultiplayer = !bIsStandalone;
-
-	PauseMenuWidgetInstance->ConfigureForMultiplayer(bIsMultiplayer);
-
-
-    if (bIsStandalone)
-    {
-        UGameplayStatics::SetGamePaused(this, true);
-    }
-
-	UIHelpers::SetUIInputMode(this, true, PauseMenuWidgetInstance);
-}
-
-void AMyPlayerController::HidePauseMenu()
-{
-    if (GetNetMode() == NM_Standalone)
-    {
-        UGameplayStatics::SetGamePaused(this, false);
-    }
-
-    if (PauseMenuWidgetInstance && PauseMenuWidgetInstance->IsInViewport())
-    {
-        PauseMenuWidgetInstance->RemoveFromParent();
-    }
-
-    bPauseMenuOpen = false;
-
-	ApplyInputProfile(EInputProfile::Gameplay);
+	else
+	{
+		UISubsystem->ShowPauseMenu();
+	}
+	bPauseMenuOpen = !bPauseMenuOpen;
 }
 
 void AMyPlayerController::QuitToMainMenuFromPause()
 {
-
 	GoToMainMenu();
 }
 
 void AMyPlayerController::RequestRestartLevel()
 {
-	// adjust for multiplayer- only server should request restart
-	const FName ZombiesLevel(*UGameplayStatics::GetCurrentLevelName(this, true));
-	UGameplayStatics::OpenLevel(this, ZombiesLevel);
+	const FName CurrentLevel(*UGameplayStatics::GetCurrentLevelName(this, true));
+	UGameplayStatics::OpenLevel(this, CurrentLevel);
 }
 
 void AMyPlayerController::GoToMainMenu()
 {
-	// adjust for multiplayer
-    if (GetNetMode() == NM_Standalone)
-    {
-        UGameplayStatics::OpenLevel(this, FName("MainMenu_Level"));
-        return;
-    }
-
-	if(HasAuthority())
+	if (GetNetMode() == NM_Standalone)
 	{
+		UGameplayStatics::OpenLevel(this, FName("MainMenu_Level"));
+		return;
+	}
 
-        if(AGameModeBase* GM = UGameplayStatics::GetGameMode(this))
+	if (HasAuthority())
+	{
+		if (AGameModeBase* GM = UGameplayStatics::GetGameMode(this))
 		{
 			GM->ReturnToMainMenuHost();
 		}
-		else
+		else if (UWorld* World = GetWorld())
 		{
-			GetWorld()->ServerTravel(TEXT("Game/Maps/MainMenu_Level?listen"));
+			World->ServerTravel(TEXT("/Game/Maps/MainMenu_Level?listen"));
 		}
 		return;
 	}
 
-	else
-    {
-        // Client: disconnect and return to menu
-        ClientReturnToMainMenuWithTextReason(FText::FromString("Server ended the game"));
-    }
+	ClientReturnToMainMenuWithTextReason(FText::FromString("Server ended the game"));
 }
+
 
 

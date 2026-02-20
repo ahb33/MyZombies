@@ -11,6 +11,7 @@
  */
 
 class UButton;
+class UTextBlock;
 
 UCLASS()
 class MYZOMBIES_API UReadyButtonWidget : public UUserWidget

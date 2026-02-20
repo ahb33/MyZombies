@@ -27,7 +27,6 @@ public:
 	UFUNCTION()
 	void ConfigureForMultiplayer(bool bIsMultiplayer);
 		
-
 protected:
 
 	UPROPERTY(meta = (BindWidget),  BlueprintReadOnly)

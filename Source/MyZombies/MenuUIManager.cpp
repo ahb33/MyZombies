@@ -5,7 +5,7 @@
 #include "BaseMenuWidget.h"
 #include "MyPlayerController.h"
 #include "UIHelpers.h"
-#include "Blueprint/WidgetBlueprintLibrary.h"
+#include "Blueprint/UserWidget.h"
 
 void UMenuUIManager::Init(AMyPlayerController *InOwnerPC)
 {
@@ -27,21 +27,24 @@ void UMenuUIManager::RegisterMenu(FName MenuID, TSubclassOf<UUserWidget> WidgetC
 
 UUserWidget* UMenuUIManager::GetOrCreateMenu(FName MenuID)
 {
-    if (!OwnerPC)
-	{
-		UE_LOG(LogTemp, Error, TEXT("UMenuUIManager: OwnerPC is null."));
-		return nullptr;
-	}
-
-    if(TObjectPtr<UUserWidget>* Found = MenuInstances.Find(MenuID))
+    if (!OwnerPC.IsValid())
     {
-        if(Found->Get())
-		{
-			return Found->Get();
-		}
-
-		MenuInstances.Remove(MenuID);
+        UE_LOG(LogTemp, Error, TEXT("UMenuUIManager: OwnerPC is null."));
+        return nullptr;
     }
+
+    AMyPlayerController* PC = OwnerPC.Get();
+    if (!IsValid(PC)) return nullptr;
+
+    if (TObjectPtr<UUserWidget>* Found = MenuInstances.Find(MenuID))
+    {
+        if (IsValid(Found->Get()))
+        {
+            return Found->Get();
+        }
+        MenuInstances.Remove(MenuID);
+    }
+
 
     TSubclassOf<UUserWidget>* ClassPtr = MenuClasses.Find(MenuID);
 	if (!ClassPtr || !(*ClassPtr))
@@ -50,7 +53,7 @@ UUserWidget* UMenuUIManager::GetOrCreateMenu(FName MenuID)
 		return nullptr;
 	}
 
-    UUserWidget* Created = CreateWidget<UUserWidget>(OwnerPC, *ClassPtr);
+    UUserWidget* Created = CreateWidget<UUserWidget>(PC, *ClassPtr);
 	if (!Created)
 	{
 		UE_LOG(LogTemp, Error, TEXT("UMenuUIManager: CreateWidget failed for '%s'."), *MenuID.ToString());
@@ -81,9 +84,13 @@ void UMenuUIManager::ShowMenu(FName MenuID)
 		ActiveMenu->AddToViewport(ZOrder);
 	}
 
-	 if (OwnerPC && ActiveMenu)
+    if (OwnerPC.IsValid())
     {
-		UIHelpers::SetUIInputMode(OwnerPC, true, ActiveMenu);
+        AMyPlayerController* PC = OwnerPC.Get();
+        if (IsValid(PC))
+        {
+            PC->ApplyInputProfile(EInputProfile::Menu, ActiveMenu.Get());
+        }
     }
 
     if (UBaseMenuWidget* Base = Cast<UBaseMenuWidget>(ActiveMenu))

@@ -87,17 +87,17 @@ void UMyAnimInstance::UpdateWeaponProperties()
     if (bWeaponEquipped && playerWeapon && playerWeapon->GetWeaponMesh() && MainCharacter->GetMesh())
     {
         LeftHandTransform = playerWeapon->GetWeaponMesh()->GetSocketTransform(FName("LeftHandSocket"), ERelativeTransformSpace::RTS_World);
-        
+        static const FName RightHandBone = TEXT("hand_r");
         FVector OutPosition;
         FRotator OutRotation;
-        MainCharacter->GetMesh()->TransformToBoneSpace(FName("hand_r"), LeftHandTransform.GetLocation(), FRotator::ZeroRotator, OutPosition, OutRotation);
+        MainCharacter->GetMesh()->TransformToBoneSpace(RightHandBone, LeftHandTransform.GetLocation(), FRotator::ZeroRotator, OutPosition, OutRotation);
         LeftHandTransform.SetLocation(OutPosition);
         LeftHandTransform.SetRotation(FQuat(OutRotation));
 
         if (MainCharacter->IsLocallyControlled())
         {
             bLocallyControlled = true;
-            FTransform RightHandTransform = playerWeapon->GetWeaponMesh()->GetSocketTransform(FName("hand_r"), ERelativeTransformSpace::RTS_World);
+            FTransform RightHandTransform = playerWeapon->GetWeaponMesh()->GetSocketTransform(RightHandBone, ERelativeTransformSpace::RTS_World);
             FRotator LookAtRotation = UKismetMathLibrary::FindLookAtRotation(RightHandTransform.GetLocation(), RightHandTransform.GetLocation() + (RightHandTransform.GetLocation() - MainCharacter->GetHitTarget()));
 
             bUseFABRIK = MainCharacter->GetCharacterCombatState() != ECombatState::ECS_Reloading;

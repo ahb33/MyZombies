@@ -36,6 +36,16 @@ void UAI_AnimInstance::NativeUpdateAnimation(float DeltaTime)
 {
     Super::NativeUpdateAnimation(DeltaTime);
 
+    UpdatePawnReferences();
+
+    if (!PawnInstance) return;
+
+    UpdateMovementSpeed(DeltaTime);  // New helper for velocity/location calc + interp
+    UpdatePerceptionState();
+}
+
+void UAI_AnimInstance::UpdatePawnReferences()
+{
     if (!PawnInstance)
     {
         PawnInstance = TryGetPawnOwner();
@@ -46,10 +56,11 @@ void UAI_AnimInstance::NativeUpdateAnimation(float DeltaTime)
             bHasPrevLoc = true;
         }
     }
+}
 
-    if (!PawnInstance) return;
 
-    // Speed from velocity (if valid) OR from location delta (robust)
+void UAI_AnimInstance::UpdateMovementSpeed(float DeltaTime)
+{
     const FVector Vel = PawnInstance->GetVelocity();
     const float VelSpeed2D = FVector(Vel.X, Vel.Y, 0.f).Size();
 
@@ -63,9 +74,11 @@ void UAI_AnimInstance::NativeUpdateAnimation(float DeltaTime)
     bHasPrevLoc = true;
 
     const float TargetSpeed = FMath::Max(VelSpeed2D, LocSpeed2D);
-
     MovementSpeed = FMath::FInterpTo(MovementSpeed, TargetSpeed, DeltaTime, SpeedInterpRate);
+}
 
+void UAI_AnimInstance::UpdatePerceptionState()
+{
     if (EnemyCharacterInstance)
     {
         SetPlayerVisibility(EnemyCharacterInstance->CanSeePlayer());

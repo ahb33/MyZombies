@@ -2,6 +2,7 @@
 
 #include "BaseMenuWidget.h"
 #include "MenuUIManager.h"
+#include "PlayerUISubsystem.h"
 #include "MyPlayerController.h"
 #include "Components/Button.h" 
 #include "Blueprint/WidgetTree.h"
@@ -114,11 +115,14 @@ AMyPlayerController* UBaseMenuWidget::GetMyPC() const
 
 UMenuUIManager* UBaseMenuWidget::GetMenuUI() const
 {
-	if (AMyPlayerController* PC = GetMyPC())
-	{
-		return PC->GetMenuUI();
-	}
-	return nullptr;
+    if (AMyPlayerController* PC = GetMyPC())
+    {
+        if (UPlayerUISubsystem* Subsystem = PC->GetUISubsystem())
+        {
+            return Subsystem->GetMenuManager();
+        }
+    }
+    return nullptr;
 }
 
 void UBaseMenuWidget::RequestShowMenu(FName MenuId)

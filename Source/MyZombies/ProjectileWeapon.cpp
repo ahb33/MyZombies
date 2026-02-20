@@ -17,155 +17,63 @@ void AProjectileWeapon::Fire(const FVector& HitTarget)
     Super::Fire(HitTarget);
 
 
-    APawn* InstigatorPawn = Cast<APawn>(GetOwner());
-    if (!InstigatorPawn || !GetWeaponMesh())
-    {
-        UE_LOG(LogTemp, Error, TEXT("Fire aborted: InstigatorPawn=%s, WeaponMesh=%s"),
-            InstigatorPawn ? *InstigatorPawn->GetName() : TEXT("NULL"),
-            GetWeaponMesh() ? *GetWeaponMesh()->GetName() : TEXT("NULL"));
-        return;
-    }
-
     if (!HasAuthority())
     {
-    UE_LOG(LogTemp, Warning, TEXT("Skipping projectile spawn on client (cosmetic handled elsewhere)"));
-    return;
-    }
-
-    const USkeletalMeshSocket* MuzzleFlashSocket = GetWeaponMesh()->GetSocketByName(FName("MuzzleFlash"));
-    if (!MuzzleFlashSocket)
-    {
-        UE_LOG(LogTemp, Error, TEXT("Fire aborted: No MuzzleFlash socket on %s"), *GetWeaponMesh()->GetName());
+        UE_LOG(LogTemp, Warning, TEXT("Skipping projectile spawn on client (cosmetic handled elsewhere)"));
         return;
     }
 
-    UWorld* World = GetWorld();
-    if (!World)
+    const USkeletalMeshSocket* MuzzleSocket = GetWeaponMesh()->GetSocketByName(FName("MuzzleFlash"));
+    if (!MuzzleSocket || !GetWorld())
     {
-        UE_LOG(LogTemp, Error, TEXT("Fire aborted: World is NULL"));
+        UE_LOG(LogTemp, Error, TEXT("Fire aborted: No muzzle socket or world"));
         return;
     }
 
-    SocketTransform = MuzzleFlashSocket->GetSocketTransform(GetWeaponMesh());
-    FVector ToTarget = HitTarget - SocketTransform.GetLocation();
-    FRotator TargetRotation = ToTarget.Rotation();
+    const FTransform SocketTransform = MuzzleSocket->GetSocketTransform(GetWeaponMesh());
+    const FRotator TargetRotation = (HitTarget - SocketTransform.GetLocation()).Rotation();
 
-    UE_LOG(LogTemp, Warning, TEXT("AProjectileWeapon::Fire | NetMode=%d | Authority=%d | LocallyControlled=%d"),
-    (int32)World->GetNetMode(),
-    InstigatorPawn->HasAuthority(),
-    InstigatorPawn->IsLocallyControlled());
+    TSubclassOf<AProjectile> ChosenClass = bUseServerSideRewind 
+        ? ServerSideRewindProjectileClass 
+        : ProjectileClass;
 
+    if (!ChosenClass)
+    {
+        UE_LOG(LogTemp, Error, TEXT("No valid projectile class (SSR=%d)"), bUseServerSideRewind);
+        return;
+    }
     // Server-side spawn params
     FActorSpawnParameters SpawnParams;
     SpawnParams.Owner = GetOwner();
-    SpawnParams.Instigator = InstigatorPawn;
+    SpawnParams.Instigator = Cast<APawn>(GetOwner());
     SpawnParams.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
+ 
+    AProjectile* Spawned = GetWorld()->SpawnActor<AProjectile>(
+        ChosenClass,
+        SocketTransform.GetLocation(),
+        TargetRotation,
+        SpawnParams
+    );
 
-    // Cosmetic spawn params (clients)
-    FActorSpawnParameters CosmeticParams;
-    CosmeticParams.Owner = nullptr;
-    CosmeticParams.Instigator = nullptr;
-    CosmeticParams.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
-
-    AProjectile* SpawnedProjectile = nullptr;
-
-    if (bUseServerSideRewind)
+    if (Spawned)
     {
-        if (InstigatorPawn->HasAuthority())
+        Spawned->bUseServerSideRewind = bUseServerSideRewind;
+        Spawned->SetProjectileDamage(GetDamage());
+        Spawned->SetCurrentWeapon(this);
+
+        if (bUseServerSideRewind)
         {
-            if (InstigatorPawn->IsLocallyControlled())
+            Spawned->TraceStart = SocketTransform.GetLocation();
+            if (auto* MoveComp = Spawned->GetProjectileMovementComponent())
             {
-               UE_LOG(LogTemp, Warning, TEXT("Branch: Listen server host firing own weapon"));
-                SpawnedProjectile = World->SpawnActor<AProjectile>(
-                    ProjectileClass,
-                    SocketTransform.GetLocation(),
-                    TargetRotation,
-                    SpawnParams
-                );
-
-                if (SpawnedProjectile)
-                {
-                    SpawnedProjectile->bUseServerSideRewind = false;
-                    SpawnedProjectile->SetProjectileDamage(GetDamage());
-                    SpawnedProjectile->SetCurrentWeapon(this);
-                    // SpawnedProjectile->InitializeTracer();
-                }
-            }
-
-            // server, not locally controlled
-            else 
-            {
-                UE_LOG(LogTemp, Warning, TEXT("Branch: Dedicated server simulating for remote client"));
-                SpawnedProjectile = World->SpawnActor<AProjectile>(
-                    ServerSideRewindProjectileClass,
-                    SocketTransform.GetLocation(),
-                    TargetRotation,
-                    SpawnParams
-                );
-
-                if (SpawnedProjectile)
-                {
-                    SpawnedProjectile->bUseServerSideRewind = true;
-                    SpawnedProjectile->SetCurrentWeapon(this);
-                }
-            }
-        }
-
-        // client using SSR
-        else 
-        {
-            // We are on a client
-            if (InstigatorPawn->IsLocallyControlled())
-            {
-                UE_LOG(LogTemp, Warning, TEXT("Branch: Client firing own shot"));
-
-                SpawnedProjectile = World->SpawnActor<AProjectile>(ServerSideRewindProjectileClass,SocketTransform.GetLocation(), 
-                TargetRotation, CosmeticParams);
-
-                if (SpawnedProjectile)
-                {
-                    SpawnedProjectile->bUseServerSideRewind = true;
-                    SpawnedProjectile->TraceStart = SocketTransform.GetLocation();
-
-                    if (auto* MoveComp = SpawnedProjectile->GetProjectileMovementComponent())
-                    {
-                        UE_LOG(LogTemp, Warning, TEXT("Move Comp successfully retreived"));
-                        SpawnedProjectile->InitialVelocity =
-                        SpawnedProjectile->GetActorForwardVector() * MoveComp->InitialSpeed;
-                    }
-
-                    // SpawnedProjectile->SetCurrentWeapon(this);
-                }
+                Spawned->InitialVelocity = Spawned->GetActorForwardVector() * MoveComp->InitialSpeed;
             }
         }
     }
     else
     {
-        if (InstigatorPawn->HasAuthority())
-        {
-            UE_LOG(LogTemp, Warning, TEXT("Branch: No SSR, server authoritative projectile"));
-
-			SpawnedProjectile = World->SpawnActor<AProjectile>(ProjectileClass, SocketTransform.GetLocation(), TargetRotation, SpawnParams);
-			SpawnedProjectile->bUseServerSideRewind = false;
-        }
-    }
-    
-    // Post-spawn log
-    if (SpawnedProjectile)
-    {
-        UE_LOG(LogTemp, Warning, TEXT("Spawned projectile of class %s | Location=%s | bSSR=%d"),
-        *SpawnedProjectile->GetClass()->GetName(),
-        *SpawnedProjectile->GetActorLocation().ToString(),
-        SpawnedProjectile->bUseServerSideRewind);
-    }
-    else
-    {
-        UE_LOG(LogTemp, Error, TEXT("SpawnActor failed in branch! Class(Projectile)=%s | Class(SSR)=%s"),
-        ProjectileClass ? *ProjectileClass->GetName() : TEXT("NULL"),
-        ServerSideRewindProjectileClass ? *ServerSideRewindProjectileClass->GetName() : TEXT("NULL"));
+        UE_LOG(LogTemp, Error, TEXT("SpawnActor failed for %s"), *ChosenClass->GetName());
     }
 }
 
-
-
-
+ 

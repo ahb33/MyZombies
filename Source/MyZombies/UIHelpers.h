@@ -1,20 +1,25 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "InputCoreTypes.h"
+
 
 class AMyPlayerController;
-class UWdiget;
+class AActor;
+class UUserWidget;
+
 
 namespace UIHelpers
 {
     
-    void SetUIInputMode(AMyPlayerController* PC, bool bUIOnly, TObjectPtr<UUserWidget> FocusWidget = nullptr); // Sets UI-only input mode with optional widget focus
+	/** Applies UI-only input mode, shows cursor, enables click/hover, and optionally focuses a widget. */
+	void ApplyUIOnly(AMyPlayerController* PC, UUserWidget* FocusWidget = nullptr);
 
-    
-    void RestoreGameplayInput(AMyPlayerController* PC); // Restores gameplay-only input mode
+	/** Applies Game+UI input mode, shows cursor, enables click/hover, and optionally focuses a widget. */
+	void ApplyGameAndUI(AMyPlayerController* PC, UUserWidget* FocusWidget = nullptr);
 
+	/** Applies Game-only input mode and disables cursor/click/hover. */
+	void ApplyGameOnly(AMyPlayerController* PC);
 
-    void ForceSafeNetUpdate(AActor* Actor); // Forces safe network update (dormancy + flush + force) if actor has authority. Sets UI-only input mode with optional widget focus
-
+	/** Useful when you change replicated state and need it visible to clients immediately. */
+	void ForceSafeNetUpdate(AActor* Actor);
 }

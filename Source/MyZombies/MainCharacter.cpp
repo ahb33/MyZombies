@@ -13,6 +13,7 @@
 #include "ZombiesGameMode.h"
 #include "Kismet/KismetMathLibrary.h"
 #include "DamageHelpers.h"
+#include "UIHelpers.h"
 #include "MyPlayerController.h"
 #include "CCDebug.h"
 
@@ -340,10 +341,10 @@ void AMainCharacter::SetPlayerHealth(float NewHealth)
 
 	if (IsLocallyControlled())
 	{
-        OnRep_Health(OldHealth);
+        UpdateHUDHealth();
 	}
 
-    ForceNetUpdate();
+    UIHelpers::ForceSafeNetUpdate(this);
 }
 
 void AMainCharacter::Server_SetPlayerHealth_Implementation(float NewHealth) 
@@ -594,6 +595,7 @@ float AMainCharacter::TakeDamage(float DamageAmount, const FDamageEvent& DamageE
 void AMainCharacter::OnRep_IsDead()
 {
     if (!bIsDead) return;
+
     SetOverlappingWeapon(nullptr);
     if(GetEquippedWeapon()) GetEquippedWeapon()->SetWeaponState(EWeaponState::Dropped);
     if(GetSecondaryWeapon()) GetSecondaryWeapon()->SetWeaponState(EWeaponState::Dropped);
@@ -616,17 +618,16 @@ void AMainCharacter::Die()
 
     bIsDead = true;  
 
+    if (GetEquippedWeapon()) GetEquippedWeapon()->SetWeaponState(EWeaponState::Dropped);
+    if (GetSecondaryWeapon()) GetSecondaryWeapon()->SetWeaponState(EWeaponState::Dropped);
 
-    OnRep_IsDead(); // drop weapons then notify gamemode player died
 
     if (AZombiesGameMode* GM = GetWorld()->GetAuthGameMode<AZombiesGameMode>()) GM->HandlePlayerDeath(Controller, nullptr);
 
 
     CCDBG(this, TEXT("Die start  HasAuth=%d  bIsDead=%d"), HasAuthority()?1:0, bIsDead?1:0);
-    CCDBG(this, TEXT("Die start  HasAuth=%d  bIsDead=%d"), HasAuthority()?1:0, bIsDead?1:0);
 
-    FlushNetDormancy();
-    ForceNetUpdate();
+    UIHelpers::ForceSafeNetUpdate(this);
 
 
     SetLifeSpan(0.5f);

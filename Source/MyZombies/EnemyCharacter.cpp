@@ -8,6 +8,7 @@
 #include "Animation/AnimInstance.h"
 #include "BehaviorTree/BlackboardComponent.h"
 #include "DamageHelpers.h"
+#include "UIHelpers.h"
 #include "Components/SphereComponent.h"
 #include "Net/UnrealNetwork.h"
 
@@ -208,9 +209,7 @@ void AEnemyCharacter::SetPerceptionState(bool bSee, bool bHear, bool bInRange)
     PerceptionState.bHear = bHear;
     PerceptionState.bInRange = bInRange;
 
-    SetNetDormancy(DORM_Awake);
-    FlushNetDormancy();
-    ForceNetUpdate();
+    UIHelpers::ForceSafeNetUpdate(this);
 }
 
 void AEnemyCharacter::SetChasingState(bool bChasing)
@@ -267,9 +266,7 @@ void AEnemyCharacter::SetLastKnownPlayerPos(const FVector& InPos)
 
     LastKnownPlayerPos = Q;
 
-    SetNetDormancy(DORM_Awake);
-    FlushNetDormancy();
-    ForceNetUpdate();
+    UIHelpers::ForceSafeNetUpdate(this);
 }
 
 void AEnemyCharacter::OnRep_LastKnownPlayerPos()

@@ -25,6 +25,7 @@ void ABaseGameState::SetMatchMode(EMatchMode NewMode)
 {
 	if (!HasAuthority() || MatchMode == NewMode) return;
 	MatchMode = NewMode;
+	ForceNetUpdate();
 	BroadcastMatchMode();
 }
 
@@ -32,6 +33,7 @@ void ABaseGameState::SetInputProfile(EInputProfile NewProfile)
 {
 	if (!HasAuthority() || InputProfile == NewProfile) return;
 	InputProfile = NewProfile;
+	ForceNetUpdate();
 	BroadcastInputProfile();
 }
 

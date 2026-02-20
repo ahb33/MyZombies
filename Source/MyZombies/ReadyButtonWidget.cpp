@@ -2,14 +2,19 @@
 
 
 #include "ReadyButtonWidget.h"
+
 #include "Components/Button.h"
 #include "Components/TextBlock.h"
+#include "InputCoreTypes.h"
 #include "MyPlayerController.h"
+
 
 void UReadyButtonWidget::NativeConstruct()
 {
     Super::NativeConstruct();
 
+    SetIsFocusable(true);
+    
     if (ReadyButton && !ReadyButton->OnClicked.IsAlreadyBound(this, &UReadyButtonWidget::OnClicked))
     {
         ReadyButton->OnClicked.AddDynamic(this, &UReadyButtonWidget::OnClicked);

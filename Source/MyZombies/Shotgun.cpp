@@ -16,8 +16,7 @@ void AShotgun::Fire(const FVector& HitTarget)
     Super::Fire(HitTarget);
     if (!GetWorld() || !GetWeaponMesh()) return;
 
-    const USkeletalMeshSocket* MuzzleSock =
-        GetWeaponMesh()->GetSocketByName(AWeapon::GetMuzzleSocketName());
+    const USkeletalMeshSocket* MuzzleSock = GetWeaponMesh()->GetSocketByName(AWeapon::GetMuzzleSocketName());
     if (!MuzzleSock) return;
 
     const FVector Start = MuzzleSock->GetSocketLocation(GetWeaponMesh());
@@ -43,13 +42,12 @@ void AShotgun::Fire(const FVector& HitTarget)
 
         if (HasAuthority() && bHit)
         {
-            if (AActor* HitActor = HR.GetActor())
-            {
-                UGameplayStatics::ApplyDamage(
-                    HitActor, PelletDamage,
-                    GetOwner() ? GetOwner()->GetInstigatorController() : nullptr,
-                    this, UDamageType::StaticClass());
-            }
+            UGameplayStatics::ApplyDamage(
+                HR.GetActor(),
+                PelletDamage,
+                GetOwner() ? GetOwner()->GetInstigatorController() : nullptr,
+                this,
+                UDamageType::StaticClass());
         }
 
         // Pick best visual ray (prefer a real impact)
@@ -73,8 +71,7 @@ void AShotgun::WeaponTraceWithScatter(const FVector& HitTarget, TArray<FVector_N
 {
     if (!GetWeaponMesh()) return;
 
-    const USkeletalMeshSocket* MuzzleSock =
-        GetWeaponMesh()->GetSocketByName(FName("MuzzleFlash"));
+    const USkeletalMeshSocket* MuzzleSock = GetWeaponMesh()->GetSocketByName(FName("MuzzleFlash"));
     if (!MuzzleSock) return;
 
     const FVector M = MuzzleSock->GetSocketLocation(GetWeaponMesh());

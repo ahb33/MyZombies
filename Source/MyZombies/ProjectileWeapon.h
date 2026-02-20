@@ -28,5 +28,4 @@ private:
 	UPROPERTY(EditAnywhere)
 	TSubclassOf<AProjectile> ServerSideRewindProjectileClass;
     
-	FTransform SocketTransform;
 };

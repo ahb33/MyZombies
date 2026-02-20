@@ -56,22 +56,42 @@ void ALobbyGameMode::CheckLobbyReady()
 void ALobbyGameMode::StartGameMatch()
 {
     UWorld* World = GetWorld();
-
-    UMyGameInstance* GI = World->GetGameInstance<UMyGameInstance>();
-
-    const FString Mode = GI->GetSelectedGameMode().ToString();
-    
-    FString MapPath;
-    if (Mode.Contains("Zombies"))
-        MapPath = "/Game/GameAssets/Levels/Zombies_Level?listen";
-    else if (Mode.Contains("DeathMatch"))
-        MapPath = "/Game/GameAssets/Levels/DeathMatch_Level?listen";
-        
-    else
+    if (!World)
     {
-        UE_LOG(LogTemp, Error, TEXT("Unknown mode: %s"), *Mode);
+        UE_LOG(LogTemp, Error, TEXT("StartGameMatch: World is null."));
         return;
     }
+
+    UMyGameInstance* GI = World->GetGameInstance<UMyGameInstance>();
+    if (!GI)
+    {
+        UE_LOG(LogTemp, Error, TEXT("StartGameMatch: GameInstance is null."));
+        return;
+    }
+
+    const FName SelectedMode = GI->GetSelectedGameMode();
+    if (SelectedMode.IsNone())
+    {
+        UE_LOG(LogTemp, Error, TEXT("StartGameMatch: SelectedGameMode is None on SERVER (selection likely only exists on client)."));
+        return;
+    }
+
+    FString MapPath;
+    if (SelectedMode == TEXT("Zombies"))
+    {
+        MapPath = TEXT("/Game/GameAssets/Levels/Zombies_Level?listen");
+    }
+    else if (SelectedMode == TEXT("DeathMatch"))
+    {
+        MapPath = TEXT("/Game/GameAssets/Levels/DeathMatch_Level?listen");
+    }
+    else
+    {
+        UE_LOG(LogTemp, Error, TEXT("StartGameMatch: Unknown mode: %s"), *SelectedMode.ToString());
+        return;
+    }
+
+    UE_LOG(LogTemp, Log, TEXT("StartGameMatch: SelectedMode=%s -> ServerTravel=%s"), *SelectedMode.ToString(), *MapPath);
 
     bUseSeamlessTravel = true;
     World->ServerTravel(MapPath);

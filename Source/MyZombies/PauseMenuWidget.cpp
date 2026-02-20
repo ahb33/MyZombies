@@ -40,7 +40,7 @@ void UPauseMenuWidget::OnResumeButtonClicked()
 {
 	if (AMyPlayerController* PC = GetMyPC())
 	{
-		PC->HidePauseMenu();
+		PC->TogglePauseMenu();
 	}
 
 }
