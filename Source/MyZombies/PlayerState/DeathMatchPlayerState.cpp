@@ -7,8 +7,5 @@
 
 void ADeathMatchPlayerState::HandlePlayerStatsChanged()
 {
-    if (AMyPlayerController* PC = Cast<AMyPlayerController>(GetOwner()))
-    {
-        PC->UpdateHUDKillDeath(GetPlayerKills(), GetPlayerDeaths());
-    }
+
 }

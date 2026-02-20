@@ -7,9 +7,9 @@
 #include "ReadyButtonWidget.h"
 #include "Components/ProgressBar.h"
 #include "CharacterStats.h"
+#include "Components/TextBlock.h"
 #include "BaseGameState.h"
 #include "UIHelpers.h"
-#include "KillDeathStats.h"
 #include "PlayerUISubsystem.h"
 #include "ZombiesGameState.h"
 #include "MenuUIManager.h"
@@ -375,17 +375,7 @@ void AMyPlayerController::SetHUDMagAmmo(int32 AmmoInMag)
 	HUD->CharacterStats->AmmoInMag->SetText(FText::AsNumber(AmmoInMag));
 }
 
-void AMyPlayerController::UpdateHUDKillDeath(int32 Kills, int32 Deaths)
-{
-	if (AMyHUD* HUD = GetMyHUD())
-	{
-		if (HUD->KillDeathStats && HUD->KillDeathStats->PlayerKills && HUD->KillDeathStats->PlayerDeaths)
-		{
-			HUD->KillDeathStats->PlayerKills->SetText(FText::AsNumber(Kills));
-			HUD->KillDeathStats->PlayerDeaths->SetText(FText::AsNumber(Deaths));
-		}
-	}
-}
+
 
 AMyHUD* AMyPlayerController::GetMyHUD()
 {

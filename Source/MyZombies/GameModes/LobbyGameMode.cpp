@@ -76,6 +76,8 @@ void ALobbyGameMode::StartGameMatch()
         return;
     }
 
+    const FString Mode = GI->GetSelectedGameMode().ToString();
+
     FString MapPath;
     if (SelectedMode == TEXT("Zombies"))
     {

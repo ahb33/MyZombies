@@ -39,7 +39,6 @@ public:
 	void SetHUDHealth(float CurrentHealth, float MaxHealth);
 	void SetHUDAmmo(int32 Ammo);
 	void SetHUDMagAmmo(int32 AmmoInMag);
-	void UpdateHUDKillDeath(int32 Kills, int32 Deaths);
 
 	void HandleReadyInput();
 

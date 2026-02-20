@@ -5,7 +5,6 @@
 #include "Engine/World.h"
 #include "GameFramework/PlayerController.h"
 #include "CharacterStats.h"
-#include "KillDeathStats.h"
 #include "Kismet/GameplayStatics.h"
 
 
@@ -99,19 +98,5 @@ void AMyHUD::AddCharacterStats()
     }
 }
 
-void AMyHUD::AddKillDeathWidget()
-{
-    APlayerController* PC = GetOwningPlayerController();
-    if (!PC || !KillDeathStatsClass)
-    {
-        return;
-    }
 
-    KillDeathStats = CreateWidget<UKillDeathStats>(PC, KillDeathStatsClass);
-    if (KillDeathStats)
-    {
-        KillDeathStats->AddToViewport();
-        UE_LOG(LogTemp, Log, TEXT("KillDeathStats widget created and added to viewport"));
-    }
-}
 

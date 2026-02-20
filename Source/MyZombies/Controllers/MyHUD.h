@@ -8,7 +8,7 @@
 
 
 class UCharacterStats;
-class UKillDeathStats;
+
 class UTexture2D;
 class APlayerController;
 
@@ -53,15 +53,13 @@ public:
 	UPROPERTY()
 	TObjectPtr<UCharacterStats> CharacterStats = nullptr;
 
-	UPROPERTY()
-	TObjectPtr<UKillDeathStats> KillDeathStats = nullptr;
+
 
 	// --- Widget classes (set in editor/blueprints) ---
 	UPROPERTY(EditAnywhere, Category = "UI")
 	TSubclassOf<UUserWidget> CharacterStatsClass;
 
-	UPROPERTY(EditAnywhere, Category = "UI")
-	TSubclassOf<UUserWidget> KillDeathStatsClass;
+
 
 private:
 	// --- Crosshair package ---
