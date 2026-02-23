@@ -56,12 +56,8 @@ public:
 
 	void TogglePauseMenu();
 
-	/** Base profile application (no explicit focus). */
-	void ApplyInputProfile(EInputProfile Profile);
-
-	/** Profile application that also sets UI focus (recommended for menus). */
-	void ApplyInputProfile(EInputProfile Profile, UUserWidget* FocusWidget);
-
+	// centralizing input selection through MyPC
+	void ApplyInputProfile(EInputProfile Profile, UUserWidget* FocusWidget = nullptr, bool bAllowGameInput = false);
 private:
 	void TryBindToGameState();
 	void UnbindFromGameState();
@@ -104,7 +100,6 @@ private:
 	int32 BindRetryCount = 0;
 
 	int32 CachedRoundNumber = 1;
-	bool bPauseMenuOpen = false;
 	bool bUIReady = false;
 	EMatchPhase CachedPhase = EMatchPhase::None;
 };

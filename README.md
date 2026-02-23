@@ -51,3 +51,8 @@ Demo Checklist (What to Look For)
 
 Scope Note
     A Deathmatch mode is planned but intentionally excluded from this slice. The focus is a polished Zombies loop and supporting UI/tools rather than splitting effort across unfinished modes.
+
+Please find my demo reels links below :
+
+Google Drive : https://drive.google.com/drive/folders/1zFbdSLvvZmIGkbZsb9blHg2UJH909r82
+Youtube channel : https://www.youtube.com/channel/UCBSKX107MpsEqtzOctA4nog 

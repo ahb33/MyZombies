@@ -29,6 +29,7 @@ void AMyPlayerController::BeginPlay()
 
 	TryBindToGameState();
 	GetWorldTimerManager().SetTimerForNextTick(this, &AMyPlayerController::InitLocalUI);
+	bShouldPerformFullTickWhenPaused = true;
 }
 
 void AMyPlayerController::SetupInputComponent()
@@ -220,21 +221,19 @@ void AMyPlayerController::HandleRoundNumberChanged(int32 RoundNumber)
 	}
 }
 
-void AMyPlayerController::ApplyInputProfile(EInputProfile Profile)
-{
-	ApplyInputProfile(Profile, nullptr);
-}
 
-void AMyPlayerController::ApplyInputProfile(EInputProfile Profile, UUserWidget* FocusWidget)
+void AMyPlayerController::ApplyInputProfile(EInputProfile Profile, UUserWidget* FocusWidget, bool bAllowGameInput)
 {
 	switch (Profile)
 	{
 		case EInputProfile::Menu:
 		{
             const FString Map = UGameplayStatics::GetCurrentLevelName(this, true);
+			const bool bIsLobby = (Map == TEXT("LobbyLevel"));
+			const bool bUseGameAndUI = bAllowGameInput || bIsLobby;
 
             // Lobby should allow movement + UI interaction + action mappings (Enter).
-            if (Map == TEXT("LobbyLevel"))
+            if (bUseGameAndUI)
             {
                 UIHelpers::ApplyGameAndUI(this, FocusWidget);
             }
@@ -243,6 +242,7 @@ void AMyPlayerController::ApplyInputProfile(EInputProfile Profile, UUserWidget* 
                 UIHelpers::ApplyUIOnly(this, FocusWidget);
             }
             break;
+
 
 		}
 
@@ -390,7 +390,7 @@ void AMyPlayerController::TogglePauseMenu()
 {
 	if (!IsLocalController() || !UISubsystem) return;
 
-	if (bPauseMenuOpen)
+	if (UISubsystem->IsPauseMenuVisible())
 	{
 		UISubsystem->HidePauseMenu();
 	}
@@ -398,7 +398,6 @@ void AMyPlayerController::TogglePauseMenu()
 	{
 		UISubsystem->ShowPauseMenu();
 	}
-	bPauseMenuOpen = !bPauseMenuOpen;
 }
 
 void AMyPlayerController::QuitToMainMenuFromPause()

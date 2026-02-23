@@ -12,7 +12,6 @@
 #include "GameOverMenuWidget.h"
 #include "ZombiesRoundWidget.h"
 #include "Components/AudioComponent.h"
-#include "UIHelpers.h"
 
 void UPlayerUISubsystem::SetOwnerPC(AMyPlayerController* InPC)
 {
@@ -140,11 +139,11 @@ void UPlayerUISubsystem::ShowOverlayInternal(
 	switch (InputMode)
 	{
         case EOverlayInputMode::UIOnly:
-            PC->ApplyInputProfile(EInputProfile::Menu, InOutInstance);
+            PC->ApplyInputProfile(EInputProfile::Menu, InOutInstance, /*bAllowGameInput=*/false);
             break;
 
         case EOverlayInputMode::GameAndUI:
-            UIHelpers::ApplyGameAndUI(PC, InOutInstance);
+             PC->ApplyInputProfile(EInputProfile::Menu, InOutInstance,  /*bAllowGameInput=*/true);
             break;
 
         case EOverlayInputMode::None:
@@ -157,6 +156,12 @@ void UPlayerUISubsystem::ShowOverlayInternal(
 		UGameplayStatics::SetGamePaused(PC, true);
 	}
 }
+
+bool UPlayerUISubsystem::IsPauseMenuVisible() const
+{
+    return IsValid(PauseMenuInstance) && PauseMenuInstance->IsInViewport();
+}
+
 
 void UPlayerUISubsystem::HideOverlay(UUserWidget* WidgetInstance, bool bRestoreInput)
 {
@@ -193,7 +198,7 @@ void UPlayerUISubsystem::ShowPauseMenu()
         9999,
         bIsStandalone,
         bIsMultiplayer,
-        bIsStandalone ? EOverlayInputMode::UIOnly : EOverlayInputMode::GameAndUI
+        EOverlayInputMode::GameAndUI
     );
 }
 

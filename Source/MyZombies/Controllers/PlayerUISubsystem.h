@@ -47,6 +47,8 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "UI") void UpdateRoundHUD(int32 RoundNumber);
 	UFUNCTION(BlueprintCallable, Category = "UI") void HideRoundHUD();
 
+	UFUNCTION(BlueprintPure, Category = "UI")
+    bool IsPauseMenuVisible() const;
 
 private:
 	EInputProfile GetDesiredProfileForCurrentMap() const;

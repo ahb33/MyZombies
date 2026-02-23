@@ -79,11 +79,11 @@ void ALobbyGameMode::StartGameMatch()
     const FString Mode = GI->GetSelectedGameMode().ToString();
 
     FString MapPath;
-    if (SelectedMode == TEXT("Zombies"))
+    if (SelectedMode == TEXT("Zombies_Level"))
     {
         MapPath = TEXT("/Game/GameAssets/Levels/Zombies_Level?listen");
     }
-    else if (SelectedMode == TEXT("DeathMatch"))
+    else if (SelectedMode == TEXT("DeathMatch_Level"))
     {
         MapPath = TEXT("/Game/GameAssets/Levels/DeathMatch_Level?listen");
     }
