@@ -56,3 +56,4 @@ Please find my demo reels links below :
 
 Google Drive : https://drive.google.com/drive/folders/1zFbdSLvvZmIGkbZsb9blHg2UJH909r82
 Youtube channel : https://www.youtube.com/channel/UCBSKX107MpsEqtzOctA4nog 
+LinkedIn : linkedin.com/in/ahmad-barahmeh 
